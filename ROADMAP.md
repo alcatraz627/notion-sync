@@ -21,21 +21,33 @@ Current gaps to audit and fix:
 
 ## P1 — Content Fidelity
 
-### Image support for private repos
-
-`rewriteImages()` points to `raw.githubusercontent.com` — only works for public repos. `enhancement-product` is private, so images show as broken in Notion.
-
-Options:
-- **Pre-sync CDN upload pass:** collect all image paths → upload to S3/Cloudflare R2/public mirror → rewrite src before sending to Notion
-- **Public repo mirror:** copy image assets to a separate public repo
-
-Current state: images silently skip (text + tables still work). Known limitation.
-
-### Native Notion page-mention chips (Phase 3)
+### Native Notion page-mention chips `[next up]`
 
 `rewriteLinks()` produces `[text](https://notion.so/pageId)` — plain hyperlinks. Works, but not native chip-style mentions.
 
-Phase 3 plan: after Phase 2 content writes, add a blocks API pass that scans each page's rich_text spans, finds inline links pointing at Notion page URLs, and replaces them with `link_mention` inline mentions. These render as `@Page Name` chips with hover previews.
+Phase 3 plan: after Phase 2 content writes, add a blocks API pass per page:
+1. `GET /blocks/:pageId/children` (paginated)
+2. Find `paragraph` / `bulleted_list_item` / `numbered_list_item` blocks with rich_text spans that have a link pointing to `notion.so/*`
+3. Parse the page ID from the URL, look it up in `pageIdMap`
+4. `PATCH /blocks/:blockId` — replace the text span with a `mention` type span (`mention.type = "page"`, `mention.page.id`)
+
+Result: `@Page Name` chips with hover previews, consistent with native Notion navigation. Adds ~1 extra API pass per synced page.
+
+### Image support for private repos
+
+`rewriteImages()` points to `raw.githubusercontent.com` — only works for public repos.
+
+**Current mitigation (shipped):** every image block now emits a fallback caption line directly below it:
+```
+📷 _alt text_ · [source doc ↗](github.com/.../file.md) · [image ↗](raw_url)
+```
+Even when the image embed fails, the caption is always visible with copy-pasteable links.
+
+**Full fix options:**
+- **Pre-sync CDN upload pass:** collect all image paths → upload to S3/Cloudflare R2 → rewrite src before sending to Notion. Adds significant complexity + external dependency.
+- **Public asset fork:** mirror only the `docs/**/*.{png,jpg,gif}` tree into a separate public repo and point `GITHUB_RAW_BASE` there.
+
+> Note: Notion's own file upload API (`POST /v1/files`) returns pre-signed S3 URLs that expire in ~1 hour — unsuitable for persistent embeds.
 
 ---
 
@@ -45,7 +57,7 @@ Phase 3 plan: after Phase 2 content writes, add a blocks API pass that scans eac
 
 Walk local docs tree + fetch Notion subtree via children API → diff titles + structure → print colored side-by-side tree:
 - Local-only entries
-- Notion-only entries  
+- Notion-only entries
 - Matched (title same)
 - Content-changed (local mtime newer than Notion `last_edited_time`)
 
@@ -100,8 +112,8 @@ Grows as new rules are discovered in `run-notes.md`. Link from `CLAUDE.md` "Diag
 
 | Limitation | Detail |
 |---|---|
-| Images in private repos | `raw.githubusercontent.com` returns 404 for private repos — Notion shows broken image |
-| Cross-doc links are hyperlinks, not page chips | Notion markdown API has no `link_to_page` syntax; Phase 3 blocks pass would fix this |
+| Images in private repos | `raw.githubusercontent.com` returns 404 for private repos — caption fallback always shows alt text + links |
+| Cross-doc links are hyperlinks, not page chips | Notion markdown API has no `link_to_page` syntax; Phase 3 blocks pass (P1) will fix this |
 | Anchor links in cross-doc links | `#heading` fragments appended to Notion URLs don't resolve (Notion doesn't support URL fragment navigation to blocks) |
 | Notion rate limit | Hard-coded 350ms sleep per API call; large doc trees take proportional time |
 | `_index.md` icon only | Folder pages read icon from `_index.md` frontmatter; if no `_index.md`, uses `NOTION_FOLDER_ICON` default |

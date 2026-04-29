@@ -208,6 +208,10 @@ const GITHUB_BASE = GITHUB_REPO
 const GITHUB_RAW_BASE = GITHUB_REPO
   ? `https://raw.githubusercontent.com/${GITHUB_REPO}/${GITHUB_BRANCH}/${GITHUB_DOCS_ROOT}`
   : null;
+// GitHub blob base for linking to source .md files and image blobs in the UI
+const GITHUB_BLOB_BASE = GITHUB_REPO
+  ? `https://github.com/${GITHUB_REPO}/blob/${GITHUB_BRANCH}/${GITHUB_DOCS_ROOT}`
+  : null;
 
 const FULL_WIDTH = process.env.NOTION_FULL_WIDTH !== "0"; // default on
 const SYNC_MAP_FILE = process.env.NOTION_SYNC_MAP ?? null;
@@ -597,7 +601,17 @@ function rewriteImages(content: string, relPath: string): string {
     (_m, alt: string, src: string) => {
       if (src.startsWith("http://") || src.startsWith("https://")) return _m;
       const resolved = path.normalize(path.join(dir, src)).replace(/\\/g, "/");
-      return `![${alt}](${GITHUB_RAW_BASE}/${resolved})`;
+      const rawUrl = `${GITHUB_RAW_BASE}/${resolved}`;
+      // Fallback caption: always present so readers can navigate to the image
+      // even when Notion can't load it (e.g. private repo raw URLs return 404).
+      const altText = alt.trim();
+      const sourceUrl = GITHUB_BLOB_BASE ? `${GITHUB_BLOB_BASE}/${relPath}` : null;
+      const captionParts = [
+        altText ? `📷 _${altText}_` : "📷",
+        sourceUrl ? `[source doc ↗](${sourceUrl})` : null,
+        `[image ↗](${rawUrl})`,
+      ].filter(Boolean).join(" · ");
+      return `![${alt}](${rawUrl})\n\n${captionParts}`;
     },
   );
 }
