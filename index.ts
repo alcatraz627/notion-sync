@@ -82,6 +82,15 @@ interface SectionResult {
   error?: string;
 }
 
+interface SectionWriteItem {
+  relDir: string;
+  dirName: string;
+  sectionTitle: string;
+  sectionPageId: string;
+  folderIndex: ParsedDoc | null;
+  subTree: DocTree;
+}
+
 interface RunConfig {
   root_page_id: string;
   root_notion_url: string;
@@ -1070,6 +1079,7 @@ async function discoverTree(
   folderMap?: Map<string, string>, // optional: top-level folder → mapped Notion root
   relDir = "",                     // relative path from DOCS_DIR to current dir (for _index.md)
   sectionResults: SectionResult[] = [],
+  sectionWriteQueue: SectionWriteItem[] = [],
 ): Promise<void> {
   // Files directly in this dir go under parentPageId
   for (const relPath of tree.files) {
@@ -1104,7 +1114,7 @@ async function discoverTree(
     if (mappedRootId) {
       vlog(`${indent}${clr.section(dirName)} ${sym.arr} ${clr.dim("[mapped]")}  ${clr.url(notionUrl(mappedRootId))}`);
       // Don't pass folderMap recursively — mapping only applies at top level
-      await discoverTree(subTree, mappedRootId, discoveryMap, pageIdMap, indent + "  ", undefined, childRelDir, sectionResults);
+      await discoverTree(subTree, mappedRootId, discoveryMap, pageIdMap, indent + "  ", undefined, childRelDir, sectionResults, sectionWriteQueue);
       continue;
     }
 
@@ -1148,101 +1158,67 @@ async function discoverTree(
     // from children can resolve ancestor section pages during Phase 1.
     pageIdMap.set(indexRelPath, sectionPageId);
 
-    // Write section content BEFORE recursing so replace_content doesn't delete
-    // child_page blocks created during the recursive call. Child page links in
-    // _index.md won't resolve here (IDs don't exist yet) — they fall back to
-    // GitHub URLs. This is acceptable; the child pages themselves get full content
-    // in Phase 2 which runs after all IDs are in pageIdMap.
-    if (!DRY_RUN) {
-      if (folderIndex) {
-        try {
-          const banner = SHOW_META ? buildMetaBanner(folderIndex.meta) : "";
-          const rewritten = rewriteLinks(
-            rewriteImages(banner + folderIndex.body, indexRelPath),
-            indexRelPath,
-            pageIdMap,
-          );
-          const indexSyncedAt = fmtTimestamp(new Date());
-          const rewrittenWithFooter = `${rewritten}\n\n---\n\n*Synced: ${indexSyncedAt}*\n`;
-          await updatePageMeta(sectionPageId, folderIndex.icon, folderIndex.cover);
-          await apiCall(() =>
-            (notion.pages as any).updateMarkdown({
-              page_id: sectionPageId,
-              type: "replace_content",
-              replace_content: { new_str: rewrittenWithFooter, allow_deleting_content: true },
-            }),
-            "pages.updateMarkdown.index",
-          );
-          discoveryMap.set(indexRelPath, { id: sectionPageId, isNew: false });
-          vlog(`${indent}  ${clr.dim(`${sym.ok} _index.md written`)}  ${clr.dim(`(${folderIndex.title})`)}`);
-          sectionResults.push({
-            rel_dir: childRelDir,
-            title: folderIndex.title,
-            page_id: sectionPageId,
-            notion_url: notionUrl(sectionPageId),
-            had_index_md: true,
-            content_written: true,
-          });
-        } catch (err: any) {
-          console.error(
-            `${indent}  ${clr.warn(`${sym.warn} _index.md write failed: ${(err.message as string).slice(0, 80)}`)}`,
-          );
-          sectionResults.push({
-            rel_dir: childRelDir,
-            title: sectionTitle,
-            page_id: sectionPageId,
-            notion_url: notionUrl(sectionPageId),
-            had_index_md: true,
-            content_written: false,
-            error: (err.message as string).slice(0, 200),
-          });
-        }
-      } else {
-        // No _index.md — write auto-index now (before recursion) using available IDs.
-        // Child page IDs aren't known yet so links will be plain text; that is correct
-        // behaviour since the alternative is to write after recursion and have
-        // replace_content delete the just-created child_page blocks.
-        try {
-          const autoContent = buildAutoIndex(dirName, subTree, pageIdMap, childRelDir);
-          const autoSyncedAt = fmtTimestamp(new Date());
-          const autoContentWithFooter = `${autoContent}\n---\n\n*Synced: ${autoSyncedAt}*\n`;
-          await apiCall(() =>
-            (notion.pages as any).updateMarkdown({
-              page_id: sectionPageId,
-              type: "replace_content",
-              replace_content: { new_str: autoContentWithFooter, allow_deleting_content: true },
-            }),
-            "pages.updateMarkdown.auto",
-          );
-          const childCount = collectFiles(subTree).filter(shouldSync).length;
-          vlog(`${indent}  ${clr.dim(`${sym.ok} auto-index written`)}  ${clr.dim(`(${childCount} docs)`)}`);
-          sectionResults.push({
-            rel_dir: childRelDir,
-            title: sectionTitle,
-            page_id: sectionPageId,
-            notion_url: notionUrl(sectionPageId),
-            had_index_md: false,
-            content_written: true,
-          });
-        } catch (err: any) {
-          console.error(
-            `${indent}  ${clr.warn(`${sym.warn} auto-index write failed: ${(err.message as string).slice(0, 80)}`)}`,
-          );
-          sectionResults.push({
-            rel_dir: childRelDir,
-            title: sectionTitle,
-            page_id: sectionPageId,
-            notion_url: notionUrl(sectionPageId),
-            had_index_md: false,
-            content_written: false,
-            error: (err.message as string).slice(0, 200),
-          });
-        }
-      }
-    }
+    // Defer section content write to Phase 1.5 — there it runs after pageIdMap
+    // is fully populated (so links to child pages resolve to Notion URLs) and
+    // uses a non-destructive block-level write that preserves child_page blocks.
+    sectionWriteQueue.push({ relDir: childRelDir, dirName, sectionTitle, sectionPageId, folderIndex, subTree });
+    discoveryMap.set(indexRelPath, { id: sectionPageId, isNew: false });
 
-    await discoverTree(subTree, sectionPageId, discoveryMap, pageIdMap, indent + "  ", undefined, childRelDir, sectionResults);
+    await discoverTree(subTree, sectionPageId, discoveryMap, pageIdMap, indent + "  ", undefined, childRelDir, sectionResults, sectionWriteQueue);
   }
+}
+
+// ── Phase 1.5: section content writes (non-destructive) ───────────────────────
+
+/**
+ * Re-write section page content without deleting child_page blocks.
+ * Notion's `replace_content` (allow_deleting_content: true) wipes EVERY block
+ * including subpages; using it on a section that already has children deletes
+ * those children. So we instead:
+ *   1. List the section's current blocks
+ *   2. Delete only non-child_page blocks (heading, paragraph, list items, etc.)
+ *   3. Use `insert_content` (additive) to write the new markdown
+ * The result: child_page navigation is preserved, and section markdown is
+ * fully refreshed with resolved Notion URLs in `_index.md` cross-links.
+ */
+async function writeSectionContent(
+  sectionPageId: string,
+  newMarkdown: string,
+): Promise<void> {
+  // 1. List current blocks (paginate through all)
+  const allBlocks: any[] = [];
+  let cursor: string | undefined;
+  do {
+    const res: any = await apiCall(
+      () => notion.blocks.children.list({
+        block_id: sectionPageId,
+        page_size: 100,
+        ...(cursor ? { start_cursor: cursor } : {}),
+      }),
+      "blocks.children.list",
+    );
+    allBlocks.push(...res.results);
+    cursor = res.has_more ? res.next_cursor : undefined;
+  } while (cursor);
+
+  // 2. Delete only non-child_page blocks
+  for (const block of allBlocks) {
+    if (block.type === "child_page") continue;
+    await apiCall(
+      () => notion.blocks.delete({ block_id: block.id }),
+      "blocks.delete",
+    );
+  }
+
+  // 3. Insert new content (no `after` → prepended, before any child_page blocks)
+  await apiCall(
+    () => (notion.pages as any).updateMarkdown({
+      page_id: sectionPageId,
+      type: "insert_content",
+      insert_content: { content: newMarkdown },
+    }),
+    "pages.updateMarkdown.insert",
+  );
 }
 
 // ── Phase 2: content writing ──────────────────────────────────────────────────
@@ -1530,11 +1506,102 @@ async function main(): Promise<void> {
   const pageIdMap = new Map<string, string>();
   const folderMap = loadFolderMap();
   const sectionResults: SectionResult[] = [];
+  const sectionWriteQueue: SectionWriteItem[] = [];
   const phase1Start = Date.now();
-  await discoverTree(tree, rootPageId, discoveryMap, pageIdMap, "  ", folderMap, "", sectionResults);
+  await discoverTree(tree, rootPageId, discoveryMap, pageIdMap, "  ", folderMap, "", sectionResults, sectionWriteQueue);
   const phase1Ms = Date.now() - phase1Start;
   if (!VERBOSE && IS_TTY) clearProgress();
   console.log(`  ${clr.ok(sym.ok)} ${discoveryMap.size} pages mapped\n`);
+
+  // Phase 1.5 — write section page content. Runs after full discovery so all
+  // child page IDs are in pageIdMap (links resolve to Notion URLs). Uses a
+  // non-destructive block-level write that preserves child_page subpage blocks.
+  if (!DRY_RUN && sectionWriteQueue.length > 0) {
+    console.log(`${clr.phase("Phase 1.5:")} writing section pages (${sectionWriteQueue.length})...`);
+    let sectionN = 0;
+    for (const { relDir, dirName, sectionTitle, sectionPageId, folderIndex, subTree } of sectionWriteQueue) {
+      sectionN++;
+      const indexRelPath = relDir ? `${relDir}/_index.md` : "_index.md";
+      if (folderIndex) {
+        try {
+          const banner = SHOW_META ? buildMetaBanner(folderIndex.meta) : "";
+          const rewritten = rewriteLinks(
+            rewriteImages(banner + folderIndex.body, indexRelPath),
+            indexRelPath,
+            pageIdMap,
+          );
+          const indexSyncedAt = fmtTimestamp(new Date());
+          const rewrittenWithFooter = `${rewritten}\n\n---\n\n*Synced: ${indexSyncedAt}*\n`;
+          await updatePageMeta(sectionPageId, folderIndex.icon, folderIndex.cover);
+          await writeSectionContent(sectionPageId, rewrittenWithFooter);
+          if (!VERBOSE && IS_TTY) {
+            process.stdout.write(`\r  [${sectionN}/${sectionWriteQueue.length}] ${clr.dim(`${sym.ok} ${relDir}`)}${" ".repeat(40)}`);
+          } else {
+            vlog(`  ${clr.dim(`${sym.ok} _index.md written`)}  ${clr.dim(`(${folderIndex.title})`)}`);
+          }
+          sectionResults.push({
+            rel_dir: relDir,
+            title: folderIndex.title,
+            page_id: sectionPageId,
+            notion_url: notionUrl(sectionPageId),
+            had_index_md: true,
+            content_written: true,
+          });
+        } catch (err: any) {
+          if (!VERBOSE && IS_TTY) process.stdout.write("\n");
+          console.error(`  ${clr.warn(`${sym.warn} _index.md write failed (${relDir}): ${(err.message as string).slice(0, 80)}`)}`);
+          sectionResults.push({
+            rel_dir: relDir,
+            title: sectionTitle,
+            page_id: sectionPageId,
+            notion_url: notionUrl(sectionPageId),
+            had_index_md: true,
+            content_written: false,
+            error: (err.message as string).slice(0, 200),
+          });
+        }
+      } else {
+        try {
+          const autoContent = buildAutoIndex(dirName, subTree, pageIdMap, relDir);
+          const autoSyncedAt = fmtTimestamp(new Date());
+          const autoContentWithFooter = `${autoContent}\n---\n\n*Synced: ${autoSyncedAt}*\n`;
+          await writeSectionContent(sectionPageId, autoContentWithFooter);
+          const childCount = collectFiles(subTree).filter(shouldSync).length;
+          if (!VERBOSE && IS_TTY) {
+            process.stdout.write(`\r  [${sectionN}/${sectionWriteQueue.length}] ${clr.dim(`${sym.ok} ${relDir} (auto)`)}${" ".repeat(40)}`);
+          } else {
+            vlog(`  ${clr.dim(`${sym.ok} auto-index written`)}  ${clr.dim(`(${childCount} docs)`)}`);
+          }
+          sectionResults.push({
+            rel_dir: relDir,
+            title: sectionTitle,
+            page_id: sectionPageId,
+            notion_url: notionUrl(sectionPageId),
+            had_index_md: false,
+            content_written: true,
+          });
+        } catch (err: any) {
+          if (!VERBOSE && IS_TTY) process.stdout.write("\n");
+          console.error(`  ${clr.warn(`${sym.warn} auto-index write failed (${relDir}): ${(err.message as string).slice(0, 80)}`)}`);
+          sectionResults.push({
+            rel_dir: relDir,
+            title: sectionTitle,
+            page_id: sectionPageId,
+            notion_url: notionUrl(sectionPageId),
+            had_index_md: false,
+            content_written: false,
+            error: (err.message as string).slice(0, 200),
+          });
+        }
+      }
+    }
+    if (!VERBOSE && IS_TTY) {
+      process.stdout.write("\r" + " ".repeat(80) + "\r");
+      console.log(`  ${clr.ok(sym.ok)} ${sectionWriteQueue.length} section pages written\n`);
+    } else {
+      console.log("");
+    }
+  }
 
   // Phase 2 — write content with cross-file Notion links resolved
   console.log(`${clr.phase("Phase 2:")} writing content...`);
