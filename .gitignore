@@ -48,3 +48,4 @@ _*.claude.md
 # Sync tool runtime outputs (not committed — ephemeral per-user)
 runs.jsonl
 metrics.jsonl
+.sync-defaults.json

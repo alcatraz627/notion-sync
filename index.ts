@@ -266,11 +266,13 @@ const GITHUB_BLOB_BASE = GITHUB_REPO
 const SYNC_MAP_FILE = process.env.NOTION_SYNC_MAP ?? null;
 const FOLDER_ICON = process.env.NOTION_FOLDER_ICON ?? null;
 const SHOW_META = process.env.NOTION_SHOW_META !== "0"; // default on
-
-const SCRIPT_VERSION = "1.1.0";
-const RATE_LIMIT_MS = 350;
+const ABORT_POLICY_ENV = process.env.ABORT_POLICY ?? "disabled";
+const ABORT_ENABLED = ABORT_POLICY_ENV !== "disabled";
+const ABORT_ERRORS = ABORT_POLICY_ENV === "3" ? 3 : 5;
 const ABORT_WINDOW = 10;
-const ABORT_ERRORS = 5;
+
+const SCRIPT_VERSION = "1.2.0";
+const RATE_LIMIT_MS = 350;
 
 const LOG_FILE = path.join(__dirname, "runs.jsonl");
 const METRICS_FILE = path.join(__dirname, "metrics.jsonl");
@@ -346,17 +348,15 @@ const SUSPICION_RULES: SuspicionRule[] = [
 const argv = process.argv.slice(2);
 const onlyPaths: string[] = [];
 let collectingOnly = false;
+let argVerbose = false;
 for (const arg of argv) {
-  if (arg === "--only") {
-    collectingOnly = true;
-    continue;
-  }
-  if (arg.startsWith("--")) {
-    collectingOnly = false;
-    continue;
-  }
+  if (arg === "--only") { collectingOnly = true; continue; }
+  if (arg === "--verbose") { argVerbose = true; collectingOnly = false; continue; }
+  if (arg.startsWith("--")) { collectingOnly = false; continue; }
   if (collectingOnly) onlyPaths.push(arg.replace(/\/$/, ""));
 }
+
+const VERBOSE = process.env.VERBOSE === "1" || argVerbose;
 
 function shouldSync(relPath: string): boolean {
   if (onlyPaths.length === 0) return true;
@@ -612,6 +612,25 @@ function fmtTimeShort(d: Date): string {
 
 function fmtElapsed(ms: number): string {
   return ms >= 1000 ? `${(ms / 1000).toFixed(1)}s` : `${ms}ms`;
+}
+
+// Verbose-gated log — suppressed in progress-bar mode to avoid corrupting bar
+function vlog(...args: Parameters<typeof console.log>): void {
+  if (VERBOSE) console.log(...args);
+}
+
+// Progress bar for Phase 2 — in-place single-line update via \r
+const BAR_WIDTH = 28;
+function renderProgress(n: number, total: number, file: string, status?: string): void {
+  const filled = Math.round((n / total) * BAR_WIDTH);
+  const bar = paint(A.G, "█".repeat(filled)) + paint(A.d, "░".repeat(BAR_WIDTH - filled));
+  const pct = String(Math.floor((n / total) * 100)).padStart(3);
+  const label = file.length > 42 ? `…${file.slice(-41)}` : file.padEnd(42);
+  const statusDot = status === "error" ? paint(A.R, sym.err) : paint(A.d, sym.dot);
+  process.stdout.write(`\r  [${bar}] ${clr.bold(`${n}/${total}`)} ${pct}%  ${statusDot} ${clr.dim(label)}`);
+}
+function clearProgress(): void {
+  process.stdout.write("\r" + " ".repeat(100) + "\r");
 }
 
 /**
@@ -1061,9 +1080,7 @@ async function discoverTree(
     // creating a section page and root the subtree directly under that page.
     const mappedRootId = folderMap?.get(dirName);
     if (mappedRootId) {
-      console.log(
-        `${indent}${clr.section(dirName)} ${sym.arr} ${clr.dim("[mapped]")}  ${clr.url(notionUrl(mappedRootId))}`,
-      );
+      vlog(`${indent}${clr.section(dirName)} ${sym.arr} ${clr.dim("[mapped]")}  ${clr.url(notionUrl(mappedRootId))}`);
       // Don't pass folderMap recursively — mapping only applies at top level
       await discoverTree(subTree, mappedRootId, discoveryMap, pageIdMap, indent + "  ", undefined, childRelDir, sectionResults);
       continue;
@@ -1077,16 +1094,15 @@ async function discoverTree(
 
     const sectionTitle = dirName.charAt(0).toUpperCase() + dirName.slice(1);
     const indexNote = folderIndex ? clr.dim(` ${sym.icon} ${folderIndex.icon?.type === "emoji" ? folderIndex.icon.emoji : "[img]"}`) : "";
-    console.log(
-      `${indent}${clr.section(dirName)}${indexNote} ${sym.arr} ${clr.bold(`"${sectionTitle}"`)}`,
-    );
+    vlog(`${indent}${clr.section(dirName)}${indexNote} ${sym.arr} ${clr.bold(`"${sectionTitle}"`)}`);
+    if (!VERBOSE && IS_TTY) {
+      process.stdout.write(`\r  ${clr.dim("Phase 1:")} discovering ${clr.dim(childRelDir || "root")}...${" ".repeat(20)}`);
+    }
 
     let sectionPageId: string;
     if (DRY_RUN) {
       sectionPageId = `dry-run-section-${dirName}`;
-      console.log(
-        `${indent}  ${clr.dim(`[${sym.dry} DRY RUN] would get-or-create section page`)}`,
-      );
+      vlog(`${indent}  ${clr.dim(`[${sym.dry} DRY RUN] would get-or-create section page`)}`);
     } else {
       try {
         const { id, isNew } = await getOrCreateChildPage(
@@ -1096,7 +1112,7 @@ async function discoverTree(
         );
         sectionPageId = id;
         const badge = isNew ? clr.ok(`${sym.new} CREATED`) : clr.dim("EXISTS");
-        console.log(`${indent}  ${badge}  ${clr.url(notionUrl(id))}`);
+        vlog(`${indent}  ${badge}  ${clr.url(notionUrl(id))}`);
         // full-width not settable via public API — user sets manually in Notion
       } catch (err: any) {
         console.error(
@@ -1135,7 +1151,7 @@ async function discoverTree(
             "pages.updateMarkdown.index",
           );
           discoveryMap.set(indexRelPath, { id: sectionPageId, isNew: false });
-          console.log(`${indent}  ${clr.dim(`${sym.ok} _index.md written`)}  ${clr.dim(`(${folderIndex.title})`)}`);
+          vlog(`${indent}  ${clr.dim(`${sym.ok} _index.md written`)}  ${clr.dim(`(${folderIndex.title})`)}`);
           sectionResults.push({
             rel_dir: childRelDir,
             title: folderIndex.title,
@@ -1173,7 +1189,7 @@ async function discoverTree(
             "pages.updateMarkdown.auto",
           );
           const childCount = collectFiles(subTree).filter(shouldSync).length;
-          console.log(`${indent}  ${clr.dim(`${sym.ok} auto-index generated`)}  ${clr.dim(`(${childCount} docs)`)}`);
+          vlog(`${indent}  ${clr.dim(`${sym.ok} auto-index generated`)}  ${clr.dim(`(${childCount} docs)`)}`);
           sectionResults.push({
             rel_dir: childRelDir,
             title: sectionTitle,
@@ -1244,32 +1260,31 @@ async function writeFileContent(
       ? clr.dim("none")
       : `${images.length}  ${clr.dim(images.map((s) => path.basename(s)).join(", "))}`;
 
-  console.log(`\n  ${clr.bold(`[${counter.n}/${counter.total}]`)} ${relPath}  ${clr.dim(fmtTimeShort(new Date(t0)))}`);
-  console.log(`     ${clr.dim("Title:")}   ${title}`);
-  console.log(`     ${clr.dim("Local:")}   docs/product/${relPath}`);
-
-  if (icon) {
-    const iconDisplay =
-      icon.type === "emoji"
-        ? icon.emoji
-        : clr.url(icon.external.url.slice(0, 60));
-    console.log(`     ${sym.icon}  ${clr.dim("Icon:")}    ${iconDisplay}`);
-  }
-  if (cover) {
-    console.log(
-      `     ${sym.cover}  ${clr.dim("Cover:")}   ${clr.url(cover.external.url)}`,
-    );
-  }
-  if (images.length > 0) {
-    console.log(`     ${sym.img}  ${clr.dim("Images:")}  ${imgStr}`);
+  if (VERBOSE) {
+    console.log(`\n  ${clr.bold(`[${counter.n}/${counter.total}]`)} ${relPath}  ${clr.dim(fmtTimeShort(new Date(t0)))}`);
+    console.log(`     ${clr.dim("Title:")}   ${title}`);
+    console.log(`     ${clr.dim("Local:")}   docs/product/${relPath}`);
+    if (icon) {
+      const iconDisplay =
+        icon.type === "emoji"
+          ? icon.emoji
+          : clr.url(icon.external.url.slice(0, 60));
+      console.log(`     ${sym.icon}  ${clr.dim("Icon:")}    ${iconDisplay}`);
+    }
+    if (cover) {
+      console.log(`     ${sym.cover}  ${clr.dim("Cover:")}   ${clr.url(cover.external.url)}`);
+    }
+    if (images.length > 0) {
+      console.log(`     ${sym.img}  ${clr.dim("Images:")}  ${imgStr}`);
+    }
   }
 
   if (DRY_RUN) {
     const wordCount = body.split(/\s+/).length;
-    console.log(`     ${clr.dim("Words:")}   ~${wordCount}`);
-    console.log(
-      `     ${clr.dim("Status:")}  ${clr.dim(`[${sym.dry} DRY RUN] would ${action} + write markdown`)}`,
-    );
+    if (VERBOSE) {
+      console.log(`     ${clr.dim("Words:")}   ~${wordCount}`);
+      console.log(`     ${clr.dim("Status:")}  ${clr.dim(`[${sym.dry} DRY RUN] would ${action} + write markdown`)}`);
+    }
     return { path: relPath, title, status: "dry_run", word_count: wordCount };
   }
 
@@ -1290,10 +1305,10 @@ async function writeFileContent(
 
     const elapsed = Date.now() - t0;
     runMetrics.files.push({ path: relPath, status: action, elapsed_ms: elapsed, content_chars: withFooter.length });
-    console.log(`     ${clr.dim("Notion:")}  ${clr.url(pageNotionUrl)}`);
-    console.log(
-      `     ${clr.dim("Status:")}  ${actionBadge}  ${clr.dim(fmtElapsed(elapsed))}`,
-    );
+    if (VERBOSE) {
+      console.log(`     ${clr.dim("Notion:")}  ${clr.url(pageNotionUrl)}`);
+      console.log(`     ${clr.dim("Status:")}  ${actionBadge}  ${clr.dim(fmtElapsed(elapsed))}`);
+    }
     return {
       path: relPath,
       title,
@@ -1317,11 +1332,12 @@ async function writeFileContent(
       (errMsg.includes('"code":"validation_error"') || errMsg.includes("validation_error"));
     if (isArchivedError) {
       const isAncestorError = errMsg.includes("ancestor");
-      console.warn(`     ${clr.warn(`${sym.warn} ${isAncestorError ? "Archived ancestor" : "Page archived"} — unarchiving and retrying...`)}`);
+      if (!VERBOSE && IS_TTY) clearProgress();
+      console.warn(`  ${clr.warn(`${sym.warn} ${isAncestorError ? "Archived ancestor" : "Page archived"} — unarchiving ${relPath} and retrying...`)}`);
       try {
         if (isAncestorError) {
           // Unarchive all ancestor section pages (outermost first)
-          const parts = relPath.split("/").slice(0, -1); // parent dir segments
+          const parts = relPath.split("/").slice(0, -1);
           for (let i = 1; i <= parts.length; i++) {
             const sectionKey = parts.slice(0, i).join("/") + "/_index.md";
             const sectionId = pageIdMap.get(sectionKey);
@@ -1341,8 +1357,10 @@ async function writeFileContent(
         await doWrite();
         const elapsed = Date.now() - t0;
         runMetrics.files.push({ path: relPath, status: action, elapsed_ms: elapsed, content_chars: withFooter.length });
-        console.log(`     ${clr.dim("Notion:")}  ${clr.url(pageNotionUrl)}`);
-        console.log(`     ${clr.dim("Status:")}  ${actionBadge}  ${clr.dim(fmtElapsed(elapsed))}  ${clr.dim("(unarchived)")}`);
+        if (VERBOSE) {
+          console.log(`     ${clr.dim("Notion:")}  ${clr.url(pageNotionUrl)}`);
+          console.log(`     ${clr.dim("Status:")}  ${actionBadge}  ${clr.dim(fmtElapsed(elapsed))}  ${clr.dim("(unarchived)")}`);
+        }
         return {
           path: relPath,
           title,
@@ -1355,7 +1373,8 @@ async function writeFileContent(
         const retryMsg: string = retryErr.body
           ? JSON.stringify(retryErr.body)
           : (retryErr.message as string);
-        console.error(`     ${clr.err(`${sym.err} Unarchive+retry failed — ${retryMsg.slice(0, 100)}`)}`);
+        if (!VERBOSE && IS_TTY) clearProgress();
+        console.error(`  ${clr.err(`${sym.err} Unarchive+retry failed — ${relPath}: ${retryMsg.slice(0, 100)}`)}`);
         const elapsed = Date.now() - t0;
         runMetrics.files.push({ path: relPath, status: "error", elapsed_ms: elapsed, content_chars: withFooter.length });
         return { path: relPath, title, status: "error", error: retryMsg };
@@ -1364,9 +1383,8 @@ async function writeFileContent(
 
     const elapsed = Date.now() - t0;
     runMetrics.files.push({ path: relPath, status: "error", elapsed_ms: elapsed, content_chars: withFooter.length });
-    console.error(
-      `     ${clr.dim("Status:")}  ${clr.err(`${sym.err} ERROR — ${errMsg.slice(0, 120)}`)}`,
-    );
+    if (!VERBOSE && IS_TTY) clearProgress();
+    console.error(`  ${clr.err(`${sym.err} ${relPath}: ${errMsg.slice(0, 120)}`)}`);
 
     // Only run WAF suspicion checks when the error looks like a server-side
     // rejection — not for Notion's own validation_error codes (archived page,
@@ -1543,15 +1561,14 @@ async function main(): Promise<void> {
   const phase1Start = Date.now();
   await discoverTree(tree, rootPageId, discoveryMap, pageIdMap, "  ", folderMap, "", sectionResults);
   const phase1Ms = Date.now() - phase1Start;
+  if (!VERBOSE && IS_TTY) clearProgress();
   console.log(`  ${clr.ok(sym.ok)} ${discoveryMap.size} pages mapped\n`);
 
   // Phase 2 — write content with cross-file Notion links resolved
   console.log(`${clr.phase("Phase 2:")} writing content...`);
   const results: SyncResult[] = [];
-  const counter = { n: 0, total: allToSync.length };
-
-  // Rolling abort: if ABORT_ERRORS failures occur within the last ABORT_WINDOW
-  // items processed, something systemic is wrong (token revoked, network down).
+  const total = allToSync.length;
+  const counter = { n: 0, total };
   const recentStatuses: SyncStatus[] = [];
   let aborted = false;
 
@@ -1560,6 +1577,7 @@ async function main(): Promise<void> {
     counter.n++;
     const discovery = discoveryMap.get(relPath);
     if (!discovery) {
+      if (!VERBOSE && IS_TTY) renderProgress(counter.n, total, relPath, "error");
       const r: SyncResult = {
         path: relPath,
         title: relPath,
@@ -1572,24 +1590,27 @@ async function main(): Promise<void> {
       continue;
     }
 
+    if (!VERBOSE && IS_TTY) renderProgress(counter.n, total, relPath);
     const r = await writeFileContent(relPath, discovery, pageIdMap, counter);
     results.push(r);
     recentStatuses.push(r.status);
     if (recentStatuses.length > ABORT_WINDOW) recentStatuses.shift();
 
-    // Abort if too many failures in recent window (systemic issue)
-    // DISABLED: let all files run to completion so we can see full error picture
-    // const recentErrors = recentStatuses.filter((s) => s === "error").length;
-    // if (recentErrors >= ABORT_ERRORS) {
-    //   console.error(
-    //     clr.err(
-    //       `\n${sym.err} Aborting — ${recentErrors} failures in last ${recentStatuses.length} items. Likely a systemic issue (token, network, WAF block).`,
-    //     ),
-    //   );
-    //   aborted = true;
-    //   break;
-    // }
+    if (ABORT_ENABLED) {
+      const recentErrors = recentStatuses.filter((s) => s === "error").length;
+      if (recentErrors >= ABORT_ERRORS) {
+        if (!VERBOSE && IS_TTY) clearProgress();
+        console.error(
+          clr.err(
+            `\n${sym.err} Aborting — ${recentErrors} failures in last ${recentStatuses.length} items. Likely a systemic issue (token, network, WAF block).`,
+          ),
+        );
+        aborted = true;
+        break;
+      }
+    }
   }
+  if (!VERBOSE && IS_TTY) clearProgress();
   const phase2Ms = Date.now() - phase2Start;
 
   // Summary
