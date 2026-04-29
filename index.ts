@@ -722,7 +722,9 @@ async function listChildPages(parentId: string): Promise<PageInfo[]> {
       "blocks.children.list",
     );
     for (const block of res.results) {
-      if ("type" in block && block.type === "child_page")
+      // Skip archived (trashed) pages — Notion includes them in children.list
+      // but rejects writes to them with validation_error.
+      if ("type" in block && block.type === "child_page" && !block.archived)
         pages.push({
           id: block.id,
           title: (block as any).child_page.title as string,
@@ -1261,11 +1263,24 @@ async function writeFileContent(
       `     ${clr.dim("Status:")}  ${clr.err(`${sym.err} ERROR — ${errMsg.slice(0, 120)}`)}`,
     );
 
-    const fired = runSuspicionChecks(rewritten);
-    if (fired.length > 0) {
-      console.error(`     ${clr.warn(`${sym.warn} Possible causes:`)}`);
-      for (const r of fired)
-        console.error(`       ${clr.dim(`[${r.name}]`)} ${r.explain}`);
+    // Only run WAF suspicion checks when the error looks like a server-side
+    // rejection — not for Notion's own validation_error codes (archived page,
+    // invalid property, etc.) which have a clear non-WAF cause.
+    let fired: SuspicionMatch[] = [];
+    const isNotionValidationError = errMsg.includes('"code":"validation_error"') || errMsg.includes("validation_error");
+    if (!isNotionValidationError) {
+      fired = runSuspicionChecks(rewritten);
+      if (fired.length > 0) {
+        console.error(`     ${clr.warn(`${sym.warn} Possible causes:`)}`);
+        for (const r of fired)
+          console.error(`       ${clr.dim(`[${r.name}]`)} ${r.explain}`);
+      }
+    } else {
+      // Surface the Notion error code directly so it's visible in the console
+      try {
+        const parsed = JSON.parse(JSON.parse(errMsg) as string) as { code?: string; message?: string };
+        console.error(`     ${clr.dim("Notion:")}   ${clr.err(parsed.message ?? errMsg.slice(0, 120))}`);
+      } catch { /* already printed above */ }
     }
 
     return { path: relPath, title, status: "error", error: errMsg, suspicions: fired };
