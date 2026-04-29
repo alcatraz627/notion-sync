@@ -60,6 +60,8 @@ DEF_DRY_RUN="$(_load dry_run false)"
 DEF_FILTER="$(_load filter '')"
 DEF_ABORT_POLICY="$(_load abort_policy disabled)"
 DEF_VERBOSE="$(_load verbose false)"
+DEF_LINK_MODE="$(_load link_mode notion)"
+DEF_SHOW_META="$(_load show_meta true)"
 
 # ── Parse CLI override flags ──────────────────────────────────────────────────
 
@@ -92,6 +94,16 @@ for arg in "$@"; do
   fi
 done
 
+# ── Discover available sections ───────────────────────────────────────────────
+
+EFFECTIVE_DOCS_DIR="${DOCS_DIR:-$SCRIPT_DIR/docs}"
+SECTION_LIST=()
+if [ -d "$EFFECTIVE_DOCS_DIR" ]; then
+  while IFS= read -r dir; do
+    SECTION_LIST+=("$(basename "$dir")")
+  done < <(find "$EFFECTIVE_DOCS_DIR" -maxdepth 1 -mindepth 1 -type d | sort)
+fi
+
 # ── Wizard ────────────────────────────────────────────────────────────────────
 
 WIZARD_AVAILABLE=false
@@ -123,28 +135,52 @@ if [ "$WIZARD_AVAILABLE" = true ]; then
 
   # ── Section filter ──
   echo ""
-  gum style --foreground 245 "Section filter — leave blank to sync all sections"
-  CHOSEN_FILTER=$(gum input \
-    --placeholder "e.g. jobs, admin, boring-technical-stuff (blank = all)" \
-    --value "$DEF_FILTER" \
-    --width 60 \
-    || echo "$DEF_FILTER")
+  if [ ${#SECTION_LIST[@]} -gt 0 ]; then
+    gum style --foreground 245 "Section filter — space to toggle, enter to confirm (none = sync all)"
+    # Convert space/comma-separated DEF_FILTER into comma-separated for --selected
+    DEF_FILTER_CSV=$(echo "$DEF_FILTER" | tr ' ' ',')
+    FILTER_RAW=$(printf '%s\n' "${SECTION_LIST[@]}" | \
+      gum choose --no-limit --selected="$DEF_FILTER_CSV" --height=14 \
+      || echo "")
+    # Convert newline-separated gum output to space-separated filter string
+    CHOSEN_FILTER=$(echo "$FILTER_RAW" | tr '\n' ' ' | xargs)
+  else
+    gum style --foreground 245 "Section filter — leave blank to sync all sections"
+    CHOSEN_FILTER=$(gum input \
+      --placeholder "e.g. jobs, admin, boring-technical-stuff (blank = all)" \
+      --value "$DEF_FILTER" \
+      --width 60 \
+      || echo "$DEF_FILTER")
+  fi
 
   # ── Abort policy ──
   echo ""
   gum style --foreground 245 "Abort policy — stop early if many consecutive errors?"
-  ABORT_OPTIONS=("disabled — run all files, collect all errors" "3 errors — abort if 3+ failures in last 10" "5 errors — abort if 5+ failures in last 10")
+  ABORT_OPTIONS=(
+    "disabled — run all files, collect all errors"
+    "1 error  — abort on first failure"
+    "2 errors — abort if 2+ failures in last 10"
+    "3 errors — abort if 3+ failures in last 10"
+    "5 errors — abort if 5+ failures in last 10"
+    "10 errors — abort if 10+ failures in last 20"
+  )
   case "$DEF_ABORT_POLICY" in
-    3) ABORT_SELECTED="${ABORT_OPTIONS[1]}" ;;
-    5) ABORT_SELECTED="${ABORT_OPTIONS[2]}" ;;
-    *) ABORT_SELECTED="${ABORT_OPTIONS[0]}" ;;
+    1)  ABORT_SELECTED="${ABORT_OPTIONS[1]}" ;;
+    2)  ABORT_SELECTED="${ABORT_OPTIONS[2]}" ;;
+    3)  ABORT_SELECTED="${ABORT_OPTIONS[3]}" ;;
+    5)  ABORT_SELECTED="${ABORT_OPTIONS[4]}" ;;
+    10) ABORT_SELECTED="${ABORT_OPTIONS[5]}" ;;
+    *)  ABORT_SELECTED="${ABORT_OPTIONS[0]}" ;;
   esac
   ABORT_CHOICE=$(printf '%s\n' "${ABORT_OPTIONS[@]}" | \
-    gum choose --selected="$ABORT_SELECTED" --height=5 || echo "$ABORT_SELECTED")
+    gum choose --selected="$ABORT_SELECTED" --height=8 || echo "$ABORT_SELECTED")
   case "$ABORT_CHOICE" in
-    "3 errors"*) CHOSEN_ABORT_POLICY=3 ;;
-    "5 errors"*) CHOSEN_ABORT_POLICY=5 ;;
-    *)           CHOSEN_ABORT_POLICY=disabled ;;
+    "1 error"*)   CHOSEN_ABORT_POLICY=1 ;;
+    "2 errors"*)  CHOSEN_ABORT_POLICY=2 ;;
+    "3 errors"*)  CHOSEN_ABORT_POLICY=3 ;;
+    "5 errors"*)  CHOSEN_ABORT_POLICY=5 ;;
+    "10 errors"*) CHOSEN_ABORT_POLICY=10 ;;
+    *)            CHOSEN_ABORT_POLICY=disabled ;;
   esac
 
   # ── Verbose output ──
@@ -158,13 +194,47 @@ if [ "$WIZARD_AVAILABLE" = true ]; then
     CHOSEN_VERBOSE=false
   fi
 
+  # ── Link mode ──
+  echo ""
+  gum style --foreground 245 "Link mode — how to rewrite relative .md links in Notion"
+  LINK_OPTIONS=(
+    "notion — rewrite to Notion page URLs (recommended)"
+    "github — rewrite to GitHub blob URLs"
+    "strip  — remove links, keep plain text"
+  )
+  case "$DEF_LINK_MODE" in
+    github) LINK_SELECTED="${LINK_OPTIONS[1]}" ;;
+    strip)  LINK_SELECTED="${LINK_OPTIONS[2]}" ;;
+    *)      LINK_SELECTED="${LINK_OPTIONS[0]}" ;;
+  esac
+  LINK_CHOICE=$(printf '%s\n' "${LINK_OPTIONS[@]}" | \
+    gum choose --selected="$LINK_SELECTED" --height=5 || echo "$LINK_SELECTED")
+  case "$LINK_CHOICE" in
+    "github"*) CHOSEN_LINK_MODE=github ;;
+    "strip"*)  CHOSEN_LINK_MODE=strip ;;
+    *)         CHOSEN_LINK_MODE=notion ;;
+  esac
+
+  # ── Show meta banner ──
+  echo ""
+  META_PROMPT="Show metadata banner? (frontmatter summary at top of each Notion page)"
+  META_DEFAULT_FLAG=""
+  { [ "$DEF_SHOW_META" = "True" ] || [ "$DEF_SHOW_META" = "true" ]; } && META_DEFAULT_FLAG="--default"
+  if gum confirm "$META_PROMPT" $META_DEFAULT_FLAG; then
+    CHOSEN_SHOW_META=true
+  else
+    CHOSEN_SHOW_META=false
+  fi
+
   echo ""
   gum style --border normal --border-foreground 238 --padding "0 1" \
     "$(gum style --foreground 10 --bold "  Ready to sync")
   Dry run:        $CHOSEN_DRY_RUN
   Filter:         ${CHOSEN_FILTER:-all sections}
   Abort policy:   $CHOSEN_ABORT_POLICY
-  Verbose:        $CHOSEN_VERBOSE"
+  Verbose:        $CHOSEN_VERBOSE
+  Link mode:      $CHOSEN_LINK_MODE
+  Show meta:      $CHOSEN_SHOW_META"
 
   echo ""
   if ! gum confirm "Proceed?" --affirmative="Yes, sync" --negative="Cancel"; then
@@ -182,6 +252,8 @@ else
   CHOSEN_FILTER="${OVERRIDE_FILTER:-$DEF_FILTER}"
   CHOSEN_ABORT_POLICY="$DEF_ABORT_POLICY"
   CHOSEN_VERBOSE="${OVERRIDE_VERBOSE:-$DEF_VERBOSE}"
+  CHOSEN_LINK_MODE="$DEF_LINK_MODE"
+  CHOSEN_SHOW_META="$DEF_SHOW_META"
 
   if [ "$NO_WIZARD" = false ] && [ -f "$DEFAULTS_FILE" ]; then
     echo "notion-sync: using saved defaults (run with a TTY for the interactive wizard)"
@@ -199,6 +271,8 @@ data = {
     "filter":       "${CHOSEN_FILTER}",
     "abort_policy": "${CHOSEN_ABORT_POLICY}",
     "verbose":      to_bool("${CHOSEN_VERBOSE}"),
+    "link_mode":    "${CHOSEN_LINK_MODE}",
+    "show_meta":    to_bool("${CHOSEN_SHOW_META}"),
 }
 with open("$DEFAULTS_FILE", "w") as f:
     json.dump(data, f, indent=2)
@@ -209,6 +283,8 @@ PYEOF
 [ "$CHOSEN_DRY_RUN" = "true" ] || [ "$CHOSEN_DRY_RUN" = "True" ] && export DRY_RUN=1 || export DRY_RUN=0
 [ "$CHOSEN_VERBOSE" = "true" ] || [ "$CHOSEN_VERBOSE" = "True" ] && export VERBOSE=1 || export VERBOSE=0
 export ABORT_POLICY="$CHOSEN_ABORT_POLICY"
+export NOTION_LINK_MODE="$CHOSEN_LINK_MODE"
+[ "$CHOSEN_SHOW_META" = "true" ] || [ "$CHOSEN_SHOW_META" = "True" ] && export NOTION_SHOW_META=1 || export NOTION_SHOW_META=0
 
 # Build --only args from filter string
 ONLY_ARGS=()

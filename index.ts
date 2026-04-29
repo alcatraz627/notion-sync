@@ -268,7 +268,7 @@ const FOLDER_ICON = process.env.NOTION_FOLDER_ICON ?? null;
 const SHOW_META = process.env.NOTION_SHOW_META !== "0"; // default on
 const ABORT_POLICY_ENV = process.env.ABORT_POLICY ?? "disabled";
 const ABORT_ENABLED = ABORT_POLICY_ENV !== "disabled";
-const ABORT_ERRORS = ABORT_POLICY_ENV === "3" ? 3 : 5;
+const ABORT_ERRORS = parseInt(ABORT_POLICY_ENV) || 5;
 const ABORT_WINDOW = 10;
 
 const SCRIPT_VERSION = "1.2.0";
@@ -680,8 +680,19 @@ function rewriteLinks(
             clr.warn(`  [link] unresolved: "${resolved}" (in ${relPath}) — not in pageIdMap`),
           );
         }
-        if (LINK_MODE !== "strip" && GITHUB_BASE)
-          return `[${text}](${GITHUB_BASE}/${resolved}${anchor ? "#" + anchor : ""})`;
+        if (LINK_MODE !== "strip" && GITHUB_REPO) {
+          // Check if resolved path (relative to DOCS_DIR) actually exists.
+          // If not, the link is repo-root-relative (e.g. src/core/...) written
+          // without a leading / — use raw urlPath with the repo-root blob base
+          // instead of GITHUB_BASE (which already has GITHUB_DOCS_PATH prefixed).
+          const existsInDocs =
+            fs.existsSync(path.join(DOCS_DIR, resolved)) ||
+            fs.existsSync(path.join(DOCS_DIR, resolved + ".md"));
+          const githubHref = existsInDocs
+            ? `${GITHUB_BASE}/${resolved}`
+            : `https://github.com/${GITHUB_REPO}/blob/${GITHUB_BRANCH}/${urlPath}`;
+          return `[${text}](${githubHref}${anchor ? "#" + anchor : ""})`;
+        }
         return text;
       }
       return text;
