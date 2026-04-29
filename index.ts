@@ -744,9 +744,10 @@ async function listChildPages(parentId: string): Promise<PageInfo[]> {
       "blocks.children.list",
     );
     for (const block of res.results) {
-      // Skip archived (trashed) pages — Notion includes them in children.list
-      // but rejects writes to them with validation_error.
-      if ("type" in block && block.type === "child_page" && !block.archived)
+      // Collect all child_page blocks — archived status is checked per-page in
+      // getOrCreateChildPage via pages.retrieve (block.archived is always false
+      // even for trashed pages, so filtering here would be a no-op).
+      if ("type" in block && block.type === "child_page")
         pages.push({
           id: block.id,
           title: (block as any).child_page.title as string,
@@ -766,7 +767,22 @@ async function getOrCreateChildPage(
   if (DRY_RUN) return { id: `dry-run-${Date.now()}`, isNew: false };
   const children = await listChildPages(parentId);
   const existing = children.find((p) => p.title === title);
-  if (existing) return { id: existing.id, isNew: false };
+  if (existing) {
+    // blocks.children.list always reports archived: false on the block object
+    // even when the underlying page is trashed — the real flag is on the page.
+    // Retrieve it and unarchive in Phase 1 so children don't get cascade errors.
+    const pageData = await apiCall(
+      () => notion.pages.retrieve({ page_id: existing.id }),
+      "pages.retrieve",
+    );
+    if ((pageData as any).archived) {
+      await apiCall(
+        () => notion.pages.update({ page_id: existing.id, archived: false }),
+        "pages.unarchive",
+      );
+    }
+    return { id: existing.id, isNew: false };
+  }
   const page = await apiCall(() =>
     notion.pages.create({
       parent: { page_id: parentId },

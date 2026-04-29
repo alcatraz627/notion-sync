@@ -28,12 +28,31 @@ Claude should:
 
 **Previous fix was incomplete:** The unarchive-and-retry in `writeFileContent` called `pages.update(archived: false)` on the *leaf page* (the file being written). For the ancestor case the leaf itself is fine — it's a parent section that needs unarchiving, not the leaf.
 
-**Fix applied (eb8c36c → next commit):**
+**Fix applied (a668f3e → next commit):**
 - Detect "ancestor" in the error message to distinguish from leaf-archived case.
 - For ancestor case: traverse up `relPath`'s directory segments, look up each section page ID in `pageIdMap` (via `dir/_index.md` keys), and unarchive all of them before retrying.
 - After full Notion wipe and fresh sync this won't occur immediately, but will recur if any section page is manually trashed between runs.
 
+**This Phase 2 fix was insufficient** — see 2026-04-30 entry below for the correct Phase 1 fix.
+
 **Pattern to watch:** If many sibling files under a folder all fail with `archived ancestor` (not just one), suspect the parent section page is trashed. Check Notion trash for the folder-level page, restore it, or let the auto-unarchive handle it on next run.
+
+## 2026-04-30 — run 20260429-222229 — archived ancestor root cause fixed in Phase 1
+
+**Run:** 17 created, 195 errors (all "archived ancestor"), even after Notion wipe.
+
+**Root cause (definitive):** `blocks.children.list` returns archived/trashed pages with `block.archived === false` — the archived flag is on the PAGE object (from `pages.retrieve`), not on the block pointer. This means `!block.archived` filtering in `listChildPages` was a no-op. Trashed pages were being returned as valid matches, their IDs stored in `pageIdMap`, and Phase 2 wrote to children of those archived pages → cascade "archived ancestor" errors on all children.
+
+**Why wipe didn't help:** Notion's "delete" moves pages to Trash (archived), not permanent deletion. `blocks.children.list` still returns them. The script matched by title and stored their (archived) IDs.
+
+**Fix applied (next commit):**
+- `getOrCreateChildPage`: when a title match is found in `listChildPages`, call `pages.retrieve(existing.id)` to get actual archived status. If `page.archived === true`, call `pages.update({ archived: false })` to unarchive before returning the ID.
+- Removed the no-op `!block.archived` filter from `listChildPages` with a comment explaining why it can't work.
+- Cost: 1 extra `pages.retrieve` per existing matched page (only on re-runs, not fresh runs). ~74s overhead on a 212-page re-run — acceptable vs. 195 errors.
+
+**Pattern to watch:** If this recurs, check that `getOrCreateChildPage` is hitting the retrieve path (look for `pages.retrieve` in metrics). If all pages are new (isNew: true) the retrieve is never called.
+
+---
 
 ## 2026-04-29 — run 20260429-191328 — archived pages abort
 
