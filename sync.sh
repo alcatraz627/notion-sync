@@ -115,7 +115,7 @@ if [ "$WIZARD_AVAILABLE" = true ]; then
   DRY_PROMPT="Dry run? (no writes to Notion)"
   DRY_DEFAULT_FLAG=""
   { [ "$DEF_DRY_RUN" = "True" ] || [ "$DEF_DRY_RUN" = "true" ]; } && DRY_DEFAULT_FLAG="--default"
-  if gum confirm "$DRY_PROMPT" $DRY_DEFAULT_FLAG --affirmative="Yes (preview)" --negative="No (live sync)" 2>/dev/null; then
+  if gum confirm "$DRY_PROMPT" $DRY_DEFAULT_FLAG --affirmative="Yes (preview)" --negative="No (live sync)"; then
     CHOSEN_DRY_RUN=true
   else
     CHOSEN_DRY_RUN=false
@@ -128,7 +128,7 @@ if [ "$WIZARD_AVAILABLE" = true ]; then
     --placeholder "e.g. jobs, admin, boring-technical-stuff (blank = all)" \
     --value "$DEF_FILTER" \
     --width 60 \
-    2>/dev/null || echo "$DEF_FILTER")
+    || echo "$DEF_FILTER")
 
   # ── Abort policy ──
   echo ""
@@ -140,7 +140,7 @@ if [ "$WIZARD_AVAILABLE" = true ]; then
     *) ABORT_SELECTED="${ABORT_OPTIONS[0]}" ;;
   esac
   ABORT_CHOICE=$(printf '%s\n' "${ABORT_OPTIONS[@]}" | \
-    gum choose --selected="$ABORT_SELECTED" --height=5 2>/dev/null || echo "$ABORT_SELECTED")
+    gum choose --selected="$ABORT_SELECTED" --height=5 || echo "$ABORT_SELECTED")
   case "$ABORT_CHOICE" in
     "3 errors"*) CHOSEN_ABORT_POLICY=3 ;;
     "5 errors"*) CHOSEN_ABORT_POLICY=5 ;;
@@ -152,7 +152,7 @@ if [ "$WIZARD_AVAILABLE" = true ]; then
   VERBOSE_PROMPT="Verbose output? (per-file detail instead of progress bar)"
   VERBOSE_DEFAULT_FLAG=""
   { [ "$DEF_VERBOSE" = "True" ] || [ "$DEF_VERBOSE" = "true" ]; } && VERBOSE_DEFAULT_FLAG="--default"
-  if gum confirm "$VERBOSE_PROMPT" $VERBOSE_DEFAULT_FLAG 2>/dev/null; then
+  if gum confirm "$VERBOSE_PROMPT" $VERBOSE_DEFAULT_FLAG; then
     CHOSEN_VERBOSE=true
   else
     CHOSEN_VERBOSE=false
@@ -167,7 +167,7 @@ if [ "$WIZARD_AVAILABLE" = true ]; then
   Verbose:        $CHOSEN_VERBOSE"
 
   echo ""
-  if ! gum confirm "Proceed?" --affirmative="Yes, sync" --negative="Cancel" 2>/dev/null; then
+  if ! gum confirm "Proceed?" --affirmative="Yes, sync" --negative="Cancel"; then
     gum style --foreground 245 "Cancelled."
     exit 0
   fi
