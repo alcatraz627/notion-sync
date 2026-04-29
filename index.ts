@@ -598,6 +598,22 @@ function notionUrl(pageId: string): string {
   return `https://www.notion.so/${pageId.replace(/-/g, "")}`;
 }
 
+// ── Time helpers ──────────────────────────────────────────────────────────────
+
+function fmtTimestamp(d: Date): string {
+  const p = (n: number) => String(n).padStart(2, "0");
+  return `${d.getUTCFullYear()}-${p(d.getUTCMonth() + 1)}-${p(d.getUTCDate())} ${p(d.getUTCHours())}:${p(d.getUTCMinutes())}:${p(d.getUTCSeconds())} UTC`;
+}
+
+function fmtTimeShort(d: Date): string {
+  const p = (n: number) => String(n).padStart(2, "0");
+  return `${p(d.getUTCHours())}:${p(d.getUTCMinutes())}:${p(d.getUTCSeconds())}`;
+}
+
+function fmtElapsed(ms: number): string {
+  return ms >= 1000 ? `${(ms / 1000).toFixed(1)}s` : `${ms}ms`;
+}
+
 /**
  * Rewrites markdown links for Notion:
  * 1. Strips angle brackets from autolinks: (<https://...>) → (https://...)
@@ -1091,12 +1107,14 @@ async function discoverTree(
             indexRelPath,
             pageIdMap,
           );
+          const indexSyncedAt = fmtTimestamp(new Date());
+          const rewrittenWithFooter = `${rewritten}\n\n---\n\n*Synced: ${indexSyncedAt}*\n`;
           await updatePageMeta(sectionPageId, folderIndex.icon, folderIndex.cover);
           await apiCall(() =>
             (notion.pages as any).updateMarkdown({
               page_id: sectionPageId,
               type: "replace_content",
-              replace_content: { new_str: rewritten, allow_deleting_content: true },
+              replace_content: { new_str: rewrittenWithFooter, allow_deleting_content: true },
             }),
             "pages.updateMarkdown.index",
           );
@@ -1128,11 +1146,13 @@ async function discoverTree(
         // No _index.md — auto-generate a child table as the section page content
         try {
           const autoContent = buildAutoIndex(dirName, subTree, pageIdMap, childRelDir);
+          const autoSyncedAt = fmtTimestamp(new Date());
+          const autoContentWithFooter = `${autoContent}\n---\n\n*Synced: ${autoSyncedAt}*\n`;
           await apiCall(() =>
             (notion.pages as any).updateMarkdown({
               page_id: sectionPageId,
               type: "replace_content",
-              replace_content: { new_str: autoContent, allow_deleting_content: true },
+              replace_content: { new_str: autoContentWithFooter, allow_deleting_content: true },
             }),
             "pages.updateMarkdown.auto",
           );
@@ -1193,6 +1213,9 @@ async function writeFileContent(
   const banner = SHOW_META ? buildMetaBanner(meta) : "";
   // Images first (relative paths → GitHub raw URLs), then links (.md → Notion URLs)
   const rewritten = rewriteLinks(rewriteImages(breadcrumb + banner + body, relPath), relPath, pageIdMap);
+  // Footer: divider + italic last-synced timestamp appended to every page
+  const syncedAt = fmtTimestamp(new Date(t0));
+  const withFooter = `${rewritten}\n\n---\n\n*Synced: ${syncedAt}*\n`;
   const pageNotionUrl = notionUrl(discovery.id);
   const action = discovery.isNew ? "created" : "updated";
   const actionBadge =
@@ -1205,7 +1228,7 @@ async function writeFileContent(
       ? clr.dim("none")
       : `${images.length}  ${clr.dim(images.map((s) => path.basename(s)).join(", "))}`;
 
-  console.log(`\n  ${clr.bold(`[${counter.n}/${counter.total}]`)} ${relPath}`);
+  console.log(`\n  ${clr.bold(`[${counter.n}/${counter.total}]`)} ${relPath}  ${clr.dim(fmtTimeShort(new Date(t0)))}`);
   console.log(`     ${clr.dim("Title:")}   ${title}`);
   console.log(`     ${clr.dim("Local:")}   docs/product/${relPath}`);
 
@@ -1240,7 +1263,7 @@ async function writeFileContent(
       (notion.pages as any).updateMarkdown({
         page_id: discovery.id,
         type: "replace_content",
-        replace_content: { new_str: rewritten, allow_deleting_content: true },
+        replace_content: { new_str: withFooter, allow_deleting_content: true },
       }),
       "pages.updateMarkdown",
     );
@@ -1250,10 +1273,10 @@ async function writeFileContent(
     await doWrite();
 
     const elapsed = Date.now() - t0;
-    runMetrics.files.push({ path: relPath, status: action, elapsed_ms: elapsed, content_chars: rewritten.length });
+    runMetrics.files.push({ path: relPath, status: action, elapsed_ms: elapsed, content_chars: withFooter.length });
     console.log(`     ${clr.dim("Notion:")}  ${clr.url(pageNotionUrl)}`);
     console.log(
-      `     ${clr.dim("Status:")}  ${actionBadge}  ${clr.dim(`${elapsed}ms`)}`,
+      `     ${clr.dim("Status:")}  ${actionBadge}  ${clr.dim(fmtElapsed(elapsed))}`,
     );
     return {
       path: relPath,
@@ -1268,24 +1291,42 @@ async function writeFileContent(
       ? JSON.stringify(err.body)
       : (err.message as string);
 
-    // Auto-unarchive: if the page was trashed in Notion between runs, Phase 1
-    // still found it (blocks.children.list includes archived pages) and stored
-    // its ID, but Phase 2 can't write to it. Unarchive it, then retry once.
+    // Auto-unarchive: handles two Notion archived-state errors:
+    //   "Can't edit block that is archived."          → leaf page was trashed
+    //   "Can't edit page on block with an archived ancestor." → parent section trashed
+    // For the ancestor case, we traverse up relPath's directory chain and unarchive
+    // each section page found in pageIdMap, then retry the write.
     const isArchivedError =
       errMsg.includes("archived") &&
       (errMsg.includes('"code":"validation_error"') || errMsg.includes("validation_error"));
     if (isArchivedError) {
-      console.warn(`     ${clr.warn(`${sym.warn} Page is archived — unarchiving and retrying...`)}`);
+      const isAncestorError = errMsg.includes("ancestor");
+      console.warn(`     ${clr.warn(`${sym.warn} ${isAncestorError ? "Archived ancestor" : "Page archived"} — unarchiving and retrying...`)}`);
       try {
-        await apiCall(
-          () => notion.pages.update({ page_id: discovery.id, archived: false }),
-          "pages.unarchive",
-        );
+        if (isAncestorError) {
+          // Unarchive all ancestor section pages (outermost first)
+          const parts = relPath.split("/").slice(0, -1); // parent dir segments
+          for (let i = 1; i <= parts.length; i++) {
+            const sectionKey = parts.slice(0, i).join("/") + "/_index.md";
+            const sectionId = pageIdMap.get(sectionKey);
+            if (sectionId) {
+              await apiCall(
+                () => notion.pages.update({ page_id: sectionId, archived: false }),
+                "pages.unarchive.ancestor",
+              );
+            }
+          }
+        } else {
+          await apiCall(
+            () => notion.pages.update({ page_id: discovery.id, archived: false }),
+            "pages.unarchive",
+          );
+        }
         await doWrite();
         const elapsed = Date.now() - t0;
-        runMetrics.files.push({ path: relPath, status: action, elapsed_ms: elapsed, content_chars: rewritten.length });
+        runMetrics.files.push({ path: relPath, status: action, elapsed_ms: elapsed, content_chars: withFooter.length });
         console.log(`     ${clr.dim("Notion:")}  ${clr.url(pageNotionUrl)}`);
-        console.log(`     ${clr.dim("Status:")}  ${actionBadge}  ${clr.dim(`${elapsed}ms`)}  ${clr.dim("(unarchived)")}`);
+        console.log(`     ${clr.dim("Status:")}  ${actionBadge}  ${clr.dim(fmtElapsed(elapsed))}  ${clr.dim("(unarchived)")}`);
         return {
           path: relPath,
           title,
@@ -1300,13 +1341,13 @@ async function writeFileContent(
           : (retryErr.message as string);
         console.error(`     ${clr.err(`${sym.err} Unarchive+retry failed — ${retryMsg.slice(0, 100)}`)}`);
         const elapsed = Date.now() - t0;
-        runMetrics.files.push({ path: relPath, status: "error", elapsed_ms: elapsed, content_chars: rewritten.length });
+        runMetrics.files.push({ path: relPath, status: "error", elapsed_ms: elapsed, content_chars: withFooter.length });
         return { path: relPath, title, status: "error", error: retryMsg };
       }
     }
 
     const elapsed = Date.now() - t0;
-    runMetrics.files.push({ path: relPath, status: "error", elapsed_ms: elapsed, content_chars: rewritten.length });
+    runMetrics.files.push({ path: relPath, status: "error", elapsed_ms: elapsed, content_chars: withFooter.length });
     console.error(
       `     ${clr.dim("Status:")}  ${clr.err(`${sym.err} ERROR — ${errMsg.slice(0, 120)}`)}`,
     );

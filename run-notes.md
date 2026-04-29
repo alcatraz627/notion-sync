@@ -18,6 +18,23 @@ Claude should:
 
 <!-- entries below, newest first -->
 
+## 2026-04-29 — run 20260429-205535 — archived ancestor cascade (194 errors)
+
+**Run:** 2 updated, 15 created, 194 errors, not aborted (abort disabled). 1 timeout.
+
+**Error:** `validation_error: Can't edit page on block with an archived ancestor. You must unarchive the ancestor before editing page.`
+
+**Root cause:** Distinct from the previous "archived block" error. Here, a *parent section page* (e.g. `boring-technical-stuff/frontend`) was archived/trashed in Notion. Phase 1 still successfully created child pages under it (Notion allows creating children under archived parents), but Phase 2 write calls to those children fail with "archived ancestor".
+
+**Previous fix was incomplete:** The unarchive-and-retry in `writeFileContent` called `pages.update(archived: false)` on the *leaf page* (the file being written). For the ancestor case the leaf itself is fine — it's a parent section that needs unarchiving, not the leaf.
+
+**Fix applied (eb8c36c → next commit):**
+- Detect "ancestor" in the error message to distinguish from leaf-archived case.
+- For ancestor case: traverse up `relPath`'s directory segments, look up each section page ID in `pageIdMap` (via `dir/_index.md` keys), and unarchive all of them before retrying.
+- After full Notion wipe and fresh sync this won't occur immediately, but will recur if any section page is manually trashed between runs.
+
+**Pattern to watch:** If many sibling files under a folder all fail with `archived ancestor` (not just one), suspect the parent section page is trashed. Check Notion trash for the folder-level page, restore it, or let the auto-unarchive handle it on next run.
+
 ## 2026-04-29 — run 20260429-191328 — archived pages abort
 
 **Run:** 1 updated, 5 errors, aborted. All errors identical.
