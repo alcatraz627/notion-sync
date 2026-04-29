@@ -629,19 +629,136 @@ function vlog(...args: Parameters<typeof console.log>): void {
   if (VERBOSE) console.log(...args);
 }
 
-// Progress bar for Phase 2 — in-place single-line update via \r
+// ── Pulsing spinner ───────────────────────────────────────────────────────────
+// Drop-in animation patterns for CLI tools. Reference template at
+// ~/.claude/code/templates/spinner-demo.ts. Two styles:
+//   • "braille" — spinning ⠋⠙⠹… for active work (Phase 2 progress line)
+//   • "pulse"   — single ● fading in/out for waiting (Phase 1.5 between API calls)
+// Both use time-based animation (Date.now() not frame index) so timing stays
+// consistent even if a frame is dropped during a slow API call.
+
+const BRAILLE_FRAMES = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"];
+const SPIN_PERIOD_MS = 1200;
+const PULSE_PERIOD_MS = 1400;
+const HIDE_CURSOR = "\x1b[?25l";
+const SHOW_CURSOR = "\x1b[?25h";
+
+// sin(πt)^1.4 powered curve gives sharp peak + held dim — Claude Code feel
+function pulse01(elapsedMs: number, periodMs: number): number {
+  const t = (elapsedMs % periodMs) / periodMs;
+  const sine = Math.sin(t * Math.PI);
+  return 0.18 + 0.82 * Math.pow(sine, 1.4);
+}
+function brightnessGrey(b: number): number {
+  return 232 + Math.round(Math.max(0, Math.min(1, b)) * 23);
+}
+function spinChar(elapsedMs: number): string {
+  const idx = Math.floor((elapsedMs / SPIN_PERIOD_MS) * BRAILLE_FRAMES.length) % BRAILLE_FRAMES.length;
+  return BRAILLE_FRAMES[idx];
+}
+function ansiGrey(n: number, s: string): string {
+  return `\x1b[38;5;${n}m${s}\x1b[0m`;
+}
+
+// Active progress state — single-source-of-truth read by the tick loop.
+// Setting `mode = "off"` stops rendering on the next tick.
+type ProgressState =
+  | { mode: "off" }
+  | { mode: "bar"; n: number; total: number; file: string; status?: string; start: number }
+  | { mode: "pulse"; label: string; n?: number; total?: number; start: number };
+
+const progressState: { current: ProgressState } = { current: { mode: "off" } };
+let progressTimer: ReturnType<typeof setInterval> | null = null;
+let cursorHidden = false;
+
 const BAR_WIDTH = 28;
+
+function renderTick(): void {
+  const s = progressState.current;
+  if (s.mode === "off") return;
+  const elapsed = Date.now() - s.start;
+  const fg = brightnessGrey(pulse01(elapsed, PULSE_PERIOD_MS));
+
+  if (s.mode === "bar") {
+    const filled = Math.round((s.n / s.total) * BAR_WIDTH);
+    const bar = paint(A.G, "█".repeat(filled)) + paint(A.d, "░".repeat(BAR_WIDTH - filled));
+    const pct = String(Math.floor((s.n / s.total) * 100)).padStart(3);
+    const label = s.file.length > 42 ? `…${s.file.slice(-41)}` : s.file.padEnd(42);
+    const spinner = s.status === "error" ? paint(A.R, sym.err) : ansiGrey(fg, spinChar(elapsed));
+    process.stdout.write(`\r  [${bar}] ${clr.bold(`${s.n}/${s.total}`)} ${pct}%  ${spinner} ${clr.dim(label)}`);
+  } else {
+    const dot = ansiGrey(fg, "●");
+    const counter = s.n != null && s.total != null ? `[${s.n}/${s.total}] ` : "";
+    process.stdout.write(`\r  ${dot}  ${counter}${clr.dim(s.label)}${" ".repeat(8)}`);
+  }
+}
+
+function startProgressTicker(): void {
+  if (progressTimer) return;
+  if (!cursorHidden) {
+    process.stdout.write(HIDE_CURSOR);
+    cursorHidden = true;
+  }
+  progressTimer = setInterval(renderTick, 50); // 20 fps
+}
+function stopProgressTicker(): void {
+  if (progressTimer) {
+    clearInterval(progressTimer);
+    progressTimer = null;
+  }
+}
+
 function renderProgress(n: number, total: number, file: string, status?: string): void {
-  const filled = Math.round((n / total) * BAR_WIDTH);
-  const bar = paint(A.G, "█".repeat(filled)) + paint(A.d, "░".repeat(BAR_WIDTH - filled));
-  const pct = String(Math.floor((n / total) * 100)).padStart(3);
-  const label = file.length > 42 ? `…${file.slice(-41)}` : file.padEnd(42);
-  const statusDot = status === "error" ? paint(A.R, sym.err) : paint(A.d, sym.dot);
-  process.stdout.write(`\r  [${bar}] ${clr.bold(`${n}/${total}`)} ${pct}%  ${statusDot} ${clr.dim(label)}`);
+  const prev = progressState.current;
+  const start = prev.mode === "bar" ? prev.start : Date.now();
+  progressState.current = { mode: "bar", n, total, file, status, start };
+  startProgressTicker();
+  renderTick();
+}
+function setPulseLabel(label: string, n?: number, total?: number): void {
+  const prev = progressState.current;
+  const start = prev.mode === "pulse" ? prev.start : Date.now();
+  progressState.current = { mode: "pulse", label, n, total, start };
+  startProgressTicker();
+  renderTick();
 }
 function clearProgress(): void {
+  progressState.current = { mode: "off" };
+  stopProgressTicker();
   process.stdout.write("\r" + " ".repeat(100) + "\r");
+  if (cursorHidden) {
+    process.stdout.write(SHOW_CURSOR);
+    cursorHidden = false;
+  }
 }
+
+// Wrap console.warn so warnings printed during an active progress line erase
+// the line first (so the warning lands on its own row), then the next tick
+// redraws the progress beneath it. Without this, warnings tear the bar apart.
+const origConsoleWarn = console.warn.bind(console);
+console.warn = (...args: any[]): void => {
+  if (progressState.current.mode !== "off") {
+    process.stdout.write("\r" + " ".repeat(100) + "\r");
+  }
+  origConsoleWarn(...args);
+};
+const origConsoleError = console.error.bind(console);
+console.error = (...args: any[]): void => {
+  if (progressState.current.mode !== "off") {
+    process.stdout.write("\r" + " ".repeat(100) + "\r");
+  }
+  origConsoleError(...args);
+};
+
+// Restore cursor on process exit (Ctrl-C, normal exit) so we don't leave
+// the terminal in hide-cursor mode if the script crashes mid-spin.
+process.on("exit", () => {
+  if (cursorHidden) process.stdout.write(SHOW_CURSOR);
+});
+process.on("SIGINT", () => {
+  clearProgress();
+  process.exit(130);
+});
 
 /**
  * Rewrites markdown links for Notion:
@@ -1522,6 +1639,7 @@ async function main(): Promise<void> {
     for (const { relDir, dirName, sectionTitle, sectionPageId, folderIndex, subTree } of sectionWriteQueue) {
       sectionN++;
       const indexRelPath = relDir ? `${relDir}/_index.md` : "_index.md";
+      if (!VERBOSE && IS_TTY) setPulseLabel(relDir || "(root)", sectionN, sectionWriteQueue.length);
       if (folderIndex) {
         try {
           const banner = SHOW_META ? buildMetaBanner(folderIndex.meta) : "";
@@ -1534,11 +1652,7 @@ async function main(): Promise<void> {
           const rewrittenWithFooter = `${rewritten}\n\n---\n\n*Synced: ${indexSyncedAt}*\n`;
           await updatePageMeta(sectionPageId, folderIndex.icon, folderIndex.cover);
           await writeSectionContent(sectionPageId, rewrittenWithFooter);
-          if (!VERBOSE && IS_TTY) {
-            process.stdout.write(`\r  [${sectionN}/${sectionWriteQueue.length}] ${clr.dim(`${sym.ok} ${relDir}`)}${" ".repeat(40)}`);
-          } else {
-            vlog(`  ${clr.dim(`${sym.ok} _index.md written`)}  ${clr.dim(`(${folderIndex.title})`)}`);
-          }
+          vlog(`  ${clr.dim(`${sym.ok} _index.md written`)}  ${clr.dim(`(${folderIndex.title})`)}`);
           sectionResults.push({
             rel_dir: relDir,
             title: folderIndex.title,
@@ -1548,7 +1662,6 @@ async function main(): Promise<void> {
             content_written: true,
           });
         } catch (err: any) {
-          if (!VERBOSE && IS_TTY) process.stdout.write("\n");
           console.error(`  ${clr.warn(`${sym.warn} _index.md write failed (${relDir}): ${(err.message as string).slice(0, 80)}`)}`);
           sectionResults.push({
             rel_dir: relDir,
@@ -1567,11 +1680,7 @@ async function main(): Promise<void> {
           const autoContentWithFooter = `${autoContent}\n---\n\n*Synced: ${autoSyncedAt}*\n`;
           await writeSectionContent(sectionPageId, autoContentWithFooter);
           const childCount = collectFiles(subTree).filter(shouldSync).length;
-          if (!VERBOSE && IS_TTY) {
-            process.stdout.write(`\r  [${sectionN}/${sectionWriteQueue.length}] ${clr.dim(`${sym.ok} ${relDir} (auto)`)}${" ".repeat(40)}`);
-          } else {
-            vlog(`  ${clr.dim(`${sym.ok} auto-index written`)}  ${clr.dim(`(${childCount} docs)`)}`);
-          }
+          vlog(`  ${clr.dim(`${sym.ok} auto-index written`)}  ${clr.dim(`(${childCount} docs)`)}`);
           sectionResults.push({
             rel_dir: relDir,
             title: sectionTitle,
@@ -1581,7 +1690,6 @@ async function main(): Promise<void> {
             content_written: true,
           });
         } catch (err: any) {
-          if (!VERBOSE && IS_TTY) process.stdout.write("\n");
           console.error(`  ${clr.warn(`${sym.warn} auto-index write failed (${relDir}): ${(err.message as string).slice(0, 80)}`)}`);
           sectionResults.push({
             rel_dir: relDir,
@@ -1595,12 +1703,8 @@ async function main(): Promise<void> {
         }
       }
     }
-    if (!VERBOSE && IS_TTY) {
-      process.stdout.write("\r" + " ".repeat(80) + "\r");
-      console.log(`  ${clr.ok(sym.ok)} ${sectionWriteQueue.length} section pages written\n`);
-    } else {
-      console.log("");
-    }
+    if (!VERBOSE && IS_TTY) clearProgress();
+    console.log(`  ${clr.ok(sym.ok)} ${sectionWriteQueue.length} section pages written\n`);
   }
 
   // Phase 2 — write content with cross-file Notion links resolved
