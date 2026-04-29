@@ -638,6 +638,12 @@ function rewriteLinks(
             pageIdMap.get(resolved + ".md");
           if (pid)
             return `[${text}](${notionUrl(pid)}${anchor ? "#" + anchor : ""})`;
+          // Log when a relative .md link can't be resolved — helps diagnose
+          // missing pageIdMap entries. Notion auto-links plain-text "foo.md" as
+          // http://foo.md (Moldova TLD), so unresolved links cause bad renders.
+          console.warn(
+            clr.warn(`  [link] unresolved: "${resolved}" (in ${relPath}) — not in pageIdMap`),
+          );
         }
         if (LINK_MODE !== "strip" && GITHUB_BASE)
           return `[${text}](${GITHUB_BASE}/${resolved}${anchor ? "#" + anchor : ""})`;
@@ -1228,7 +1234,7 @@ async function writeFileContent(
     return { path: relPath, title, status: "dry_run", word_count: wordCount };
   }
 
-  try {
+  const doWrite = async (): Promise<void> => {
     await updatePageMeta(discovery.id, icon, cover);
     await apiCall(() =>
       (notion.pages as any).updateMarkdown({
@@ -1238,6 +1244,10 @@ async function writeFileContent(
       }),
       "pages.updateMarkdown",
     );
+  };
+
+  try {
+    await doWrite();
 
     const elapsed = Date.now() - t0;
     runMetrics.files.push({ path: relPath, status: action, elapsed_ms: elapsed, content_chars: rewritten.length });
@@ -1257,6 +1267,44 @@ async function writeFileContent(
     const errMsg: string = err.body
       ? JSON.stringify(err.body)
       : (err.message as string);
+
+    // Auto-unarchive: if the page was trashed in Notion between runs, Phase 1
+    // still found it (blocks.children.list includes archived pages) and stored
+    // its ID, but Phase 2 can't write to it. Unarchive it, then retry once.
+    const isArchivedError =
+      errMsg.includes("archived") &&
+      (errMsg.includes('"code":"validation_error"') || errMsg.includes("validation_error"));
+    if (isArchivedError) {
+      console.warn(`     ${clr.warn(`${sym.warn} Page is archived — unarchiving and retrying...`)}`);
+      try {
+        await apiCall(
+          () => notion.pages.update({ page_id: discovery.id, archived: false }),
+          "pages.unarchive",
+        );
+        await doWrite();
+        const elapsed = Date.now() - t0;
+        runMetrics.files.push({ path: relPath, status: action, elapsed_ms: elapsed, content_chars: rewritten.length });
+        console.log(`     ${clr.dim("Notion:")}  ${clr.url(pageNotionUrl)}`);
+        console.log(`     ${clr.dim("Status:")}  ${actionBadge}  ${clr.dim(`${elapsed}ms`)}  ${clr.dim("(unarchived)")}`);
+        return {
+          path: relPath,
+          title,
+          status: action,
+          page_id: discovery.id,
+          notion_url: pageNotionUrl,
+          elapsed_ms: elapsed,
+        };
+      } catch (retryErr: any) {
+        const retryMsg: string = retryErr.body
+          ? JSON.stringify(retryErr.body)
+          : (retryErr.message as string);
+        console.error(`     ${clr.err(`${sym.err} Unarchive+retry failed — ${retryMsg.slice(0, 100)}`)}`);
+        const elapsed = Date.now() - t0;
+        runMetrics.files.push({ path: relPath, status: "error", elapsed_ms: elapsed, content_chars: rewritten.length });
+        return { path: relPath, title, status: "error", error: retryMsg };
+      }
+    }
+
     const elapsed = Date.now() - t0;
     runMetrics.files.push({ path: relPath, status: "error", elapsed_ms: elapsed, content_chars: rewritten.length });
     console.error(
@@ -1473,16 +1521,17 @@ async function main(): Promise<void> {
     if (recentStatuses.length > ABORT_WINDOW) recentStatuses.shift();
 
     // Abort if too many failures in recent window (systemic issue)
-    const recentErrors = recentStatuses.filter((s) => s === "error").length;
-    if (recentErrors >= ABORT_ERRORS) {
-      console.error(
-        clr.err(
-          `\n${sym.err} Aborting — ${recentErrors} failures in last ${recentStatuses.length} items. Likely a systemic issue (token, network, WAF block).`,
-        ),
-      );
-      aborted = true;
-      break;
-    }
+    // DISABLED: let all files run to completion so we can see full error picture
+    // const recentErrors = recentStatuses.filter((s) => s === "error").length;
+    // if (recentErrors >= ABORT_ERRORS) {
+    //   console.error(
+    //     clr.err(
+    //       `\n${sym.err} Aborting — ${recentErrors} failures in last ${recentStatuses.length} items. Likely a systemic issue (token, network, WAF block).`,
+    //     ),
+    //   );
+    //   aborted = true;
+    //   break;
+    // }
   }
   const phase2Ms = Date.now() - phase2Start;
 
