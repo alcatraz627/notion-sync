@@ -112,6 +112,55 @@ interface SyncResult {
   suspicions?: SuspicionMatch[];
 }
 
+// ── Metrics types (written to metrics.jsonl, rolling last N runs) ─────────────
+
+interface ApiCallMetric {
+  op: string;       // e.g. "pages.create", "pages.updateMarkdown"
+  fn_ms: number;    // actual API call duration (before rate-limit sleep)
+  total_ms: number; // fn_ms + RATE_LIMIT_MS
+}
+
+interface FileMetric {
+  path: string;
+  status: SyncStatus;
+  elapsed_ms: number;
+  content_chars: number;
+}
+
+interface MetricsSectionSummary {
+  dir: string;
+  file_count: number;
+  total_ms: number;
+  avg_ms: number;
+  max_ms: number;
+  slowest: string;
+}
+
+interface MetricsEntry {
+  run_id: string;
+  ts: string;
+  dry_run: boolean;
+  api_calls: ApiCallMetric[];
+  api_summary: {
+    count: number;
+    total_fn_ms: number;
+    avg_fn_ms: number;
+    max_fn_ms: number;
+    slowest_op: string;
+    by_op: Record<string, { count: number; total_fn_ms: number; avg_fn_ms: number }>;
+  };
+  files: FileMetric[];
+  file_summary: {
+    count: number;
+    total_ms: number;
+    avg_ms: number;
+    max_ms: number;
+    slowest_path: string;
+  };
+  sections: MetricsSectionSummary[];
+  timing: { phase1_ms: number; phase2_ms: number; total_ms: number };
+}
+
 interface RunLogEntry {
   run_id: string;
   version: string;
@@ -224,7 +273,15 @@ const ABORT_WINDOW = 10;
 const ABORT_ERRORS = 5;
 
 const LOG_FILE = path.join(__dirname, "runs.jsonl");
+const METRICS_FILE = path.join(__dirname, "metrics.jsonl");
+const METRICS_MAX_RUNS = 5; // rolling window — older entries are dropped
 const EXCLUDE_PATTERNS = [/^_/, /\.claude\.md$/];
+
+// Module-level accumulator — populated during the run, flushed to metrics.jsonl at end.
+const runMetrics = {
+  apiCalls: [] as ApiCallMetric[],
+  files: [] as FileMetric[],
+};
 
 // ── Push failure suspicion rules ──────────────────────────────────────────────
 // Each rule runs against the file content when a push fails.
@@ -328,9 +385,12 @@ function runSuspicionChecks(content: string): SuspicionMatch[] {
 const sleep = (ms: number): Promise<void> =>
   new Promise((r) => setTimeout(r, ms));
 
-async function apiCall<T>(fn: () => Promise<T>): Promise<T> {
+async function apiCall<T>(fn: () => Promise<T>, label = "api"): Promise<T> {
+  const t0 = Date.now();
   const result = await fn();
+  const fn_ms = Date.now() - t0;
   await sleep(RATE_LIMIT_MS);
+  runMetrics.apiCalls.push({ op: label, fn_ms, total_ms: fn_ms + RATE_LIMIT_MS });
   return result;
 }
 
@@ -659,6 +719,7 @@ async function listChildPages(parentId: string): Promise<PageInfo[]> {
         start_cursor: cursor,
         page_size: 100,
       }),
+      "blocks.children.list",
     );
     for (const block of res.results) {
       if ("type" in block && block.type === "child_page")
@@ -688,6 +749,7 @@ async function getOrCreateChildPage(
       properties: { title: { title: [{ text: { content: title } }] } },
       ...(icon ? { icon: icon as any } : {}),
     }),
+    "pages.create",
   );
   children.push({ id: page.id, title });
   return { id: page.id, isNew: true };
@@ -709,6 +771,7 @@ async function updatePageMeta(
       ...(icon ? { icon: icon as any } : {}),
       ...(cover ? { cover: cover as any } : {}),
     } as any),
+    "pages.update",
   );
 }
 
@@ -1027,6 +1090,7 @@ async function discoverTree(
               type: "replace_content",
               replace_content: { new_str: rewritten, allow_deleting_content: true },
             }),
+            "pages.updateMarkdown.index",
           );
           discoveryMap.set(indexRelPath, { id: sectionPageId, isNew: false });
           console.log(`${indent}  ${clr.dim(`${sym.ok} _index.md written`)}  ${clr.dim(`(${folderIndex.title})`)}`);
@@ -1062,6 +1126,7 @@ async function discoverTree(
               type: "replace_content",
               replace_content: { new_str: autoContent, allow_deleting_content: true },
             }),
+            "pages.updateMarkdown.auto",
           );
           const childCount = collectFiles(subTree).filter(shouldSync).length;
           console.log(`${indent}  ${clr.dim(`${sym.ok} auto-index generated`)}  ${clr.dim(`(${childCount} docs)`)}`);
@@ -1169,9 +1234,11 @@ async function writeFileContent(
         type: "replace_content",
         replace_content: { new_str: rewritten, allow_deleting_content: true },
       }),
+      "pages.updateMarkdown",
     );
 
     const elapsed = Date.now() - t0;
+    runMetrics.files.push({ path: relPath, status: action, elapsed_ms: elapsed, content_chars: rewritten.length });
     console.log(`     ${clr.dim("Notion:")}  ${clr.url(pageNotionUrl)}`);
     console.log(
       `     ${clr.dim("Status:")}  ${actionBadge}  ${clr.dim(`${elapsed}ms`)}`,
@@ -1188,6 +1255,8 @@ async function writeFileContent(
     const errMsg: string = err.body
       ? JSON.stringify(err.body)
       : (err.message as string);
+    const elapsed = Date.now() - t0;
+    runMetrics.files.push({ path: relPath, status: "error", elapsed_ms: elapsed, content_chars: rewritten.length });
     console.error(
       `     ${clr.dim("Status:")}  ${clr.err(`${sym.err} ERROR — ${errMsg.slice(0, 120)}`)}`,
     );
@@ -1212,6 +1281,97 @@ function appendRunLog(entry: RunLogEntry): void {
     console.warn(
       clr.warn(`Warning: could not write to run log: ${err.message as string}`),
     );
+  }
+}
+
+function buildAndWriteMetrics(
+  runId: string,
+  ts: string,
+  timing: { phase1_ms: number; phase2_ms: number; total_ms: number },
+): void {
+  const { apiCalls, files } = runMetrics;
+
+  // API summary
+  const byOp: Record<string, { count: number; total_fn_ms: number }> = {};
+  for (const c of apiCalls) {
+    if (!byOp[c.op]) byOp[c.op] = { count: 0, total_fn_ms: 0 };
+    byOp[c.op].count++;
+    byOp[c.op].total_fn_ms += c.fn_ms;
+  }
+  const totalFnMs = apiCalls.reduce((s, c) => s + c.fn_ms, 0);
+  const maxCall = apiCalls.reduce((m, c) => (c.fn_ms > m.fn_ms ? c : m), { op: "", fn_ms: 0, total_ms: 0 });
+  const apiSummary = {
+    count: apiCalls.length,
+    total_fn_ms: totalFnMs,
+    avg_fn_ms: apiCalls.length ? Math.round(totalFnMs / apiCalls.length) : 0,
+    max_fn_ms: maxCall.fn_ms,
+    slowest_op: maxCall.op,
+    by_op: Object.fromEntries(
+      Object.entries(byOp).map(([op, v]) => [
+        op,
+        { count: v.count, total_fn_ms: v.total_fn_ms, avg_fn_ms: Math.round(v.total_fn_ms / v.count) },
+      ]),
+    ),
+  };
+
+  // File summary
+  const totalFileMs = files.reduce((s, f) => s + f.elapsed_ms, 0);
+  const slowestFile = files.reduce((m, f) => (f.elapsed_ms > m.elapsed_ms ? f : m), { path: "", elapsed_ms: 0, status: "dry_run" as SyncStatus, content_chars: 0 });
+  const fileSummary = {
+    count: files.length,
+    total_ms: totalFileMs,
+    avg_ms: files.length ? Math.round(totalFileMs / files.length) : 0,
+    max_ms: slowestFile.elapsed_ms,
+    slowest_path: slowestFile.path,
+  };
+
+  // Section summaries — group by top-level directory
+  const sectionMap: Record<string, FileMetric[]> = {};
+  for (const f of files) {
+    const dir = f.path.includes("/") ? f.path.split("/")[0] : "(root)";
+    if (!sectionMap[dir]) sectionMap[dir] = [];
+    sectionMap[dir].push(f);
+  }
+  const sections: MetricsSectionSummary[] = Object.entries(sectionMap).map(([dir, sFiles]) => {
+    const total = sFiles.reduce((s, f) => s + f.elapsed_ms, 0);
+    const slowest = sFiles.reduce((m, f) => (f.elapsed_ms > m.elapsed_ms ? f : m), sFiles[0]);
+    return {
+      dir,
+      file_count: sFiles.length,
+      total_ms: total,
+      avg_ms: Math.round(total / sFiles.length),
+      max_ms: slowest.elapsed_ms,
+      slowest: slowest.path,
+    };
+  });
+
+  const entry: MetricsEntry = {
+    run_id: runId,
+    ts,
+    dry_run: DRY_RUN,
+    api_calls: apiCalls,
+    api_summary: apiSummary,
+    files,
+    file_summary: fileSummary,
+    sections,
+    timing,
+  };
+
+  try {
+    // Rolling window: keep last METRICS_MAX_RUNS - 1 existing entries + new one
+    let existing: MetricsEntry[] = [];
+    if (fs.existsSync(METRICS_FILE)) {
+      existing = fs
+        .readFileSync(METRICS_FILE, "utf-8")
+        .split("\n")
+        .filter(Boolean)
+        .map((l) => JSON.parse(l) as MetricsEntry);
+    }
+    const trimmed = [...existing.slice(-(METRICS_MAX_RUNS - 1)), entry];
+    fs.writeFileSync(METRICS_FILE, trimmed.map((e) => JSON.stringify(e)).join("\n") + "\n", "utf-8");
+    console.log(clr.dim(`Metrics  → ${path.relative(process.cwd(), METRICS_FILE)} (last ${trimmed.length} runs)`));
+  } catch (err: any) {
+    console.warn(clr.warn(`Warning: could not write metrics: ${err.message as string}`));
   }
 }
 
@@ -1425,6 +1585,14 @@ async function main(): Promise<void> {
   console.log(
     clr.dim(`\nRun logged → ${path.relative(process.cwd(), LOG_FILE)}`),
   );
+
+  if (!DRY_RUN) {
+    buildAndWriteMetrics(makeRunId(runStartDate), runStart, {
+      phase1_ms: phase1Ms,
+      phase2_ms: phase2Ms,
+      total_ms: phase1Ms + phase2Ms,
+    });
+  }
 
   if (errors.length > 0) process.exit(1);
 }
