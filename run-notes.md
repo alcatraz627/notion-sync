@@ -18,6 +18,22 @@ Claude should:
 
 <!-- entries below, newest first -->
 
+## 2026-04-30 — run 20260430-021257 — archived ancestor unarchive+retry race condition (10 errors, aborted)
+
+**Run:** 17 created, 0 updated, 10 errors, aborted (abort policy: 10). All errors under `boring-technical-stuff/frontend/...`.
+
+**Error:** `validation_error: Can't edit page on block with an archived ancestor.`
+
+**Root cause:** Eventual consistency in Notion's unarchive API. Phase 2's auto-unarchive correctly called `pages.update(archived: false)` on `boring-technical-stuff/frontend/_index.md`, but retried the write immediately after. Notion returns 200 OK on the unarchive before the state change is visible to child writes — the retry hit the same "archived ancestor" error. The 350ms rate-limit sleep between calls is not sufficient as a propagation buffer.
+
+**Fix applied (bd0c509):**
+- Added `await sleep(3000)` after unarchiving all ancestor section pages, before retrying the write. 3 seconds gives Notion time to propagate the unarchive state.
+- Also added `is_new` to `SyncResult` / runs.jsonl page entries so future analysis can distinguish newly-created vs existing pages in error context.
+
+**Phase 1 behavior confirmed correct:** Phase 1 DID find and unarchive `boring-technical-stuff/frontend` (9 `pages.retrieve` calls, 17 `pages.unarchive` calls seen in metrics). The problem was exclusively in Phase 2 retry timing.
+
+**Pattern to watch:** If "archived ancestor" errors recur with the 3s delay and retry still fails, increase the delay to 5-8s. If many files fail in Phase 2 with this error even after the retry succeeds (unarchived marker in log), it means Phase 1 unarchive missed a deeper ancestor — check that all `_index.md` keys for the affected path are in `pageIdMap`.
+
 ## 2026-04-29 — run 20260429-205535 — archived ancestor cascade (194 errors)
 
 **Run:** 2 updated, 15 created, 194 errors, not aborted (abort disabled). 1 timeout.

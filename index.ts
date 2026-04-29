@@ -823,6 +823,15 @@ async function getOrCreateChildPage(
     }),
     "pages.create",
   );
+  // Notion deduplicates pages.create by title+parent — if a trashed page with
+  // the same title exists, the API returns that trashed page instead of creating
+  // a new one. Unarchive immediately so Phase 2 can write to it.
+  if ((page as any).in_trash === true || (page as any).archived === true) {
+    await apiCall(
+      () => notion.pages.update({ page_id: page.id, archived: false }),
+      "pages.unarchive",
+    );
+  }
   children.push({ id: page.id, title });
   return { id: page.id, isNew: true };
 }
@@ -1139,12 +1148,13 @@ async function discoverTree(
     // from children can resolve ancestor section pages during Phase 1.
     pageIdMap.set(indexRelPath, sectionPageId);
 
-    // Recurse first so child page IDs are in pageIdMap before we write section content
-    await discoverTree(subTree, sectionPageId, discoveryMap, pageIdMap, indent + "  ", undefined, childRelDir, sectionResults);
-
+    // Write section content BEFORE recursing so replace_content doesn't delete
+    // child_page blocks created during the recursive call. Child page links in
+    // _index.md won't resolve here (IDs don't exist yet) — they fall back to
+    // GitHub URLs. This is acceptable; the child pages themselves get full content
+    // in Phase 2 which runs after all IDs are in pageIdMap.
     if (!DRY_RUN) {
       if (folderIndex) {
-        // Write _index.md content into the section page
         try {
           const banner = SHOW_META ? buildMetaBanner(folderIndex.meta) : "";
           const rewritten = rewriteLinks(
@@ -1188,7 +1198,10 @@ async function discoverTree(
           });
         }
       } else {
-        // No _index.md — auto-generate a child table as the section page content
+        // No _index.md — write auto-index now (before recursion) using available IDs.
+        // Child page IDs aren't known yet so links will be plain text; that is correct
+        // behaviour since the alternative is to write after recursion and have
+        // replace_content delete the just-created child_page blocks.
         try {
           const autoContent = buildAutoIndex(dirName, subTree, pageIdMap, childRelDir);
           const autoSyncedAt = fmtTimestamp(new Date());
@@ -1202,7 +1215,7 @@ async function discoverTree(
             "pages.updateMarkdown.auto",
           );
           const childCount = collectFiles(subTree).filter(shouldSync).length;
-          vlog(`${indent}  ${clr.dim(`${sym.ok} auto-index generated`)}  ${clr.dim(`(${childCount} docs)`)}`);
+          vlog(`${indent}  ${clr.dim(`${sym.ok} auto-index written`)}  ${clr.dim(`(${childCount} docs)`)}`);
           sectionResults.push({
             rel_dir: childRelDir,
             title: sectionTitle,
@@ -1227,6 +1240,8 @@ async function discoverTree(
         }
       }
     }
+
+    await discoverTree(subTree, sectionPageId, discoveryMap, pageIdMap, indent + "  ", undefined, childRelDir, sectionResults);
   }
 }
 
@@ -1302,6 +1317,7 @@ async function writeFileContent(
   }
 
   const doWrite = async (): Promise<void> => {
+    await sleep(RATE_LIMIT_MS);
     await updatePageMeta(discovery.id, icon, cover);
     await apiCall(() =>
       (notion.pages as any).updateMarkdown({

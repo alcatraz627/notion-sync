@@ -157,7 +157,6 @@ for arg in "$@"; do
       BUN_EXTRA_ARGS+=("$arg")
     else
       OVERRIDE_FILTER="${OVERRIDE_FILTER:+$OVERRIDE_FILTER }$arg"
-      BUN_EXTRA_ARGS+=("$arg")
     fi
   else
     BUN_EXTRA_ARGS+=("$arg")
@@ -392,7 +391,7 @@ export NOTION_LINK_MODE="$CHOSEN_LINK_MODE"
 # ── Build --only args from filter ─────────────────────────────────────────────
 
 ONLY_ARGS=()
-if [ -n "$CHOSEN_FILTER" ] && [ -z "$OVERRIDE_FILTER" ]; then
+if [ -n "$CHOSEN_FILTER" ]; then
   ONLY_ARGS+=("--only")
   IFS=', ' read -ra FILTER_PARTS <<< "$CHOSEN_FILTER"
   ONLY_ARGS+=("${FILTER_PARTS[@]}")
