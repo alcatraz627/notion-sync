@@ -33,6 +33,20 @@ Phase 3 plan: after Phase 2 content writes, add a blocks API pass per page:
 
 Result: `@Page Name` chips with hover previews, consistent with native Notion navigation. Adds ~1 extra API pass per synced page.
 
+### [Explore] Better Notion tree/navigation structure
+
+Current sync creates nested pages (folder = parent page, file = child page). Browsing requires expanding a sidebar collapse tree — unwieldy with many sections.
+
+Exploration directions:
+
+- **Notion databases as section indexes** — create one database per section; each row is a doc entry with Name, Status, Audience, Tags columns, linking to the real page. Gives table/board/gallery view. See: [Working with databases](https://developers.notion.com/docs/working-with-databases) · [POST /databases](https://developers.notion.com/reference/post-database)
+- **Linked database views** — one master database, filtered per section using Notion's `filter` query param. No duplication; one source of truth. More complex to bootstrap.
+- **Synced blocks nav** — a manually-maintained nav block synced to every top-level page. Blocks API only; doesn't auto-update on new docs.
+- **Notion wiki layout** (`is_wiki`) — private API only, same limitation as `is_full_width` (stripped by `@notionhq/client`).
+- **Table-of-contents block** — auto-generates from headings within one page only; not cross-page.
+
+Key trade-off: database-backed indexes give richer navigation but add ~2–3 extra API calls per section (create DB, create rows, keep in sync). Worth exploring after P1 items land and the sync is stable.
+
 ### Image support for private repos
 
 `rewriteImages()` points to `raw.githubusercontent.com` — only works for public repos.
@@ -115,5 +129,6 @@ Grows as new rules are discovered in `run-notes.md`. Link from `CLAUDE.md` "Diag
 | Images in private repos | `raw.githubusercontent.com` returns 404 for private repos — caption fallback always shows alt text + links |
 | Cross-doc links are hyperlinks, not page chips | Notion markdown API has no `link_to_page` syntax; Phase 3 blocks pass (P1) will fix this |
 | Anchor links in cross-doc links | `#heading` fragments appended to Notion URLs don't resolve (Notion doesn't support URL fragment navigation to blocks) |
+| `is_full_width` has no effect | `NOTION_FULL_WIDTH` env var is read but ignored — Notion's public REST API does not expose `is_full_width`. Toggle full-width manually in the Notion UI per page. |
 | Notion rate limit | Hard-coded 350ms sleep per API call; large doc trees take proportional time |
 | `_index.md` icon only | Folder pages read icon from `_index.md` frontmatter; if no `_index.md`, uses `NOTION_FOLDER_ICON` default |

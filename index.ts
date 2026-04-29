@@ -91,7 +91,6 @@ interface RunConfig {
   github_branch: string;
   github_docs_root: string;
   github_docs_path: string;
-  full_width: boolean;
   show_meta: boolean;
   folder_icon: string | null;
   default_page_icon: string | null;
@@ -213,7 +212,8 @@ const GITHUB_BLOB_BASE = GITHUB_REPO
   ? `https://github.com/${GITHUB_REPO}/blob/${GITHUB_BRANCH}/${GITHUB_DOCS_ROOT}`
   : null;
 
-const FULL_WIDTH = process.env.NOTION_FULL_WIDTH !== "0"; // default on
+// NOTION_FULL_WIDTH env var is intentionally unused: is_full_width is not
+// settable via Notion's public REST API. Toggle full-width manually in Notion UI.
 const SYNC_MAP_FILE = process.env.NOTION_SYNC_MAP ?? null;
 const FOLDER_ICON = process.env.NOTION_FOLDER_ICON ?? null;
 const SHOW_META = process.env.NOTION_SHOW_META !== "0"; // default on
@@ -693,28 +693,22 @@ async function getOrCreateChildPage(
   return { id: page.id, isNew: true };
 }
 
-// applies icon, cover, and optionally full-width layout to a page.
-// is_full_width is not in official API docs but is accepted by Notion.
+// applies icon and cover to a page.
+// NOTE: is_full_width is NOT in Notion's public REST API — @notionhq/client
+// strips it with a warning and it has no effect. Full-width must be set
+// manually in the Notion UI (or via the undocumented private API).
 async function updatePageMeta(
   pageId: string,
   icon: NotionIcon | undefined,
   cover: NotionCover | undefined,
 ): Promise<void> {
-  if (!icon && !cover && !FULL_WIDTH) return;
+  if (!icon && !cover) return;
   await apiCall(() =>
     notion.pages.update({
       page_id: pageId,
       ...(icon ? { icon: icon as any } : {}),
       ...(cover ? { cover: cover as any } : {}),
-      ...(FULL_WIDTH ? { is_full_width: true } : {}),
     } as any),
-  );
-}
-
-async function setFullWidth(pageId: string): Promise<void> {
-  if (!FULL_WIDTH) return;
-  await apiCall(() =>
-    notion.pages.update({ page_id: pageId, is_full_width: true } as any),
   );
 }
 
@@ -1000,7 +994,7 @@ async function discoverTree(
         sectionPageId = id;
         const badge = isNew ? clr.ok(`${sym.new} CREATED`) : clr.dim("EXISTS");
         console.log(`${indent}  ${badge}  ${clr.url(notionUrl(id))}`);
-        if (isNew) await setFullWidth(id);
+        // full-width not settable via public API — user sets manually in Notion
       } catch (err: any) {
         console.error(
           `${indent}  ${clr.err(`${sym.err} Failed to get/create section`)}: ${err.message as string}`,
@@ -1238,8 +1232,7 @@ async function main(): Promise<void> {
   );
   if (GITHUB_RAW_BASE)
     console.log(`${clr.dim("Images:")}    ${clr.dim(`→ ${GITHUB_RAW_BASE}/...`)}`);
-  if (FULL_WIDTH)
-    console.log(`${clr.dim("Layout:")}    full-width`);
+  // full-width not logged — not settable via public API
   if (SHOW_META)
     console.log(`${clr.dim("Meta:")}      frontmatter banner on`);
   if (DEFAULT_ICON)
@@ -1386,7 +1379,6 @@ async function main(): Promise<void> {
     github_branch: GITHUB_BRANCH,
     github_docs_root: GITHUB_DOCS_ROOT,
     github_docs_path: GITHUB_DOCS_PATH,
-    full_width: FULL_WIDTH,
     show_meta: SHOW_META,
     folder_icon: FOLDER_ICON,
     default_page_icon: DEFAULT_ICON,
