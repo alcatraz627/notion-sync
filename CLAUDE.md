@@ -86,3 +86,45 @@ cover: https://images.unsplash.com/photo-xxx?w=1200
 ## GitHub Actions
 
 The workflow at `.github/workflows/notion-sync.yaml` has the **push trigger disabled**. It only runs when triggered manually (`workflow_dispatch`). Do not re-enable the push trigger without checking with the user.
+
+## Diagnosing runs
+
+Run logs are in `runs.jsonl` (append-only JSONL, one object per run). Each entry has a `run_id` field (format: `YYYYMMDD-HHmmss`) for easy reference.
+
+### Read the latest run
+
+```bash
+tail -n 1 runs.jsonl | python3 -m json.tool
+```
+
+### Read a specific run by ID
+
+```bash
+grep '"run_id":"20260429-143022"' runs.jsonl | python3 -m json.tool
+```
+
+### Key fields to check
+
+| Field | What to look at |
+| ----- | --------------- |
+| `stats.errors` | Non-zero = something failed |
+| `stats.aborted` | True = systemic failure hit the rolling abort window |
+| `error_summary` | Array of `{path, error, suspicions}` — quickest failure overview |
+| `pages[*].suspicions` | Array of `{name, explain}` for each failed file — WAF/size/content diagnosis |
+| `sections[*].content_written` | False = section page content write failed |
+| `config` | Full snapshot of all settings active during the run |
+| `timing` | `phase1_ms` = discovery, `phase2_ms` = content writes |
+
+### Suspicion rules (built into the script)
+
+| Rule name | What it means |
+| --------- | -------------- |
+| `cloudflare-waf-curl` | `curl` + `localhost`/IP in request body — Cloudflare SSRF WAF block. Fix: reword to remove the combination outside fenced blocks. |
+| `cloudflare-waf-shell-pipe` | Shell pipe pattern in inline code outside a fenced block — command injection WAF signature. |
+| `cloudflare-waf-sql-keyword` | SQL keywords (SELECT/DROP/etc.) in prose — ModSecurity rule. |
+| `cloudflare-waf-script-tag` | `<script>` tag — always blocked. |
+| `notion-body-too-large` | File exceeds 500 KB — Notion markdown body limit. |
+
+### After analysing a run
+
+Append findings to `run-notes.md` — newest entry first, include the `run_id`, date, what happened, and what fixed it (or what to try next). This file is the long-term memory for run patterns.

@@ -31,7 +31,7 @@
 <h1 align="center">notion-sync</h1>
 
 <p align="center">
-  Push <code>docs/product/**</code> markdown files to Notion — maintaining folder structure, icons, covers, and cross-doc links.
+  Push markdown docs to Notion — maintaining folder structure, icons, covers, and cross-doc links.
 </p>
 
 <p align="center">
@@ -42,117 +42,166 @@
 
 ---
 
-> **Standalone tool.** This script has its own `package.json`, `node_modules`, and `tsconfig.json`. It is not imported by or built with the Next.js frontend app. Run it locally with `bash sync.sh` or trigger it manually via GitHub Actions.
+> **Standalone tool.** Has its own `package.json`, `node_modules`, and `tsconfig.json`. Not imported by or built with the Next.js frontend app. Run locally with `bash sync.sh` or trigger manually via GitHub Actions.
 
-## Quick Start
+## Quick start
 
 ```bash
-cd frontend/scripts/notion-sync
-
-# 1. Copy env template and fill in your credentials
+# 1. Copy env template and fill in credentials
 cp .env.example .env
-# Edit .env: set NOTION_TOKEN and NOTION_ROOT_PAGE_ID
 
-# 2. Dry run — preview what would be synced, no writes to Notion
+# 2. Dry run — preview without writing to Notion
 bash sync.sh --dry-run
 
-# 3. Real sync
+# 3. Full sync
 bash sync.sh
 
-# 4. Sync only specific sections
+# 4. Sync only specific files or folders
 bash sync.sh --only jobs
-bash sync.sh --only jobs/overview.md admin
+bash sync.sh --only auth-flow e2e-get-started
 ```
 
-See [SETUP.md](SETUP.md) for one-time Notion integration setup and GitHub Actions configuration.
+See [SETUP.md](SETUP.md) for one-time Notion integration setup.
 
 ## What it does
 
-The script walks `docs/product/**` and mirrors the folder structure as nested Notion pages:
+Mirrors a local docs folder to Notion as nested pages, maintaining the full folder hierarchy:
 
 ```
-docs/product/
-├── overview.md        → page directly under Notion root
-├── jobs/              → "Jobs" section page
-│   ├── overview.md   → child page
-│   └── details.md    → child page
-├── user/              → "User" section page
-└── admin/             → "Admin" section page
+docs/
+├── overview.md              → leaf page under root
+├── product/                 → "Product" section page (auto-indexed)
+│   ├── _index.md            → content for the "Product" section page
+│   ├── auth-flow.md         → child page
+│   └── app/                 → "App" section page
+│       └── auth-flow.md     → nested child page
+└── system/                  → "System" section page
 ```
 
-**Two-phase sync:**
+**Two-phase sync** — phase 1 discovers / creates all Notion pages and builds a `relPath → pageId` map; phase 2 writes content with cross-file links already resolved. This means links between any two docs always point to the right Notion page, even across sections.
 
-1. **Discovery** — walks all files, creates or finds Notion pages by title, builds a `relPath → pageId` map.
-2. **Content** — writes markdown content to each page, resolving relative `.md` links to Notion URLs using the map from phase 1.
+**Idempotent** — pages are looked up by title under their parent. Repeated runs update content in place and never create duplicates.
 
-This two-phase approach means cross-file links always resolve correctly, even across sections.
+## Folder indexes (`_index.md`)
 
-**Idempotent:** Finding pages by title under their parent means repeated runs never create duplicates. Content is replaced in place.
+Drop a `_index.md` file in any folder to control that folder's section page:
+
+```markdown
+---
+icon: 📦
+---
+
+# Product Docs
+
+Overview text, a curated table of contents, See Also links — whatever you want
+shown when someone lands on the section page.
+```
+
+- The `icon:` frontmatter sets the section page icon in Notion.
+- The body becomes the section page content (after link + image rewriting).
+- `_index.md` files are **never** synced as their own separate Notion pages.
+- Folders **without** `_index.md` get an auto-generated index (child doc table with status + audience, subsection counts).
 
 ## Page metadata (frontmatter)
 
-Add a YAML block at the top of any `.md` file to set Notion-specific properties:
+Any `.md` file can have a frontmatter block:
 
 ```markdown
 ---
 icon: 📋
 cover: https://images.unsplash.com/photo-xxx?w=1200
+status: stable
+audience: engineering
+last_updated: 2026-04-24
 ---
 
 # Page Title
-
-Content starts here.
 ```
 
-| Field   | Type                    | Effect                                              |
-| ------- | ----------------------- | --------------------------------------------------- |
-| `icon`  | emoji or `https://` URL | Sets the Notion page icon (emoji or external image) |
-| `cover` | `https://` URL          | Sets the Notion page cover image                    |
+| Field          | Effect                                                      |
+| -------------- | ----------------------------------------------------------- |
+| `icon`         | Emoji or `https://` URL → Notion page icon                  |
+| `cover`        | `https://` URL → Notion page cover image                    |
+| `status`       | Shown in metadata banner + auto-index tables                |
+| `audience`     | Shown in metadata banner + auto-index tables                |
+| `last_updated` | Shown in metadata banner                                    |
 
-The frontmatter block is stripped before content is sent to Notion. See [SETUP.md](SETUP.md#adding-page-metadata-frontmatter) for full details.
+The frontmatter block is stripped before content is sent to Notion. Status + audience + last_updated are prepended as a blockquote banner at the top of each synced page.
+
+## Folder mapping (`NOTION_SYNC_MAP`)
+
+Route different top-level folders to separate Notion root pages:
+
+```json
+// sync-map.json
+{
+  "product": "Product-Docs-34abacd27dee80f3be8fe230c7d1ff9d",
+  "boring-technical-stuff": "Eng-Docs-34abacd27dee80f3be8fe230c7d1ff9d"
+}
+```
+
+```
+NOTION_SYNC_MAP=./sync-map.json
+```
+
+Mapped folders bypass the default root and root their subtree directly under the mapped Notion page.
 
 ## Environment variables
 
-| Variable              | Required | Default       | Description                                                  |
-| --------------------- | -------- | ------------- | ------------------------------------------------------------ |
-| `NOTION_TOKEN`        | yes      | —             | Integration secret (`secret_...` or `ntn_...`)               |
-| `NOTION_ROOT_PAGE_ID` | yes      | —             | ID or URL of the root Notion page                            |
-| `GITHUB_REPO`         | no       | —             | e.g. `versable-git/enhancement-product` (for link fallbacks) |
-| `GITHUB_BRANCH`       | no       | `development` | Branch used in GitHub link fallbacks                         |
-| `NOTION_LINK_MODE`    | no       | `notion`      | `notion` \| `github` \| `strip` — controls link rewriting    |
-| `NOTION_PAGE_ICON`    | no       | —             | Default emoji for pages without frontmatter `icon:`          |
-| `DRY_RUN`             | no       | —             | Set to `1` to preview without writing                        |
+| Variable              | Required | Default            | Description                                                  |
+| --------------------- | -------- | ------------------ | ------------------------------------------------------------ |
+| `NOTION_TOKEN`        | yes      | —                  | Integration secret (`secret_...` or `ntn_...`)               |
+| `NOTION_ROOT_PAGE_ID` | yes      | —                  | ID or URL slug of the root Notion page                       |
+| `DOCS_DIR`            | yes      | `./docs`           | Absolute path to the local docs folder to sync               |
+| `GITHUB_REPO`         | no       | —                  | `owner/repo` — used for link fallbacks + image URLs          |
+| `GITHUB_BRANCH`       | no       | `development`      | Branch for GitHub URLs                                       |
+| `GITHUB_DOCS_ROOT`    | no       | `frontend/docs`    | Repo-relative path matching `DOCS_DIR`, for image URL building |
+| `GITHUB_DOCS_PATH`    | no       | `frontend/docs`    | Repo-relative path for markdown link fallbacks               |
+| `NOTION_LINK_MODE`    | no       | `notion`           | `notion` \| `github` \| `strip` — how `.md` links are rewritten |
+| `NOTION_PAGE_ICON`    | no       | —                  | Default emoji for leaf pages without `icon:` frontmatter     |
+| `NOTION_FOLDER_ICON`  | no       | —                  | Default emoji for section pages without `_index.md`          |
+| `NOTION_FULL_WIDTH`   | no       | on                 | Set `0` to disable full-width layout on all pages            |
+| `NOTION_SHOW_META`    | no       | on                 | Set `0` to suppress the frontmatter banner on each page      |
+| `NOTION_SYNC_MAP`     | no       | —                  | Path to JSON file mapping top-level folders to Notion roots  |
+| `DRY_RUN`             | no       | —                  | Set `1` to preview without writing                           |
 
-Set these in `.env` for local use (loaded automatically by `sync.sh`).
+## Link and image rewriting
 
-## Link rewriting
+**Links:** Relative `.md` links are rewritten during phase 2 based on `NOTION_LINK_MODE`:
 
-Relative `.md` links between docs are rewritten at sync time:
-
-| `NOTION_LINK_MODE` | Behaviour                                                       |
+| Mode               | Behaviour                                                       |
 | ------------------ | --------------------------------------------------------------- |
 | `notion` (default) | Rewrites to Notion page URL; falls back to GitHub URL if needed |
-| `github`           | Always rewrites to GitHub file URL                              |
-| `strip`            | Removes link, leaves plain text                                 |
+| `github`           | Always rewrites to GitHub viewer URL                            |
+| `strip`            | Removes the link, leaves plain text                             |
 
-Fragment-only links (`#anchor`) and absolute URLs pass through unchanged.
+**Images:** Relative image paths (`./images/foo.png`) are rewritten to `raw.githubusercontent.com` URLs using `GITHUB_REPO`, `GITHUB_BRANCH`, and `GITHUB_DOCS_ROOT`. Already-absolute URLs pass through unchanged.
 
-## Images
+## Failure handling
 
-Images must use absolute URLs to render in Notion — relative paths (`./images/foo.png`) will not load via the API.
+- **Per-file failures** are skipped — the run continues to the next file.
+- **Systemic abort** — if 5+ failures occur within a rolling window of 10 items, the run aborts (likely token revocation, network failure, or persistent WAF block).
+- **Retry command** — printed at end of run for any failed files: `bash sync.sh --only file1 file2`
+- **Suspicion rules** — on any push failure, the file content is checked against WAF + size rules to explain probable causes.
 
-Use GitHub raw URLs for images committed to the repo:
+## Run logs
 
-```
-https://raw.githubusercontent.com/versable-git/enhancement-product/development/frontend/docs/product/images/your-image.png
-```
+Every run appends a JSON entry to `runs.jsonl`. Each entry includes:
+- `run_id` — `YYYYMMDD-HHmmss` slug for easy reference
+- `config` — full snapshot of all settings active during the run
+- `timing` — `phase1_ms` (discovery) + `phase2_ms` (content writes)
+- `pages` — per-file results with status, elapsed time, and suspicion diagnoses
+- `sections` — per-folder section page write results
+- `error_summary` — quick list of failed paths + suspicion names
+
+Ask Claude to analyse a run: _"Read the latest entry in runs.jsonl and tell me what failed and why."_
 
 ## Excluded files
 
-Files matching `_*.md` or `*.claude.md` (Claude scratchpad files) are skipped automatically.
+Files matching `_*.md` (except `_index.md` which is used for folder metadata) and `*.claude.md` are skipped.
 
 ## GitHub Actions
 
-The workflow at `.github/workflows/notion-sync.yaml` exists but the **push trigger is disabled** — it will not run on commits automatically. Trigger it manually via **Actions → Sync docs to Notion → Run workflow**.
+The workflow at `.github/workflows/notion-sync.yaml` exists but the **push trigger is disabled** — it won't run on commits automatically. Trigger it manually via **Actions → Sync docs to Notion → Run workflow**.
 
-To re-enable automatic syncing, add a `push:` trigger to the workflow file.
+---

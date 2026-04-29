@@ -13,8 +13,13 @@
  *   GITHUB_REPO         — e.g. "versable-git/enhancement-product" (link rewriting fallback)
  *   GITHUB_BRANCH       — e.g. "development" (defaults to "development")
  *   GITHUB_DOCS_PATH    — docs path within the GitHub repo (default: "frontend/docs/product")
+ *   GITHUB_DOCS_ROOT    — repo-relative path prefix for DOCS_DIR, used for image URLs (default: "frontend/docs")
  *   NOTION_LINK_MODE    — "notion" (default) | "github" | "strip"
- *   NOTION_PAGE_ICON    — default emoji for all new pages (e.g. "📄")
+ *   NOTION_PAGE_ICON    — default emoji for all leaf pages (e.g. "📄")
+ *   NOTION_FOLDER_ICON  — default emoji for folder/section pages without _index.md (e.g. "📁")
+ *   NOTION_FULL_WIDTH   — "0" to disable full-width layout (default: on)
+ *   NOTION_SHOW_META    — "0" to suppress frontmatter banner at top of each page (default: on)
+ *   NOTION_SYNC_MAP     — path to JSON file mapping top-level folders to separate Notion root IDs
  *   DRY_RUN             — set to "1" to preview without writing to Notion
  *
  * CLI args:
@@ -62,6 +67,40 @@ interface ParsedDoc {
   icon: NotionIcon | undefined;
   cover: NotionCover | undefined;
 }
+interface SuspicionMatch {
+  name: string;
+  explain: string;
+}
+
+interface SectionResult {
+  rel_dir: string;
+  title: string;
+  page_id: string;
+  notion_url: string;
+  had_index_md: boolean;
+  content_written: boolean;
+  error?: string;
+}
+
+interface RunConfig {
+  root_page_id: string;
+  root_notion_url: string;
+  docs_dir: string;
+  link_mode: string;
+  github_repo: string | null;
+  github_branch: string;
+  github_docs_root: string;
+  github_docs_path: string;
+  full_width: boolean;
+  show_meta: boolean;
+  folder_icon: string | null;
+  default_page_icon: string | null;
+  sync_map_file: string | null;
+  rate_limit_ms: number;
+  abort_window: number;
+  abort_errors: number;
+}
+
 interface SyncResult {
   path: string;
   title: string;
@@ -71,24 +110,29 @@ interface SyncResult {
   elapsed_ms?: number;
   word_count?: number;
   error?: string;
+  suspicions?: SuspicionMatch[];
 }
+
 interface RunLogEntry {
+  run_id: string;
+  version: string;
   ts: string;
   dry_run: boolean;
   filter: string[] | null;
-  root_page_id: string;
-  root_notion_url: string;
-  github_base: string | null;
-  link_mode: LinkMode;
+  config: RunConfig;
+  timing: { phase1_ms: number; phase2_ms: number; total_ms: number };
   stats: {
     total: number;
     created: number;
     updated: number;
     dry_run: number;
     errors: number;
+    sections_written: number;
+    aborted: boolean;
   };
   pages: SyncResult[];
-  error_summary: { path: string; error: string }[] | null;
+  sections: SectionResult[];
+  error_summary: { path: string; error: string; suspicions: string[] }[] | null;
 }
 
 // ── ANSI colors ───────────────────────────────────────────────────────────────
@@ -157,12 +201,84 @@ const GITHUB_REPO = process.env.GITHUB_REPO ?? null;
 const GITHUB_BRANCH = process.env.GITHUB_BRANCH ?? "development";
 const GITHUB_DOCS_PATH =
   process.env.GITHUB_DOCS_PATH ?? "frontend/docs/product";
+const GITHUB_DOCS_ROOT = process.env.GITHUB_DOCS_ROOT ?? "frontend/docs";
 const GITHUB_BASE = GITHUB_REPO
   ? `https://github.com/${GITHUB_REPO}/blob/${GITHUB_BRANCH}/${GITHUB_DOCS_PATH}`
   : null;
+const GITHUB_RAW_BASE = GITHUB_REPO
+  ? `https://raw.githubusercontent.com/${GITHUB_REPO}/${GITHUB_BRANCH}/${GITHUB_DOCS_ROOT}`
+  : null;
+
+const FULL_WIDTH = process.env.NOTION_FULL_WIDTH !== "0"; // default on
+const SYNC_MAP_FILE = process.env.NOTION_SYNC_MAP ?? null;
+const FOLDER_ICON = process.env.NOTION_FOLDER_ICON ?? null;
+const SHOW_META = process.env.NOTION_SHOW_META !== "0"; // default on
+
+const SCRIPT_VERSION = "1.1.0";
+const RATE_LIMIT_MS = 350;
+const ABORT_WINDOW = 10;
+const ABORT_ERRORS = 5;
 
 const LOG_FILE = path.join(__dirname, "runs.jsonl");
 const EXCLUDE_PATTERNS = [/^_/, /\.claude\.md$/];
+
+// ── Push failure suspicion rules ──────────────────────────────────────────────
+// Each rule runs against the file content when a push fails.
+// Add new rules here; they'll automatically appear in error output.
+
+interface SuspicionRule {
+  name: string;
+  // One-line explanation shown when the rule fires
+  explain: string;
+  check: (content: string) => boolean;
+}
+
+const SUSPICION_RULES: SuspicionRule[] = [
+  {
+    name: "cloudflare-waf-curl",
+    // curl + localhost/IP in request body triggers Cloudflare SSRF WAF rules.
+    // Especially dangerous outside fenced code blocks (table cells, inline code).
+    explain:
+      'Contains `curl` with a localhost/IP URL — Cloudflare WAF flags this as SSRF in POST bodies.',
+    check: (c) => /curl\s+.*localhost/i.test(c) || /curl\s+.*\d+\.\d+\.\d+\.\d+/i.test(c),
+  },
+  {
+    name: "cloudflare-waf-shell-pipe",
+    // Shell pipe sequences (cmd | head, cmd | grep) outside fenced blocks
+    // can match command-injection WAF signatures.
+    explain:
+      'Contains a shell pipe pattern (e.g. `cmd | head`) outside a fenced code block.',
+    check: (c) => {
+      // Strip fenced code blocks, then look for pipes between shell-like tokens
+      const stripped = c.replace(/```[\s\S]*?```/g, "");
+      return /`[^`]*\|\s*\w+[^`]*`/.test(stripped);
+    },
+  },
+  {
+    name: "cloudflare-waf-sql-keyword",
+    // SQL keywords (SELECT, DROP, INSERT, etc.) in POST bodies trigger ModSecurity rules.
+    // Usually fine inside fenced blocks; risky in prose or table cells.
+    explain:
+      'Contains SQL keywords (SELECT/DROP/INSERT/UPDATE) outside a fenced code block.',
+    check: (c) => {
+      const stripped = c.replace(/```[\s\S]*?```/g, "");
+      return /\b(SELECT|DROP|INSERT|UPDATE|DELETE|CREATE TABLE|ALTER TABLE)\b/i.test(stripped);
+    },
+  },
+  {
+    name: "cloudflare-waf-script-tag",
+    // <script> tags in markdown content are a near-certain WAF block.
+    explain: 'Contains a <script> tag — always blocked by Cloudflare WAF.',
+    check: (c) => /<script[\s>]/i.test(c),
+  },
+  {
+    name: "notion-body-too-large",
+    // Notion's markdown endpoint has an undocumented ~2MB body limit.
+    // Files approaching this size may get rejected or time out.
+    explain: 'File content exceeds 500 KB — may hit Notion markdown body size limits.',
+    check: (c) => Buffer.byteLength(c, "utf8") > 500_000,
+  },
+];
 
 // ── CLI args ──────────────────────────────────────────────────────────────────
 
@@ -194,6 +310,15 @@ function shouldSync(relPath: string): boolean {
   );
 }
 
+// ── Suspicion checks ─────────────────────────────────────────────────────────
+
+function runSuspicionChecks(content: string): SuspicionMatch[] {
+  return SUSPICION_RULES.filter((r) => r.check(content)).map((r) => ({
+    name: r.name,
+    explain: r.explain,
+  }));
+}
+
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 const sleep = (ms: number): Promise<void> =>
@@ -201,7 +326,7 @@ const sleep = (ms: number): Promise<void> =>
 
 async function apiCall<T>(fn: () => Promise<T>): Promise<T> {
   const result = await fn();
-  await sleep(350);
+  await sleep(RATE_LIMIT_MS);
   return result;
 }
 
@@ -223,6 +348,11 @@ async function askConfirm(prompt: string): Promise<boolean> {
   const answer = await rl.question(prompt);
   rl.close();
   return answer.trim() === "" || /^y(es)?$/i.test(answer.trim());
+}
+
+function makeRunId(date: Date): string {
+  const p = (n: number) => String(n).padStart(2, "0");
+  return `${date.getFullYear()}${p(date.getMonth() + 1)}${p(date.getDate())}-${p(date.getHours())}${p(date.getMinutes())}${p(date.getSeconds())}`;
 }
 
 // ── Frontmatter & doc parsing ─────────────────────────────────────────────────
@@ -289,6 +419,115 @@ function getDoc(relPath: string): ParsedDoc | null {
   return doc;
 }
 
+/**
+ * Reads _index.md for a given relDir (excluded from normal sync but used for
+ * folder icon + section page content). Returns null if no _index.md exists.
+ */
+function getFolderIndex(relDir: string): ParsedDoc | null {
+  const indexRelPath = relDir ? `${relDir}/_index.md` : "_index.md";
+  if (docCache.has(indexRelPath)) return docCache.get(indexRelPath)!;
+  const raw = safeReadFile(path.join(DOCS_DIR, indexRelPath));
+  if (!raw) return null;
+  const { meta, body } = parseFrontmatter(raw);
+  const doc: ParsedDoc = {
+    title: extractTitle(body, indexRelPath),
+    body,
+    meta,
+    images: extractImages(body),
+    icon: resolveIcon(meta),
+    cover: resolveCover(meta),
+  };
+  docCache.set(indexRelPath, doc);
+  return doc;
+}
+
+const STATUS_EMOJI: Record<string, string> = {
+  stable: "✅", stub: "⚠️", partial: "🔧", planned: "📅", deprecated: "🗑️",
+};
+
+/**
+ * Builds a one-line blockquote banner from frontmatter metadata fields.
+ * Prepended to page body before syncing so Notion pages show doc context.
+ * Returns empty string if no relevant fields are present.
+ */
+function buildMetaBanner(meta: Record<string, string>): string {
+  const parts: string[] = [];
+  if (meta.status) {
+    const emoji = STATUS_EMOJI[meta.status.toLowerCase()] ?? "🏷";
+    parts.push(`${emoji} **${meta.status}**`);
+  }
+  if (meta.audience) parts.push(`audience: ${meta.audience}`);
+  if (meta.last_updated) parts.push(`updated: ${meta.last_updated}`);
+  if (parts.length === 0) return "";
+  return `> ${parts.join(" · ")}\n\n`;
+}
+
+/**
+ * Builds a breadcrumb line showing the doc's position in the folder tree.
+ * Each segment links to its section page if available in pageIdMap.
+ * Only used in Phase 2 when pageIdMap is fully populated.
+ */
+function buildBreadcrumb(relPath: string, pageIdMap: Map<string, string>): string {
+  const dir = path.dirname(relPath);
+  if (dir === "." || dir === "") return "";
+  const parts = dir.split("/");
+  const crumbs = parts.map((part, i) => {
+    const dirPath = parts.slice(0, i + 1).join("/");
+    const id = pageIdMap.get(`${dirPath}/_index.md`);
+    const label = part.replace(/-/g, " ");
+    return id ? `[${label}](${notionUrl(id)})` : label;
+  });
+  return `> 📍 ${crumbs.join(" / ")}\n\n`;
+}
+
+/**
+ * Auto-generates a section index page for folders without _index.md.
+ * Lists child docs (with status + audience) and subsections with doc counts.
+ * Called after recursion so child page IDs are available for linking.
+ */
+function buildAutoIndex(
+  dirName: string,
+  subTree: DocTree,
+  pageIdMap: Map<string, string>,
+  childRelDir: string,
+): string {
+  const title = dirName.replace(/-/g, " ");
+  const lines: string[] = [`# ${title.charAt(0).toUpperCase() + title.slice(1)}\n`];
+
+  const filePaths = subTree.files.filter(shouldSync);
+  if (filePaths.length > 0) {
+    lines.push("\n## Contents\n");
+    lines.push("| Doc | Status | Audience |");
+    lines.push("| --- | ------ | -------- |");
+    for (const relPath of filePaths) {
+      const doc = docCache.get(relPath);
+      if (!doc) continue;
+      const id = pageIdMap.get(relPath);
+      const titleCell = id ? `[${doc.title}](${notionUrl(id)})` : doc.title;
+      const statusRaw = (doc.meta.status ?? "").toLowerCase();
+      const statusCell = statusRaw ? `${STATUS_EMOJI[statusRaw] ?? "🏷"} ${statusRaw}` : "—";
+      const audienceCell = doc.meta.audience ?? "—";
+      lines.push(`| ${titleCell} | ${statusCell} | ${audienceCell} |`);
+    }
+  }
+
+  if (subTree.subdirs.size > 0) {
+    lines.push("\n## Sections\n");
+    lines.push("| Section | Docs |");
+    lines.push("| ------- | ---- |");
+    for (const [subDirName, subSubTree] of subTree.subdirs) {
+      const subIndexRelPath = `${childRelDir}/${subDirName}/_index.md`;
+      const id = pageIdMap.get(subIndexRelPath);
+      const label = subDirName.replace(/-/g, " ");
+      const count = collectFiles(subSubTree).filter(shouldSync).length;
+      const titleCell = id ? `[${label}](${notionUrl(id)})` : label;
+      lines.push(`| ${titleCell} | ${count} |`);
+    }
+  }
+
+  return lines.join("\n") + "\n";
+}
+
 // ── Link rewriting ────────────────────────────────────────────────────────────
 
 function notionUrl(pageId: string): string {
@@ -345,6 +584,51 @@ function rewriteLinks(
   );
 }
 
+/**
+ * Rewrites relative image src paths to GitHub raw.githubusercontent.com URLs.
+ * Only runs when GITHUB_REPO + GITHUB_BRANCH are set.
+ * Already-absolute URLs pass through unchanged.
+ */
+function rewriteImages(content: string, relPath: string): string {
+  if (!GITHUB_RAW_BASE) return content;
+  const dir = path.dirname(relPath);
+  return content.replace(
+    /!\[([^\]]*)\]\(([^)]+)\)/g,
+    (_m, alt: string, src: string) => {
+      if (src.startsWith("http://") || src.startsWith("https://")) return _m;
+      const resolved = path.normalize(path.join(dir, src)).replace(/\\/g, "/");
+      return `![${alt}](${GITHUB_RAW_BASE}/${resolved})`;
+    },
+  );
+}
+
+/**
+ * Loads an optional JSON file mapping top-level folder names to Notion page IDs.
+ * Format: { "product": "notion-page-id-or-url-slug", "system": "..." }
+ * Resolves each value the same way preflight resolves ROOT_PAGE_ID.
+ */
+function loadFolderMap(): Map<string, string> {
+  if (!SYNC_MAP_FILE) return new Map();
+  const absPath = path.resolve(SYNC_MAP_FILE);
+  if (!fs.existsSync(absPath)) {
+    console.warn(clr.warn(`${sym.warn} NOTION_SYNC_MAP not found: ${absPath}`));
+    return new Map();
+  }
+  try {
+    const raw = JSON.parse(fs.readFileSync(absPath, "utf-8")) as Record<string, string>;
+    const result = new Map<string, string>();
+    for (const [folder, idOrSlug] of Object.entries(raw)) {
+      const hexMatch = idOrSlug.match(/([0-9a-f]{32})$/i);
+      result.set(folder, hexMatch ? hexMatch[1] : idOrSlug);
+    }
+    console.log(clr.dim(`  Folder map: ${[...result.keys()].join(", ")}`));
+    return result;
+  } catch (err: any) {
+    console.warn(clr.warn(`${sym.warn} Could not parse NOTION_SYNC_MAP: ${err.message as string}`));
+    return new Map();
+  }
+}
+
 // ── Notion API ────────────────────────────────────────────────────────────────
 
 const notion = new Client({ auth: NOTION_TOKEN });
@@ -395,19 +679,28 @@ async function getOrCreateChildPage(
   return { id: page.id, isNew: true };
 }
 
-// applies icon + cover to an existing or newly created page
+// applies icon, cover, and optionally full-width layout to a page.
+// is_full_width is not in official API docs but is accepted by Notion.
 async function updatePageMeta(
   pageId: string,
   icon: NotionIcon | undefined,
   cover: NotionCover | undefined,
 ): Promise<void> {
-  if (!icon && !cover) return;
+  if (!icon && !cover && !FULL_WIDTH) return;
   await apiCall(() =>
     notion.pages.update({
       page_id: pageId,
       ...(icon ? { icon: icon as any } : {}),
       ...(cover ? { cover: cover as any } : {}),
-    }),
+      ...(FULL_WIDTH ? { is_full_width: true } : {}),
+    } as any),
+  );
+}
+
+async function setFullWidth(pageId: string): Promise<void> {
+  if (!FULL_WIDTH) return;
+  await apiCall(() =>
+    notion.pages.update({ page_id: pageId, is_full_width: true } as any),
   );
 }
 
@@ -489,29 +782,39 @@ async function preflight(): Promise<string> {
   return resolvedPageId;
 }
 
-// ── Doc scanning ──────────────────────────────────────────────────────────────
+// ── Doc scanning ─────────────────────────────────────────────────────────────
 
-interface ScanResult {
-  rootFiles: string[];
-  sections: Map<string, string[]>;
+interface DocTree {
+  files: string[];               // full relPaths (from DOCS_DIR) of .md files in this dir
+  subdirs: Map<string, DocTree>; // dirname → subtree
 }
 
-function scanDocs(): ScanResult {
-  const rootFiles: string[] = [];
-  const sections = new Map<string, string[]>();
-  for (const entry of fs.readdirSync(DOCS_DIR, { withFileTypes: true })) {
+function collectFiles(tree: DocTree): string[] {
+  const out: string[] = [...tree.files];
+  for (const sub of tree.subdirs.values()) out.push(...collectFiles(sub));
+  return out;
+}
+
+function scanTree(absDir: string, relPrefix: string): DocTree {
+  const tree: DocTree = { files: [], subdirs: new Map() };
+  for (const entry of fs.readdirSync(absDir, { withFileTypes: true })) {
     if (shouldExclude(entry.name)) continue;
     if (entry.isFile() && entry.name.endsWith(".md")) {
-      rootFiles.push(entry.name);
+      tree.files.push(relPrefix ? `${relPrefix}/${entry.name}` : entry.name);
     } else if (entry.isDirectory()) {
-      const dirFiles = fs
-        .readdirSync(path.join(DOCS_DIR, entry.name))
-        .filter((f) => f.endsWith(".md") && !shouldExclude(f))
-        .map((f) => path.join(entry.name, f).replace(/\\/g, "/"));
-      if (dirFiles.length > 0) sections.set(entry.name, dirFiles);
+      const childPrefix = relPrefix
+        ? `${relPrefix}/${entry.name}`
+        : entry.name;
+      const sub = scanTree(path.join(absDir, entry.name), childPrefix);
+      if (sub.files.length > 0 || sub.subdirs.size > 0)
+        tree.subdirs.set(entry.name, sub);
     }
   }
-  return { rootFiles, sections };
+  return tree;
+}
+
+function scanDocs(): DocTree {
+  return scanTree(DOCS_DIR, "");
 }
 
 // ── Pre-run listing ───────────────────────────────────────────────────────────
@@ -600,96 +903,185 @@ async function preRunListing(allToSync: string[]): Promise<boolean> {
 // ── Phase 1: page discovery ───────────────────────────────────────────────────
 
 /**
- * Ensures all pages exist in Notion. Returns:
- *   discoveryMap — relPath → { id, isNew }  (used in phase 2 to show created vs updated)
- *   pageIdMap    — relPath → id             (used by link rewriter)
+ * Recursively ensures all pages exist in Notion, mirroring the folder hierarchy.
+ * Populates discoveryMap (relPath → {id, isNew}) and pageIdMap (relPath → id).
  *
- * Two-phase design: all page IDs are known before any content is written,
- * enabling cross-file Notion link resolution in phase 2.
+ * Two-phase design: all IDs are known before content is written, enabling
+ * cross-file Notion link resolution in phase 2.
  */
-async function discoverAllPages(
-  rootFiles: string[],
-  sections: Map<string, string[]>,
-  rootPageId: string,
-): Promise<{
-  discoveryMap: Map<string, PageDiscovery>;
-  pageIdMap: Map<string, string>;
-}> {
-  const discoveryMap = new Map<string, PageDiscovery>();
-  const pageIdMap = new Map<string, string>();
-
-  for (const file of rootFiles) {
-    if (!shouldSync(file)) continue;
-    const doc = getDoc(file);
+async function discoverTree(
+  tree: DocTree,
+  parentPageId: string,
+  discoveryMap: Map<string, PageDiscovery>,
+  pageIdMap: Map<string, string>,
+  indent = "  ",
+  folderMap?: Map<string, string>, // optional: top-level folder → mapped Notion root
+  relDir = "",                     // relative path from DOCS_DIR to current dir (for _index.md)
+  sectionResults: SectionResult[] = [],
+): Promise<void> {
+  // Files directly in this dir go under parentPageId
+  for (const relPath of tree.files) {
+    if (!shouldSync(relPath)) continue;
+    const doc = getDoc(relPath);
     if (!doc) continue;
     try {
       const { id, isNew } = await getOrCreateChildPage(
-        rootPageId,
+        parentPageId,
         doc.title,
         doc.icon,
       );
-      discoveryMap.set(file, { id, isNew });
-      pageIdMap.set(file, id);
+      discoveryMap.set(relPath, { id, isNew });
+      pageIdMap.set(relPath, id);
     } catch (err: any) {
       console.error(
-        `  ${clr.err(sym.err)} Discovery failed for "${file}": ${err.message as string}`,
+        `${indent}${clr.err(sym.err)} Discovery failed for "${relPath}": ${err.message as string}`,
       );
     }
   }
 
-  for (const [sectionDir, files] of sections) {
-    const filesToSync = files.filter(shouldSync);
-    if (filesToSync.length === 0) continue;
+  // Each subdir becomes a section page; recurse into it
+  for (const [dirName, subTree] of tree.subdirs) {
+    if (collectFiles(subTree).filter(shouldSync).length === 0) continue;
 
-    const sectionTitle =
-      sectionDir.charAt(0).toUpperCase() + sectionDir.slice(1);
+    const childRelDir = relDir ? `${relDir}/${dirName}` : dirName;
+    const indexRelPath = `${childRelDir}/_index.md`;
+
+    // Folder map: if this top-level dir has an explicit Notion root, skip
+    // creating a section page and root the subtree directly under that page.
+    const mappedRootId = folderMap?.get(dirName);
+    if (mappedRootId) {
+      console.log(
+        `${indent}${clr.section(dirName)} ${sym.arr} ${clr.dim("[mapped]")}  ${clr.url(notionUrl(mappedRootId))}`,
+      );
+      // Don't pass folderMap recursively — mapping only applies at top level
+      await discoverTree(subTree, mappedRootId, discoveryMap, pageIdMap, indent + "  ", undefined, childRelDir, sectionResults);
+      continue;
+    }
+
+    // Read _index.md for folder icon (if it exists)
+    const folderIndex = getFolderIndex(childRelDir);
+    const folderIconResolved: NotionIcon | undefined =
+      folderIndex?.icon ??
+      (FOLDER_ICON ? ({ type: "emoji", emoji: FOLDER_ICON } as NotionIcon) : undefined);
+
+    const sectionTitle = dirName.charAt(0).toUpperCase() + dirName.slice(1);
+    const indexNote = folderIndex ? clr.dim(` ${sym.icon} ${folderIndex.icon?.type === "emoji" ? folderIndex.icon.emoji : "[img]"}`) : "";
     console.log(
-      `  ${clr.section(sectionDir)} ${sym.arr} ${clr.bold(`"${sectionTitle}"`)}`,
+      `${indent}${clr.section(dirName)}${indexNote} ${sym.arr} ${clr.bold(`"${sectionTitle}"`)}`,
     );
 
     let sectionPageId: string;
     if (DRY_RUN) {
-      sectionPageId = `dry-run-section-${sectionDir}`;
+      sectionPageId = `dry-run-section-${dirName}`;
       console.log(
-        `    ${clr.dim(`[${sym.dry} DRY RUN] would get-or-create section page`)}`,
+        `${indent}  ${clr.dim(`[${sym.dry} DRY RUN] would get-or-create section page`)}`,
       );
     } else {
       try {
         const { id, isNew } = await getOrCreateChildPage(
-          rootPageId,
+          parentPageId,
           sectionTitle,
+          folderIconResolved,
         );
         sectionPageId = id;
         const badge = isNew ? clr.ok(`${sym.new} CREATED`) : clr.dim("EXISTS");
-        console.log(`    ${badge}  ${clr.url(notionUrl(id))}`);
+        console.log(`${indent}  ${badge}  ${clr.url(notionUrl(id))}`);
+        if (isNew) await setFullWidth(id);
       } catch (err: any) {
         console.error(
-          `    ${clr.err(`${sym.err} Failed to get/create section`)}: ${err.message as string}`,
+          `${indent}  ${clr.err(`${sym.err} Failed to get/create section`)}: ${err.message as string}`,
         );
         continue;
       }
     }
 
-    for (const relPath of filesToSync) {
-      const doc = getDoc(relPath);
-      if (!doc) continue;
-      try {
-        const { id, isNew } = await getOrCreateChildPage(
-          sectionPageId,
-          doc.title,
-          doc.icon,
-        );
-        discoveryMap.set(relPath, { id, isNew });
-        pageIdMap.set(relPath, id);
-      } catch (err: any) {
-        console.error(
-          `    ${clr.err(sym.err)} Discovery failed for "${relPath}": ${err.message as string}`,
-        );
+    // Register section page BEFORE recursing so breadcrumbs + cross-links
+    // from children can resolve ancestor section pages during Phase 1.
+    pageIdMap.set(indexRelPath, sectionPageId);
+
+    // Recurse first so child page IDs are in pageIdMap before we write section content
+    await discoverTree(subTree, sectionPageId, discoveryMap, pageIdMap, indent + "  ", undefined, childRelDir, sectionResults);
+
+    if (!DRY_RUN) {
+      if (folderIndex) {
+        // Write _index.md content into the section page
+        try {
+          const banner = SHOW_META ? buildMetaBanner(folderIndex.meta) : "";
+          const rewritten = rewriteLinks(
+            rewriteImages(banner + folderIndex.body, indexRelPath),
+            indexRelPath,
+            pageIdMap,
+          );
+          await updatePageMeta(sectionPageId, folderIndex.icon, folderIndex.cover);
+          await apiCall(() =>
+            (notion.pages as any).updateMarkdown({
+              page_id: sectionPageId,
+              type: "replace_content",
+              replace_content: { new_str: rewritten, allow_deleting_content: true },
+            }),
+          );
+          discoveryMap.set(indexRelPath, { id: sectionPageId, isNew: false });
+          console.log(`${indent}  ${clr.dim(`${sym.ok} _index.md written`)}  ${clr.dim(`(${folderIndex.title})`)}`);
+          sectionResults.push({
+            rel_dir: childRelDir,
+            title: folderIndex.title,
+            page_id: sectionPageId,
+            notion_url: notionUrl(sectionPageId),
+            had_index_md: true,
+            content_written: true,
+          });
+        } catch (err: any) {
+          console.error(
+            `${indent}  ${clr.warn(`${sym.warn} _index.md write failed: ${(err.message as string).slice(0, 80)}`)}`,
+          );
+          sectionResults.push({
+            rel_dir: childRelDir,
+            title: sectionTitle,
+            page_id: sectionPageId,
+            notion_url: notionUrl(sectionPageId),
+            had_index_md: true,
+            content_written: false,
+            error: (err.message as string).slice(0, 200),
+          });
+        }
+      } else {
+        // No _index.md — auto-generate a child table as the section page content
+        try {
+          const autoContent = buildAutoIndex(dirName, subTree, pageIdMap, childRelDir);
+          await apiCall(() =>
+            (notion.pages as any).updateMarkdown({
+              page_id: sectionPageId,
+              type: "replace_content",
+              replace_content: { new_str: autoContent, allow_deleting_content: true },
+            }),
+          );
+          const childCount = collectFiles(subTree).filter(shouldSync).length;
+          console.log(`${indent}  ${clr.dim(`${sym.ok} auto-index generated`)}  ${clr.dim(`(${childCount} docs)`)}`);
+          sectionResults.push({
+            rel_dir: childRelDir,
+            title: sectionTitle,
+            page_id: sectionPageId,
+            notion_url: notionUrl(sectionPageId),
+            had_index_md: false,
+            content_written: true,
+          });
+        } catch (err: any) {
+          console.error(
+            `${indent}  ${clr.warn(`${sym.warn} auto-index write failed: ${(err.message as string).slice(0, 80)}`)}`,
+          );
+          sectionResults.push({
+            rel_dir: childRelDir,
+            title: sectionTitle,
+            page_id: sectionPageId,
+            notion_url: notionUrl(sectionPageId),
+            had_index_md: false,
+            content_written: false,
+            error: (err.message as string).slice(0, 200),
+          });
+        }
       }
     }
   }
-
-  return { discoveryMap, pageIdMap };
 }
 
 // ── Phase 2: content writing ──────────────────────────────────────────────────
@@ -715,8 +1107,11 @@ async function writeFileContent(
     };
   }
 
-  const { title, body, images, icon, cover } = doc;
-  const rewritten = rewriteLinks(body, relPath, pageIdMap);
+  const { title, body, images, icon, cover, meta } = doc;
+  const breadcrumb = buildBreadcrumb(relPath, pageIdMap);
+  const banner = SHOW_META ? buildMetaBanner(meta) : "";
+  // Images first (relative paths → GitHub raw URLs), then links (.md → Notion URLs)
+  const rewritten = rewriteLinks(rewriteImages(breadcrumb + banner + body, relPath), relPath, pageIdMap);
   const pageNotionUrl = notionUrl(discovery.id);
   const action = discovery.isNew ? "created" : "updated";
   const actionBadge =
@@ -786,9 +1181,17 @@ async function writeFileContent(
       ? JSON.stringify(err.body)
       : (err.message as string);
     console.error(
-      `     ${clr.dim("Status:")}  ${clr.err(`${sym.err} ERROR — ${errMsg}`)}`,
+      `     ${clr.dim("Status:")}  ${clr.err(`${sym.err} ERROR — ${errMsg.slice(0, 120)}`)}`,
     );
-    return { path: relPath, title, status: "error", error: errMsg };
+
+    const fired = runSuspicionChecks(rewritten);
+    if (fired.length > 0) {
+      console.error(`     ${clr.warn(`${sym.warn} Possible causes:`)}`);
+      for (const r of fired)
+        console.error(`       ${clr.dim(`[${r.name}]`)} ${r.explain}`);
+    }
+
+    return { path: relPath, title, status: "error", error: errMsg, suspicions: fired };
   }
 }
 
@@ -807,7 +1210,8 @@ function appendRunLog(entry: RunLogEntry): void {
 // ── Main ──────────────────────────────────────────────────────────────────────
 
 async function main(): Promise<void> {
-  const runStart = new Date().toISOString();
+  const runStartDate = new Date();
+  const runStart = runStartDate.toISOString();
 
   console.log(
     `\n${clr.header(`Notion Docs Sync${DRY_RUN ? " [DRY RUN]" : ""}`)}`,
@@ -818,6 +1222,12 @@ async function main(): Promise<void> {
   console.log(
     `${clr.dim("Links:")}     ${LINK_MODE}${GITHUB_BASE ? clr.dim(` (fallback: ${GITHUB_BASE})`) : ""}`,
   );
+  if (GITHUB_RAW_BASE)
+    console.log(`${clr.dim("Images:")}    ${clr.dim(`→ ${GITHUB_RAW_BASE}/...`)}`);
+  if (FULL_WIDTH)
+    console.log(`${clr.dim("Layout:")}    full-width`);
+  if (SHOW_META)
+    console.log(`${clr.dim("Meta:")}      frontmatter banner on`);
   if (DEFAULT_ICON)
     console.log(
       `${clr.dim("Icon:")}      ${DEFAULT_ICON} ${clr.dim("(default for new pages)")}`,
@@ -827,12 +1237,8 @@ async function main(): Promise<void> {
   console.log(HR + "\n");
 
   const rootPageId = await preflight();
-  const { rootFiles, sections } = scanDocs();
-
-  const allToSync: string[] = [
-    ...rootFiles.filter(shouldSync),
-    ...[...sections.values()].flat().filter(shouldSync),
-  ];
+  const tree = scanDocs();
+  const allToSync = collectFiles(tree).filter(shouldSync);
 
   // Pre-run listing + confirmation — also warms docCache for all files
   const confirmed = await preRunListing(allToSync);
@@ -843,11 +1249,13 @@ async function main(): Promise<void> {
 
   // Phase 1 — ensure all pages exist, build page ID map for link rewriting
   console.log(`\n${clr.phase("Phase 1:")} ensuring pages exist in Notion...`);
-  const { discoveryMap, pageIdMap } = await discoverAllPages(
-    rootFiles,
-    sections,
-    rootPageId,
-  );
+  const discoveryMap = new Map<string, PageDiscovery>();
+  const pageIdMap = new Map<string, string>();
+  const folderMap = loadFolderMap();
+  const sectionResults: SectionResult[] = [];
+  const phase1Start = Date.now();
+  await discoverTree(tree, rootPageId, discoveryMap, pageIdMap, "  ", folderMap, "", sectionResults);
+  const phase1Ms = Date.now() - phase1Start;
   console.log(`  ${clr.ok(sym.ok)} ${discoveryMap.size} pages mapped\n`);
 
   // Phase 2 — write content with cross-file Notion links resolved
@@ -855,22 +1263,46 @@ async function main(): Promise<void> {
   const results: SyncResult[] = [];
   const counter = { n: 0, total: allToSync.length };
 
+  // Rolling abort: if ABORT_ERRORS failures occur within the last ABORT_WINDOW
+  // items processed, something systemic is wrong (token revoked, network down).
+  const recentStatuses: SyncStatus[] = [];
+  let aborted = false;
+
+  const phase2Start = Date.now();
   for (const relPath of allToSync) {
     counter.n++;
     const discovery = discoveryMap.get(relPath);
     if (!discovery) {
-      results.push({
+      const r: SyncResult = {
         path: relPath,
         title: relPath,
         status: "error",
         error: "Page discovery failed in phase 1",
-      });
+      };
+      results.push(r);
+      recentStatuses.push("error");
+      if (recentStatuses.length > ABORT_WINDOW) recentStatuses.shift();
       continue;
     }
-    results.push(
-      await writeFileContent(relPath, discovery, pageIdMap, counter),
-    );
+
+    const r = await writeFileContent(relPath, discovery, pageIdMap, counter);
+    results.push(r);
+    recentStatuses.push(r.status);
+    if (recentStatuses.length > ABORT_WINDOW) recentStatuses.shift();
+
+    // Abort if too many failures in recent window (systemic issue)
+    const recentErrors = recentStatuses.filter((s) => s === "error").length;
+    if (recentErrors >= ABORT_ERRORS) {
+      console.error(
+        clr.err(
+          `\n${sym.err} Aborting — ${recentErrors} failures in last ${recentStatuses.length} items. Likely a systemic issue (token, network, WAF block).`,
+        ),
+      );
+      aborted = true;
+      break;
+    }
   }
+  const phase2Ms = Date.now() - phase2Start;
 
   // Summary
   const errors = results.filter((r) => r.status === "error");
@@ -897,30 +1329,89 @@ async function main(): Promise<void> {
   }
 
   if (errors.length > 0) {
-    console.error(`\n${clr.err(`${sym.err} ${errors.length} error(s):`)}`);
-    for (const e of errors)
-      console.error(clr.err(`  ${sym.dot} ${e.path}: ${e.error}`));
+    console.error(`\n${clr.err(`${sym.err} ${errors.length} failed:`)}`);
+    for (const e of errors) {
+      const suspicionNote =
+        e.suspicions && e.suspicions.length > 0
+          ? clr.warn(` [${e.suspicions.map((s) => s.name).join(", ")}]`)
+          : "";
+      console.error(clr.err(`  ${sym.dot} ${e.path}`) + suspicionNote);
+    }
+
+    // Retry command — use path basename as --only filter (matches shouldSync logic)
+    const retryArgs = errors
+      .map((e) => path.basename(e.path, ".md"))
+      .join(" ");
+    console.error(
+      `\n${clr.dim("Retry failed files:")}  bash sync.sh --only ${retryArgs}`,
+    );
   }
 
+  if (aborted) {
+    const notRun = allToSync.slice(results.length);
+    if (notRun.length > 0) {
+      const skippedArgs = notRun.map((p) => path.basename(p, ".md")).join(" ");
+      console.error(
+        clr.warn(
+          `\n${sym.warn} ${notRun.length} file(s) not reached due to abort:`,
+        ),
+      );
+      for (const p of notRun) console.error(clr.warn(`  ${sym.dot} ${p}`));
+      console.error(
+        `\n${clr.dim("Retry skipped files:")}  bash sync.sh --only ${skippedArgs}`,
+      );
+    }
+  }
+
+  const runConfig: RunConfig = {
+    root_page_id: rootPageId,
+    root_notion_url: notionUrl(rootPageId),
+    docs_dir: DOCS_DIR,
+    link_mode: LINK_MODE,
+    github_repo: GITHUB_REPO,
+    github_branch: GITHUB_BRANCH,
+    github_docs_root: GITHUB_DOCS_ROOT,
+    github_docs_path: GITHUB_DOCS_PATH,
+    full_width: FULL_WIDTH,
+    show_meta: SHOW_META,
+    folder_icon: FOLDER_ICON,
+    default_page_icon: DEFAULT_ICON,
+    sync_map_file: SYNC_MAP_FILE,
+    rate_limit_ms: RATE_LIMIT_MS,
+    abort_window: ABORT_WINDOW,
+    abort_errors: ABORT_ERRORS,
+  };
+
   const logEntry: RunLogEntry = {
+    run_id: makeRunId(runStartDate),
+    version: SCRIPT_VERSION,
     ts: runStart,
     dry_run: DRY_RUN,
     filter: onlyPaths.length > 0 ? onlyPaths : null,
-    root_page_id: rootPageId,
-    root_notion_url: notionUrl(rootPageId),
-    github_base: GITHUB_BASE,
-    link_mode: LINK_MODE,
+    config: runConfig,
+    timing: {
+      phase1_ms: phase1Ms,
+      phase2_ms: phase2Ms,
+      total_ms: phase1Ms + phase2Ms,
+    },
     stats: {
       total: results.length,
       created: created.length,
       updated: updated.length,
       dry_run: dryRun.length,
       errors: errors.length,
+      sections_written: sectionResults.filter((s) => s.content_written).length,
+      aborted,
     },
     pages: results,
+    sections: sectionResults,
     error_summary:
       errors.length > 0
-        ? errors.map((e) => ({ path: e.path, error: e.error! }))
+        ? errors.map((e) => ({
+            path: e.path,
+            error: e.error ?? "",
+            suspicions: (e.suspicions ?? []).map((s) => s.name),
+          }))
         : null,
   };
 
