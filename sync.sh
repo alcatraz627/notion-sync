@@ -95,7 +95,7 @@ done
 # ── Wizard ────────────────────────────────────────────────────────────────────
 
 WIZARD_AVAILABLE=false
-if command -v gum &>/dev/null && [ -t 1 ] && [ "$NO_WIZARD" = false ]; then
+if command -v gum &>/dev/null && [ -t 0 ] && [ -t 1 ] && [ "$NO_WIZARD" = false ]; then
   WIZARD_AVAILABLE=true
 fi
 
@@ -110,12 +110,11 @@ if [ "$WIZARD_AVAILABLE" = true ]; then
   echo ""
 
   # ── Dry run ──
+  # --default means "Yes is the default". Omitting the flag means "No is the default".
+  # --no-default is NOT a valid gum flag (exits 80 + prints help to stdout).
   DRY_PROMPT="Dry run? (no writes to Notion)"
-  if [ "$DEF_DRY_RUN" = "True" ] || [ "$DEF_DRY_RUN" = "true" ]; then
-    DRY_DEFAULT_FLAG="--default"
-  else
-    DRY_DEFAULT_FLAG="--no-default"
-  fi
+  DRY_DEFAULT_FLAG=""
+  { [ "$DEF_DRY_RUN" = "True" ] || [ "$DEF_DRY_RUN" = "true" ]; } && DRY_DEFAULT_FLAG="--default"
   if gum confirm "$DRY_PROMPT" $DRY_DEFAULT_FLAG --affirmative="Yes (preview)" --negative="No (live sync)" 2>/dev/null; then
     CHOSEN_DRY_RUN=true
   else
@@ -151,11 +150,8 @@ if [ "$WIZARD_AVAILABLE" = true ]; then
   # ── Verbose output ──
   echo ""
   VERBOSE_PROMPT="Verbose output? (per-file detail instead of progress bar)"
-  if [ "$DEF_VERBOSE" = "True" ] || [ "$DEF_VERBOSE" = "true" ]; then
-    VERBOSE_DEFAULT_FLAG="--default"
-  else
-    VERBOSE_DEFAULT_FLAG="--no-default"
-  fi
+  VERBOSE_DEFAULT_FLAG=""
+  { [ "$DEF_VERBOSE" = "True" ] || [ "$DEF_VERBOSE" = "true" ]; } && VERBOSE_DEFAULT_FLAG="--default"
   if gum confirm "$VERBOSE_PROMPT" $VERBOSE_DEFAULT_FLAG 2>/dev/null; then
     CHOSEN_VERBOSE=true
   else
