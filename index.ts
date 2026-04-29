@@ -106,6 +106,7 @@ interface SyncResult {
   status: SyncStatus;
   page_id?: string;
   notion_url?: string;
+  is_new?: boolean;
   elapsed_ms?: number;
   word_count?: number;
   error?: string;
@@ -1326,6 +1327,7 @@ async function writeFileContent(
       status: action,
       page_id: discovery.id,
       notion_url: pageNotionUrl,
+      is_new: discovery.isNew,
       elapsed_ms: elapsed,
     };
   } catch (err: any) {
@@ -1359,6 +1361,10 @@ async function writeFileContent(
               );
             }
           }
+          // Notion's unarchive is eventually consistent — the 200 OK means the
+          // write was accepted but the new state may not be visible to child
+          // writes for a short window. Wait before retrying.
+          await sleep(3000);
         } else {
           await apiCall(
             () => notion.pages.update({ page_id: discovery.id, archived: false }),
@@ -1378,6 +1384,7 @@ async function writeFileContent(
           status: action,
           page_id: discovery.id,
           notion_url: pageNotionUrl,
+          is_new: discovery.isNew,
           elapsed_ms: elapsed,
         };
       } catch (retryErr: any) {
