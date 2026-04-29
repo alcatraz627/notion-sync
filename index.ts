@@ -801,18 +801,16 @@ async function getOrCreateChildPage(
   if (existing) {
     // blocks.children.list always reports archived: false on the block object
     // even when the underlying page is trashed — the real flag is on the page.
-    // Retrieve it and unarchive in Phase 1 so children don't get cascade errors.
+    // If the matched page is archived, treat it as non-existent and fall through
+    // to create a fresh one. Unarchiving is unreliable (Notion eventual consistency).
     const pageData = await apiCall(
       () => notion.pages.retrieve({ page_id: existing.id }),
       "pages.retrieve",
     );
-    if ((pageData as any).archived) {
-      await apiCall(
-        () => notion.pages.update({ page_id: existing.id, archived: false }),
-        "pages.unarchive",
-      );
+    if (!(pageData as any).archived) {
+      return { id: existing.id, isNew: false };
     }
-    return { id: existing.id, isNew: false };
+    // archived — fall through to pages.create below
   }
   const page = await apiCall(() =>
     notion.pages.create({
@@ -1335,74 +1333,11 @@ async function writeFileContent(
       ? JSON.stringify(err.body)
       : (err.message as string);
 
-    // Auto-unarchive: handles two Notion archived-state errors:
-    //   "Can't edit block that is archived."          → leaf page was trashed
-    //   "Can't edit page on block with an archived ancestor." → parent section trashed
-    // For the ancestor case, we traverse up relPath's directory chain and unarchive
-    // each section page found in pageIdMap, then retry the write.
-    const isArchivedError =
-      errMsg.includes("archived") &&
-      (errMsg.includes('"code":"validation_error"') || errMsg.includes("validation_error"));
-    if (isArchivedError) {
-      const isAncestorError = errMsg.includes("ancestor");
-      if (!VERBOSE && IS_TTY) clearProgress();
-      console.warn(`  ${clr.warn(`${sym.warn} ${isAncestorError ? "Archived ancestor" : "Page archived"} — unarchiving ${relPath} and retrying...`)}`);
-      try {
-        if (isAncestorError) {
-          // Unarchive all ancestor section pages (outermost first)
-          const parts = relPath.split("/").slice(0, -1);
-          for (let i = 1; i <= parts.length; i++) {
-            const sectionKey = parts.slice(0, i).join("/") + "/_index.md";
-            const sectionId = pageIdMap.get(sectionKey);
-            if (sectionId) {
-              await apiCall(
-                () => notion.pages.update({ page_id: sectionId, archived: false }),
-                "pages.unarchive.ancestor",
-              );
-            }
-          }
-          // Notion's unarchive is eventually consistent — the 200 OK means the
-          // write was accepted but the new state may not be visible to child
-          // writes for a short window. Wait before retrying.
-          await sleep(3000);
-        } else {
-          await apiCall(
-            () => notion.pages.update({ page_id: discovery.id, archived: false }),
-            "pages.unarchive",
-          );
-        }
-        await doWrite();
-        const elapsed = Date.now() - t0;
-        runMetrics.files.push({ path: relPath, status: action, elapsed_ms: elapsed, content_chars: withFooter.length });
-        if (VERBOSE) {
-          console.log(`     ${clr.dim("Notion:")}  ${clr.url(pageNotionUrl)}`);
-          console.log(`     ${clr.dim("Status:")}  ${actionBadge}  ${clr.dim(fmtElapsed(elapsed))}  ${clr.dim("(unarchived)")}`);
-        }
-        return {
-          path: relPath,
-          title,
-          status: action,
-          page_id: discovery.id,
-          notion_url: pageNotionUrl,
-          is_new: discovery.isNew,
-          elapsed_ms: elapsed,
-        };
-      } catch (retryErr: any) {
-        const retryMsg: string = retryErr.body
-          ? JSON.stringify(retryErr.body)
-          : (retryErr.message as string);
-        if (!VERBOSE && IS_TTY) clearProgress();
-        console.error(`  ${clr.err(`${sym.err} Unarchive+retry failed — ${relPath}: ${retryMsg.slice(0, 100)}`)}`);
-        const elapsed = Date.now() - t0;
-        runMetrics.files.push({ path: relPath, status: "error", elapsed_ms: elapsed, content_chars: withFooter.length });
-        return { path: relPath, title, status: "error", error: retryMsg };
-      }
-    }
-
     const elapsed = Date.now() - t0;
     runMetrics.files.push({ path: relPath, status: "error", elapsed_ms: elapsed, content_chars: withFooter.length });
-    if (!VERBOSE && IS_TTY) clearProgress();
+    if (!VERBOSE && IS_TTY) process.stdout.write("\n");
     console.error(`  ${clr.err(`${sym.err} ${relPath}: ${errMsg.slice(0, 120)}`)}`);
+    if (!VERBOSE && IS_TTY) renderProgress(counter.n, counter.total, relPath, "error");
 
     // Only run WAF suspicion checks when the error looks like a server-side
     // rejection — not for Notion's own validation_error codes (archived page,
@@ -1617,7 +1552,7 @@ async function main(): Promise<void> {
     if (ABORT_ENABLED) {
       const recentErrors = recentStatuses.filter((s) => s === "error").length;
       if (recentErrors >= ABORT_ERRORS) {
-        if (!VERBOSE && IS_TTY) clearProgress();
+        if (!VERBOSE && IS_TTY) process.stdout.write("\n");
         console.error(
           clr.err(
             `\n${sym.err} Aborting — ${recentErrors} failures in last ${recentStatuses.length} items. Likely a systemic issue (token, network, WAF block).`,
