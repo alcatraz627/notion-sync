@@ -807,10 +807,13 @@ async function getOrCreateChildPage(
       () => notion.pages.retrieve({ page_id: existing.id }),
       "pages.retrieve",
     );
-    if (!(pageData as any).archived) {
+    // Notion uses `in_trash` for pages moved to trash; `archived` is a separate
+    // toggle. Both mean "don't reuse this page" — skip and create a fresh one.
+    const isTrashed = (pageData as any).in_trash === true || (pageData as any).archived === true;
+    if (!isTrashed) {
       return { id: existing.id, isNew: false };
     }
-    // archived — fall through to pages.create below
+    // trashed/archived — fall through to pages.create below
   }
   const page = await apiCall(() =>
     notion.pages.create({
