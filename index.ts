@@ -620,6 +620,12 @@ function fmtTimeShort(d: Date): string {
   return `${p(d.getUTCHours())}:${p(d.getUTCMinutes())}:${p(d.getUTCSeconds())}`;
 }
 
+// Local-time HH:MM:SS for live watch — preferred over UTC for verbose discovery logs.
+function fmtTimeLocal(d: Date): string {
+  const p = (n: number) => String(n).padStart(2, "0");
+  return `${p(d.getHours())}:${p(d.getMinutes())}:${p(d.getSeconds())}`;
+}
+
 function fmtElapsed(ms: number): string {
   return ms >= 1000 ? `${(ms / 1000).toFixed(1)}s` : `${ms}ms`;
 }
@@ -627,6 +633,30 @@ function fmtElapsed(ms: number): string {
 // Verbose-gated log — suppressed in progress-bar mode to avoid corrupting bar
 function vlog(...args: Parameters<typeof console.log>): void {
   if (VERBOSE) console.log(...args);
+}
+
+// Verbose Phase 1 discovery log entry. One unified format for both leaf docs
+// and section pages so every entry shows: index, time, status badge, Notion URL,
+// and the local source path on the next line. localPath is shown relative to
+// DOCS_DIR for readability (matches what the user types in `--only`).
+function logDiscovered(opts: {
+  indent: string;
+  index: number;
+  total: number;
+  isNew: boolean;
+  notionId: string;
+  localPath: string;          // relative to DOCS_DIR, or directory marker
+  isSection?: boolean;
+  isAutoIndex?: boolean;
+}): void {
+  if (!VERBOSE) return;
+  const { indent, index, total, isNew, notionId, localPath, isSection, isAutoIndex } = opts;
+  const idx = clr.gray(`[${String(index).padStart(String(total).length, "0")}/${total}]`);
+  const time = clr.dim(fmtTimeLocal(new Date()));
+  const badge = isNew ? clr.ok(`${sym.new} CREATED`) : clr.dim("EXISTS");
+  const kind = isSection ? clr.dim(isAutoIndex ? "[section/auto]" : "[section]") : clr.dim("[doc]");
+  console.log(`${indent}${idx} ${time}  ${badge}  ${kind}  ${clr.url(notionUrl(notionId))}`);
+  console.log(`${indent}${" ".repeat(String(total).length * 2 + 3)} ${clr.dim(`↳ ${localPath}`)}`);
 }
 
 // ── Pulsing spinner ───────────────────────────────────────────────────────────
@@ -796,10 +826,15 @@ function rewriteLinks(
           .replace(/\\/g, "/");
         if (resolved.startsWith("..")) return text;
         if (LINK_MODE === "notion") {
+          // Try (in order): exact match, .md-stripped, .md-appended, _index.md
+          // for the directory itself (handles `dir/` and bare `dir` links to
+          // section pages, which are registered in pageIdMap as `dir/_index.md`).
+          const noTrailSlash = resolved.replace(/\/$/, "");
           const pid =
             pageIdMap.get(resolved) ??
             pageIdMap.get(resolved.replace(/\.md$/, "")) ??
-            pageIdMap.get(resolved + ".md");
+            pageIdMap.get(resolved + ".md") ??
+            pageIdMap.get(`${noTrailSlash}/_index.md`);
           if (pid)
             return `[${text}](${notionUrl(pid)}${anchor ? "#" + anchor : ""})`;
           // Log when a relative .md link can't be resolved — helps diagnose
@@ -1199,6 +1234,7 @@ async function discoverTree(
   relDir = "",                     // relative path from DOCS_DIR to current dir (for _index.md)
   sectionResults: SectionResult[] = [],
   sectionWriteQueue: SectionWriteItem[] = [],
+  discoveryCounter: { n: number; total: number } = { n: 0, total: 0 },
 ): Promise<void> {
   // Files directly in this dir go under parentPageId
   for (const relPath of tree.files) {
@@ -1213,6 +1249,15 @@ async function discoverTree(
       );
       discoveryMap.set(relPath, { id, isNew });
       pageIdMap.set(relPath, id);
+      discoveryCounter.n++;
+      logDiscovered({
+        indent,
+        index: discoveryCounter.n,
+        total: discoveryCounter.total,
+        isNew,
+        notionId: id,
+        localPath: relPath,
+      });
     } catch (err: any) {
       console.error(
         `${indent}${clr.err(sym.err)} Discovery failed for "${relPath}": ${err.message as string}`,
@@ -1222,10 +1267,17 @@ async function discoverTree(
 
   // Each subdir becomes a section page; recurse into it
   for (const [dirName, subTree] of tree.subdirs) {
-    if (collectFiles(subTree).filter(shouldSync).length === 0) continue;
-
     const childRelDir = relDir ? `${relDir}/${dirName}` : dirName;
     const indexRelPath = `${childRelDir}/_index.md`;
+    // Skip the dir entirely only if it has neither syncable leaf files nor an
+    // _index.md that passes the filter. An _index.md alone is enough to justify
+    // a section page (e.g. "boring-technical-stuff/observability" exists only
+    // to host an index doc and be linked-to from sibling _index.md files).
+    // shouldSync is applied to indexRelPath so the filter (--only) still bounds
+    // the walk — without this gate, --only would discover the full tree.
+    const hasSyncableFiles = collectFiles(subTree).filter(shouldSync).length > 0;
+    const hasIndex = !!getFolderIndex(childRelDir) && shouldSync(indexRelPath);
+    if (!hasSyncableFiles && !hasIndex) continue;
 
     // Folder map: if this top-level dir has an explicit Notion root, skip
     // creating a section page and root the subtree directly under that page.
@@ -1233,7 +1285,7 @@ async function discoverTree(
     if (mappedRootId) {
       vlog(`${indent}${clr.section(dirName)} ${sym.arr} ${clr.dim("[mapped]")}  ${clr.url(notionUrl(mappedRootId))}`);
       // Don't pass folderMap recursively — mapping only applies at top level
-      await discoverTree(subTree, mappedRootId, discoveryMap, pageIdMap, indent + "  ", undefined, childRelDir, sectionResults, sectionWriteQueue);
+      await discoverTree(subTree, mappedRootId, discoveryMap, pageIdMap, indent + "  ", undefined, childRelDir, sectionResults, sectionWriteQueue, discoveryCounter);
       continue;
     }
 
@@ -1262,8 +1314,20 @@ async function discoverTree(
           folderIconResolved,
         );
         sectionPageId = id;
-        const badge = isNew ? clr.ok(`${sym.new} CREATED`) : clr.dim("EXISTS");
-        vlog(`${indent}  ${badge}  ${clr.url(notionUrl(id))}`);
+        discoveryCounter.n++;
+        const sectionLocalPath = folderIndex
+          ? `${childRelDir}/_index.md`
+          : `${childRelDir}/  (auto-indexed)`;
+        logDiscovered({
+          indent: indent + "  ",
+          index: discoveryCounter.n,
+          total: discoveryCounter.total,
+          isNew,
+          notionId: id,
+          localPath: sectionLocalPath,
+          isSection: true,
+          isAutoIndex: !folderIndex,
+        });
         // full-width not settable via public API — user sets manually in Notion
       } catch (err: any) {
         console.error(
@@ -1283,7 +1347,7 @@ async function discoverTree(
     sectionWriteQueue.push({ relDir: childRelDir, dirName, sectionTitle, sectionPageId, folderIndex, subTree });
     discoveryMap.set(indexRelPath, { id: sectionPageId, isNew: false });
 
-    await discoverTree(subTree, sectionPageId, discoveryMap, pageIdMap, indent + "  ", undefined, childRelDir, sectionResults, sectionWriteQueue);
+    await discoverTree(subTree, sectionPageId, discoveryMap, pageIdMap, indent + "  ", undefined, childRelDir, sectionResults, sectionWriteQueue, discoveryCounter);
   }
 }
 
@@ -1627,7 +1691,25 @@ async function main(): Promise<void> {
   const sectionResults: SectionResult[] = [];
   const sectionWriteQueue: SectionWriteItem[] = [];
   const phase1Start = Date.now();
-  await discoverTree(tree, rootPageId, discoveryMap, pageIdMap, "  ", folderMap, "", sectionResults, sectionWriteQueue);
+  // Estimate total discovery entries (leaf docs that pass shouldSync + all
+  // section dirs that have at least one syncable file). Used by logDiscovered
+  // to render `[NN/TT]` index prefixes.
+  const countSections = (t: DocTree, baseRelDir = ""): number => {
+    let n = 0;
+    for (const [dirName, sub] of t.subdirs) {
+      const childRelDir = baseRelDir ? `${baseRelDir}/${dirName}` : dirName;
+      const hasFiles = collectFiles(sub).filter(shouldSync).length > 0;
+      const hasIndex = !!getFolderIndex(childRelDir) && shouldSync(`${childRelDir}/_index.md`);
+      if (!hasFiles && !hasIndex) continue;
+      n += 1 + countSections(sub, childRelDir);
+    }
+    return n;
+  };
+  const discoveryCounter = {
+    n: 0,
+    total: collectFiles(tree).filter(shouldSync).length + countSections(tree),
+  };
+  await discoverTree(tree, rootPageId, discoveryMap, pageIdMap, "  ", folderMap, "", sectionResults, sectionWriteQueue, discoveryCounter);
   const phase1Ms = Date.now() - phase1Start;
   if (!VERBOSE && IS_TTY) clearProgress();
   console.log(`  ${clr.ok(sym.ok)} ${discoveryMap.size} pages mapped\n`);
