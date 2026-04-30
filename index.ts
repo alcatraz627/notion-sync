@@ -41,6 +41,7 @@ import { Client } from "@notionhq/client";
 import { createInterface } from "readline/promises";
 import * as fs from "fs";
 import * as path from "path";
+import { ImageUploader, swapImageBlocks } from "./image-uploader";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -270,6 +271,12 @@ const GITHUB_RAW_BASE = GITHUB_REPO
 const GITHUB_BLOB_BASE = GITHUB_REPO
   ? `https://github.com/${GITHUB_REPO}/blob/${GITHUB_BRANCH}/${GITHUB_DOCS_ROOT}`
   : null;
+
+// When true, every image referenced in a doc gets uploaded to Notion's CDN and
+// the image block is rewritten from external→file_upload after Phase 2 write.
+// Required for private repos (raw.githubusercontent.com URLs 404 to Notion).
+const UPLOAD_IMAGES = process.env.NOTION_UPLOAD_IMAGES === "1";
+const IMAGE_CACHE_PATH = path.join(__dirname, ".notion-image-cache.json");
 
 // Per-doc "View source on GitHub" URL base. Each Notion page's breadcrumb
 // gets a link to `${GITHUB_DOC_SOURCE_URL_BASE}/${relPath}`. Defaults to
@@ -946,6 +953,10 @@ function loadFolderMap(): Map<string, string> {
 // ── Notion API ────────────────────────────────────────────────────────────────
 
 const notion = new Client({ auth: NOTION_TOKEN });
+
+const imageUploader: ImageUploader | null = UPLOAD_IMAGES
+  ? new ImageUploader(notion, IMAGE_CACHE_PATH, RATE_LIMIT_MS)
+  : null;
 const childPageCache = new Map<string, PageInfo[]>();
 
 async function listChildPages(parentId: string): Promise<PageInfo[]> {
@@ -1499,6 +1510,35 @@ async function writeFileContent(
     return { path: relPath, title, status: "dry_run", word_count: wordCount };
   }
 
+  // Build URL→file_upload_id map by uploading each local image. The keys
+  // mirror what `rewriteImages` produces for the same doc, so swapImageBlocks
+  // can match Notion image blocks (created with type=external pointing at
+  // those URLs) and switch them to type=file_upload after the markdown write.
+  // Skipped if NOTION_UPLOAD_IMAGES is off — image blocks stay external.
+  const urlToUploadId = new Map<string, string>();
+  if (imageUploader && images.length > 0 && GITHUB_RAW_BASE) {
+    for (const src of images) {
+      if (src.startsWith("http://") || src.startsWith("https://")) continue;
+      const dirOf = path.dirname(relPath);
+      const resolved = path.normalize(path.join(dirOf, src)).replace(/\\/g, "/");
+      const absLocal = path.join(DOCS_DIR, resolved);
+      const githubRawUrl = `${GITHUB_RAW_BASE}/${resolved}`;
+      try {
+        const result = await imageUploader.uploadImage(absLocal);
+        urlToUploadId.set(githubRawUrl, result.file_upload_id);
+        if (VERBOSE) {
+          const tag = result.was_cached ? clr.dim("[cached]") : clr.ok("[uploaded]");
+          console.log(`     ${sym.img}  ${tag} ${path.basename(absLocal)}  ${clr.dim(`(${(result.size_bytes / 1024).toFixed(0)} KB)`)}`);
+        }
+      } catch (err: any) {
+        // Don't abort the whole doc on image upload failure — log and proceed
+        // with the external URL fallback (which 404s on private repos but at
+        // least the markdown sync continues).
+        console.error(`     ${clr.warn(`${sym.warn} image upload failed: ${path.basename(absLocal)} — ${(err.message as string).slice(0, 80)}`)}`);
+      }
+    }
+  }
+
   const doWrite = async (): Promise<void> => {
     await sleep(RATE_LIMIT_MS);
     await updatePageMeta(discovery.id, icon, cover);
@@ -1514,6 +1554,19 @@ async function writeFileContent(
 
   try {
     await doWrite();
+
+    // Post-process: swap image blocks from type=external (broken on private
+    // repos) to type=file_upload referencing our just-uploaded files.
+    if (imageUploader && urlToUploadId.size > 0) {
+      try {
+        const swapped = await swapImageBlocks(notion, discovery.id, urlToUploadId, RATE_LIMIT_MS);
+        if (VERBOSE && swapped > 0) {
+          console.log(`     ${sym.img}  ${clr.dim(`swapped ${swapped} image block${swapped === 1 ? "" : "s"} to file_upload`)}`);
+        }
+      } catch (err: any) {
+        console.error(`     ${clr.warn(`${sym.warn} block swap failed: ${(err.message as string).slice(0, 80)}`)}`);
+      }
+    }
 
     const elapsed = Date.now() - t0;
     runMetrics.files.push({ path: relPath, status: action, elapsed_ms: elapsed, content_chars: withFooter.length });
@@ -1886,6 +1939,10 @@ async function main(): Promise<void> {
     if (errors.length)
       parts.push(clr.err(`${sym.err} ${errors.length} errors`));
     console.log(`Sync complete — ${parts.join("   ")}`);
+    if (imageUploader) {
+      const s = imageUploader.getStats();
+      console.log(clr.dim(`Images:        ${s.uploads} uploaded, ${s.cache_hits} cached  (cache: ${s.total_in_cache} entries)`));
+    }
   }
 
   if (errors.length > 0) {
