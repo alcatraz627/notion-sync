@@ -49,3 +49,4 @@ _*.claude.md
 runs.jsonl
 metrics.jsonl
 .sync-defaults.json
+.notion-cache.json
