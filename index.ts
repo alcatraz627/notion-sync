@@ -647,7 +647,9 @@ const SHOW_CURSOR = "\x1b[?25h";
 function pulse01(elapsedMs: number, periodMs: number): number {
   const t = (elapsedMs % periodMs) / periodMs;
   const sine = Math.sin(t * Math.PI);
-  return 0.18 + 0.82 * Math.pow(sine, 1.4);
+  // 0.35 baseline keeps the dim phase visible on dark terminals (grey ~240
+  // instead of nearly-invisible 236). Peak still hits grey 255 (white).
+  return 0.35 + 0.65 * Math.pow(sine, 1.4);
 }
 function brightnessGrey(b: number): number {
   return 232 + Math.round(Math.max(0, Math.min(1, b)) * 23);
