@@ -271,6 +271,14 @@ const GITHUB_BLOB_BASE = GITHUB_REPO
   ? `https://github.com/${GITHUB_REPO}/blob/${GITHUB_BRANCH}/${GITHUB_DOCS_ROOT}`
   : null;
 
+// Per-doc "View source on GitHub" URL base. Each Notion page's breadcrumb
+// gets a link to `${GITHUB_DOC_SOURCE_URL_BASE}/${relPath}`. Defaults to
+// GITHUB_BLOB_BASE; an explicit env override lets you point to a different
+// host/branch (e.g. always `main` for stable URLs even when syncing from
+// `development`, or a self-hosted git mirror).
+const GITHUB_DOC_SOURCE_URL_BASE =
+  process.env.GITHUB_DOC_SOURCE_URL_BASE ?? GITHUB_BLOB_BASE;
+
 // NOTION_FULL_WIDTH env var is intentionally unused: is_full_width is not
 // settable via Notion's public REST API. Toggle full-width manually in Notion UI.
 const SYNC_MAP_FILE = process.env.NOTION_SYNC_MAP ?? null;
@@ -436,13 +444,21 @@ function parseFrontmatter(content: string): {
   body: string;
 } {
   const match = content.match(/^---\r?\n([\s\S]*?)\r?\n---\r?\n/);
-  if (!match) return { meta: {}, body: content };
-  const meta: Record<string, string> = {};
-  for (const line of match[1].split(/\r?\n/)) {
-    const i = line.indexOf(":");
-    if (i > 0) meta[line.slice(0, i).trim()] = line.slice(i + 1).trim();
+  let meta: Record<string, string> = {};
+  let body = content;
+  if (match) {
+    body = content.slice(match[0].length);
+    for (const line of match[1].split(/\r?\n/)) {
+      const i = line.indexOf(":");
+      if (i > 0) meta[line.slice(0, i).trim()] = line.slice(i + 1).trim();
+    }
   }
-  return { meta, body: content.slice(match[0].length) };
+  // Strip HTML comments — they leak verbatim into Notion as raw text since
+  // Notion's markdown renderer doesn't strip them. Tooling annotations like
+  // `<!-- sessions: ... -->` and `<!-- sherpa: daily-... -->` are common.
+  // Multi-line comments are handled by the [\s\S]*? greedy match.
+  body = body.replace(/<!--[\s\S]*?-->\s*\n?/g, "");
+  return { meta, body };
 }
 
 function extractTitle(body: string, relPath: string): string {
@@ -539,19 +555,27 @@ function buildMetaBanner(meta: Record<string, string>): string {
 /**
  * Builds a breadcrumb line showing the doc's position in the folder tree.
  * Each segment links to its section page if available in pageIdMap.
+ * If GITHUB_DOC_SOURCE_URL_BASE is configured, appends a "View source"
+ * link to the original markdown file on GitHub for editing.
  * Only used in Phase 2 when pageIdMap is fully populated.
  */
 function buildBreadcrumb(relPath: string, pageIdMap: Map<string, string>): string {
   const dir = path.dirname(relPath);
-  if (dir === "." || dir === "") return "";
-  const parts = dir.split("/");
+  const parts = dir === "." || dir === "" ? [] : dir.split("/");
   const crumbs = parts.map((part, i) => {
     const dirPath = parts.slice(0, i + 1).join("/");
     const id = pageIdMap.get(`${dirPath}/_index.md`);
     const label = part.replace(/-/g, " ");
     return id ? `[${label}](${notionUrl(id)})` : label;
   });
-  return `> 📍 ${crumbs.join(" / ")}\n\n`;
+  const sourceLink = GITHUB_DOC_SOURCE_URL_BASE
+    ? `[📝 source](${GITHUB_DOC_SOURCE_URL_BASE}/${relPath})`
+    : "";
+  if (crumbs.length === 0 && !sourceLink) return "";
+  const left = crumbs.length > 0 ? `📍 ${crumbs.join(" / ")}` : "";
+  const right = sourceLink;
+  const sep = left && right ? "  ·  " : "";
+  return `> ${left}${sep}${right}\n\n`;
 }
 
 /**

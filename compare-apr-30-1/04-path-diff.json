@@ -1,0 +1,2106 @@
+{
+  "generated_at": "2026-04-30T15:35:37.821Z",
+  "cache_fetched_at": "2026-04-30T14:53:08.974Z",
+  "totals": {
+    "local_docs": 298,
+    "local_dirs_without_index": 79,
+    "notion_pages": 295,
+    "matched_docs": 290,
+    "matched_auto_index_sections": 6,
+    "missing_on_remote": 8,
+    "extra_on_remote": 0,
+    "thin_remote_pages": 0
+  },
+  "matched": [
+    {
+      "local_path": "known-pitfalls/tanstack-query-not-persisted.md",
+      "notion_id": "351bacd2-7dee-8150-9fcc-c17f38614601",
+      "notion_url": "https://www.notion.so/351bacd27dee81509fccc17f38614601",
+      "notion_path": "Product Docs / Known-pitfalls / TanStack Query is NOT persisted across cold-starts",
+      "block_count": 24
+    },
+    {
+      "local_path": "known-pitfalls/loading-underscore-prefix.md",
+      "notion_id": "351bacd2-7dee-8127-a215-c84bb002f481",
+      "notion_url": "https://www.notion.so/351bacd27dee8127a215c84bb002f481",
+      "notion_path": "Product Docs / Known-pitfalls / `_loading.tsx` underscore prefix — Next.js will not pick it up as a route loading skeleton",
+      "block_count": 22
+    },
+    {
+      "local_path": "known-pitfalls/mcp-stdio-name-collision.md",
+      "notion_id": "351bacd2-7dee-8134-90a1-ed62d9302ed7",
+      "notion_url": "https://www.notion.so/351bacd27dee813490a1ed62d9302ed7",
+      "notion_path": "Product Docs / Known-pitfalls / `.mcp.json` stdio entries silently shadowed by Claude plugins",
+      "block_count": 26
+    },
+    {
+      "local_path": "known-pitfalls/token-validation-no-circuit-breaker.md",
+      "notion_id": "351bacd2-7dee-811b-b6d2-ed9fb42aa1c1",
+      "notion_url": "https://www.notion.so/351bacd27dee811bb6d2ed9fb42aa1c1",
+      "notion_path": "Product Docs / Known-pitfalls / Token validation has no graceful failure path",
+      "block_count": 20
+    },
+    {
+      "local_path": "known-pitfalls/punycode-deprecated.md",
+      "notion_id": "351bacd2-7dee-81bd-9149-e1616f426b72",
+      "notion_url": "https://www.notion.so/351bacd27dee81bd9149e1616f426b72",
+      "notion_path": "Product Docs / Known-pitfalls / `punycode` deprecation warning at install/build",
+      "block_count": 20
+    },
+    {
+      "local_path": "known-pitfalls/bulk-job-ctx-always-undefined.md",
+      "notion_id": "351bacd2-7dee-812e-a35b-e1f03dff9eed",
+      "notion_url": "https://www.notion.so/351bacd27dee812ea35be1f03dff9eed",
+      "notion_path": "Product Docs / Known-pitfalls / `CreateJobBulkResponse.ctx` is always undefined",
+      "block_count": 19
+    },
+    {
+      "local_path": "known-pitfalls/crypto-edge-runtime-jose.md",
+      "notion_id": "351bacd2-7dee-8170-83f2-fd6cacc45fe3",
+      "notion_url": "https://www.notion.so/351bacd27dee817083f2fd6cacc45fe3",
+      "notion_path": "Product Docs / Known-pitfalls / Node `crypto` module unsupported in Edge runtime — use `jose`",
+      "block_count": 23
+    },
+    {
+      "local_path": "known-pitfalls/unused-import-grep-first.md",
+      "notion_id": "351bacd2-7dee-81ae-9637-e19b6322a527",
+      "notion_url": "https://www.notion.so/351bacd27dee81ae9637e19b6322a527",
+      "notion_path": "Product Docs / Known-pitfalls / Always grep import sites before flagging a component as unused",
+      "block_count": 24
+    },
+    {
+      "local_path": "known-pitfalls/force-dynamic-root-layout.md",
+      "notion_id": "351bacd2-7dee-81e7-9713-c780725c5366",
+      "notion_url": "https://www.notion.so/351bacd27dee81e79713c780725c5366",
+      "notion_path": "Product Docs / Known-pitfalls / `force-dynamic` on root layout — looks redundant, don't remove",
+      "block_count": 20
+    },
+    {
+      "local_path": "known-pitfalls/axios-401-immediate-signout.md",
+      "notion_id": "351bacd2-7dee-81db-bf68-da3899a79c11",
+      "notion_url": "https://www.notion.so/351bacd27dee81dbbf68da3899a79c11",
+      "notion_path": "Product Docs / Known-pitfalls / Axios 401 triggers immediate sign-out (no refresh)",
+      "block_count": 21
+    },
+    {
+      "local_path": "known-pitfalls/info-routes-no-admin-check-at-proxy.md",
+      "notion_id": "351bacd2-7dee-8101-8a25-f52d5423da24",
+      "notion_url": "https://www.notion.so/351bacd27dee81018a25f52d5423da24",
+      "notion_path": "Product Docs / Known-pitfalls / `/_info` routes have no admin check at the proxy layer",
+      "block_count": 25
+    },
+    {
+      "local_path": "known-pitfalls/pipeline-dispatch-default-false.md",
+      "notion_id": "351bacd2-7dee-81b0-9bbe-f15065edd457",
+      "notion_url": "https://www.notion.so/351bacd27dee81b09bbef15065edd457",
+      "notion_path": "Product Docs / Known-pitfalls / `pipeline.run.ts` dispatch defaults to `false` (preview-only)",
+      "block_count": 19
+    },
+    {
+      "local_path": "known-pitfalls/vercel-gh-pages.md",
+      "notion_id": "351bacd2-7dee-8139-94e0-d952cab6dcff",
+      "notion_url": "https://www.notion.so/351bacd27dee813994e0d952cab6dcff",
+      "notion_path": "Product Docs / Known-pitfalls / Vercel deployment blocked on `gh-pages` branch",
+      "block_count": 36
+    },
+    {
+      "local_path": "known-pitfalls/lodash-edge-runtime.md",
+      "notion_id": "351bacd2-7dee-812e-8caa-f5dd1d37fac6",
+      "notion_url": "https://www.notion.so/351bacd27dee812e8caaf5dd1d37fac6",
+      "notion_path": "Product Docs / Known-pitfalls / lodash.get breaks Edge Middleware",
+      "block_count": 21
+    },
+    {
+      "local_path": "known-pitfalls/db-schema-mixed-case.md",
+      "notion_id": "351bacd2-7dee-8189-9980-e4b22925de76",
+      "notion_url": "https://www.notion.so/351bacd27dee81899980e4b22925de76",
+      "notion_path": "Product Docs / Known-pitfalls / DB schema mixes camelCase and snake_case columns",
+      "block_count": 23
+    },
+    {
+      "local_path": "known-pitfalls/_index.md",
+      "notion_id": "351bacd2-7dee-817e-9716-dfc9bc7dc6d4",
+      "notion_url": "https://www.notion.so/351bacd27dee817e9716dfc9bc7dc6d4",
+      "notion_path": "Product Docs / Known-pitfalls",
+      "block_count": 31
+    },
+    {
+      "local_path": "boring-technical-stuff/frontend/ui-widgets/forms/image-uploader.md",
+      "notion_id": "352bacd2-7dee-8179-8d02-f0a5de1c9bc8",
+      "notion_url": "https://www.notion.so/352bacd27dee81798d02f0a5de1c9bc8",
+      "notion_path": "Product Docs / Boring-technical-stuff / Frontend / Ui-widgets / Forms / ImageUploader — Drag-Drop Image Upload with Preview",
+      "block_count": 37
+    },
+    {
+      "local_path": "boring-technical-stuff/frontend/ui-widgets/forms/copy-button.md",
+      "notion_id": "352bacd2-7dee-8184-9c35-f6c163540952",
+      "notion_url": "https://www.notion.so/352bacd27dee81849c35f6c163540952",
+      "notion_path": "Product Docs / Boring-technical-stuff / Frontend / Ui-widgets / Forms / CopyButton — Clipboard Copy Component",
+      "block_count": 46
+    },
+    {
+      "local_path": "boring-technical-stuff/frontend/ui-widgets/forms/generic-form.md",
+      "notion_id": "352bacd2-7dee-8195-b3c7-d8ea67e29147",
+      "notion_url": "https://www.notion.so/352bacd27dee8195b3c7d8ea67e29147",
+      "notion_path": "Product Docs / Boring-technical-stuff / Frontend / Ui-widgets / Forms / GenericForm — Configuration-Driven Form Builder",
+      "block_count": 46
+    },
+    {
+      "local_path": "boring-technical-stuff/frontend/ui-widgets/forms/search-select-v2.md",
+      "notion_id": "352bacd2-7dee-8172-ae6f-dbed1777877d",
+      "notion_url": "https://www.notion.so/352bacd27dee8172ae6fdbed1777877d",
+      "notion_path": "Product Docs / Boring-technical-stuff / Frontend / Ui-widgets / Forms / SearchSelectV2",
+      "block_count": 104
+    },
+    {
+      "local_path": "boring-technical-stuff/frontend/ui-widgets/forms/file-download.md",
+      "notion_id": "352bacd2-7dee-81a6-a9f2-f2f9be40dddb",
+      "notion_url": "https://www.notion.so/352bacd27dee81a6a9f2f2f9be40dddb",
+      "notion_path": "Product Docs / Boring-technical-stuff / Frontend / Ui-widgets / Forms / File & Download Utilities",
+      "block_count": 43
+    },
+    {
+      "local_path": "boring-technical-stuff/frontend/ui-widgets/forms/_index.md",
+      "notion_id": "352bacd2-7dee-8166-8b34-f96ad24671cd",
+      "notion_url": "https://www.notion.so/352bacd27dee81668b34f96ad24671cd",
+      "notion_path": "Product Docs / Boring-technical-stuff / Frontend / Ui-widgets / Forms",
+      "block_count": 19
+    },
+    {
+      "local_path": "boring-technical-stuff/frontend/ui-widgets/primitives/button-v1.md",
+      "notion_id": "352bacd2-7dee-81c0-992d-fda79074b4e3",
+      "notion_url": "https://www.notion.so/352bacd27dee81c0992dfda79074b4e3",
+      "notion_path": "Product Docs / Boring-technical-stuff / Frontend / Ui-widgets / Primitives / ButtonV1",
+      "block_count": 103
+    },
+    {
+      "local_path": "boring-technical-stuff/frontend/ui-widgets/primitives/card.md",
+      "notion_id": "352bacd2-7dee-8114-be70-d6e44e3d6a6e",
+      "notion_url": "https://www.notion.so/352bacd27dee8114be70d6e44e3d6a6e",
+      "notion_path": "Product Docs / Boring-technical-stuff / Frontend / Ui-widgets / Primitives / Card — Content Container Component",
+      "block_count": 54
+    },
+    {
+      "local_path": "boring-technical-stuff/frontend/ui-widgets/primitives/date.md",
+      "notion_id": "352bacd2-7dee-8109-82fc-f79892ce5476",
+      "notion_url": "https://www.notion.so/352bacd27dee810982fcf79892ce5476",
+      "notion_path": "Product Docs / Boring-technical-stuff / Frontend / Ui-widgets / Primitives / date.ts — Date & Time Utilities",
+      "block_count": 63
+    },
+    {
+      "local_path": "boring-technical-stuff/frontend/ui-widgets/primitives/input-v1.md",
+      "notion_id": "352bacd2-7dee-81f6-8380-dcf7a6aaca60",
+      "notion_url": "https://www.notion.so/352bacd27dee81f68380dcf7a6aaca60",
+      "notion_path": "Product Docs / Boring-technical-stuff / Frontend / Ui-widgets / Primitives / InputV1",
+      "block_count": 75
+    },
+    {
+      "local_path": "boring-technical-stuff/frontend/ui-widgets/primitives/string.md",
+      "notion_id": "352bacd2-7dee-818a-b689-d253ef6ac470",
+      "notion_url": "https://www.notion.so/352bacd27dee818ab689d253ef6ac470",
+      "notion_path": "Product Docs / Boring-technical-stuff / Frontend / Ui-widgets / Primitives / string.ts — String Utilities & Regex Patterns",
+      "block_count": 40
+    },
+    {
+      "local_path": "boring-technical-stuff/frontend/ui-widgets/primitives/tooltip.md",
+      "notion_id": "352bacd2-7dee-81e4-b37c-eca5d26bf86a",
+      "notion_url": "https://www.notion.so/352bacd27dee81e4b37ceca5d26bf86a",
+      "notion_path": "Product Docs / Boring-technical-stuff / Frontend / Ui-widgets / Primitives / ShowTooltip",
+      "block_count": 94
+    },
+    {
+      "local_path": "boring-technical-stuff/frontend/ui-widgets/primitives/icons.md",
+      "notion_id": "352bacd2-7dee-812d-a5f7-c2d6682d56e8",
+      "notion_url": "https://www.notion.so/352bacd27dee812da5f7c2d6682d56e8",
+      "notion_path": "Product Docs / Boring-technical-stuff / Frontend / Ui-widgets / Primitives / Icon Rendering System",
+      "block_count": 81
+    },
+    {
+      "local_path": "boring-technical-stuff/frontend/ui-widgets/primitives/chip.md",
+      "notion_id": "352bacd2-7dee-817d-ab4e-cc8a9b7e9b60",
+      "notion_url": "https://www.notion.so/352bacd27dee817dab4ecc8a9b7e9b60",
+      "notion_path": "Product Docs / Boring-technical-stuff / Frontend / Ui-widgets / Primitives / Chip",
+      "block_count": 60
+    },
+    {
+      "local_path": "boring-technical-stuff/frontend/ui-widgets/primitives/_index.md",
+      "notion_id": "352bacd2-7dee-8167-9e98-d9ba70a00aaa",
+      "notion_url": "https://www.notion.so/352bacd27dee81679e98d9ba70a00aaa",
+      "notion_path": "Product Docs / Boring-technical-stuff / Frontend / Ui-widgets / Primitives",
+      "block_count": 23
+    },
+    {
+      "local_path": "boring-technical-stuff/frontend/ui-widgets/primitives/number.md",
+      "notion_id": "352bacd2-7dee-818d-afed-f0f5a55b9475",
+      "notion_url": "https://www.notion.so/352bacd27dee818dafedf0f5a55b9475",
+      "notion_path": "Product Docs / Boring-technical-stuff / Frontend / Ui-widgets / Primitives / number.ts — Number Formatting Utilities",
+      "block_count": 30
+    },
+    {
+      "local_path": "boring-technical-stuff/frontend/ui-widgets/layout-and-nav/app-layout.md",
+      "notion_id": "352bacd2-7dee-8118-a1a0-d0e7b650e148",
+      "notion_url": "https://www.notion.so/352bacd27dee8118a1a0d0e7b650e148",
+      "notion_path": "Product Docs / Boring-technical-stuff / Frontend / Ui-widgets / Layout-and-nav / App Layout System — AppWrapper, Navbar, Sidebar, Providers",
+      "block_count": 81
+    },
+    {
+      "local_path": "boring-technical-stuff/frontend/ui-widgets/layout-and-nav/modal.md",
+      "notion_id": "352bacd2-7dee-81a5-8ea1-fc5e4b140ed5",
+      "notion_url": "https://www.notion.so/352bacd27dee81a58ea1fc5e4b140ed5",
+      "notion_path": "Product Docs / Boring-technical-stuff / Frontend / Ui-widgets / Layout-and-nav / Modal System",
+      "block_count": 92
+    },
+    {
+      "local_path": "boring-technical-stuff/frontend/ui-widgets/layout-and-nav/modal-improvements/duplicate-mount-tracker.md",
+      "notion_id": "352bacd2-7dee-8176-ba17-c9015965da21",
+      "notion_url": "https://www.notion.so/352bacd27dee8176ba17c9015965da21",
+      "notion_path": "Product Docs / Boring-technical-stuff / Frontend / Ui-widgets / Layout-and-nav / Modal-improvements / Modal Duplicate-Mount Tracker — Practical Applications",
+      "block_count": 43
+    },
+    {
+      "local_path": "boring-technical-stuff/frontend/ui-widgets/layout-and-nav/modal-improvements/plan.md",
+      "notion_id": "352bacd2-7dee-8165-b419-edc9dd55b5fa",
+      "notion_url": "https://www.notion.so/352bacd27dee8165b419edc9dd55b5fa",
+      "notion_path": "Product Docs / Boring-technical-stuff / Frontend / Ui-widgets / Layout-and-nav / Modal-improvements / Modal System — Improvement Plan",
+      "block_count": 192
+    },
+    {
+      "local_path": "boring-technical-stuff/frontend/ui-widgets/layout-and-nav/dropdown.md",
+      "notion_id": "352bacd2-7dee-8169-ac71-e179fd74de52",
+      "notion_url": "https://www.notion.so/352bacd27dee8169ac71e179fd74de52",
+      "notion_path": "Product Docs / Boring-technical-stuff / Frontend / Ui-widgets / Layout-and-nav / Dropdown — Floating UI Dropdown Component",
+      "block_count": 33
+    },
+    {
+      "local_path": "boring-technical-stuff/frontend/ui-widgets/layout-and-nav/portal.md",
+      "notion_id": "352bacd2-7dee-81ef-80e7-ecca49dc351d",
+      "notion_url": "https://www.notion.so/352bacd27dee81ef80e7ecca49dc351d",
+      "notion_path": "Product Docs / Boring-technical-stuff / Frontend / Ui-widgets / Layout-and-nav / Portal — DOM Escape Hatch Component",
+      "block_count": 50
+    },
+    {
+      "local_path": "boring-technical-stuff/frontend/ui-widgets/layout-and-nav/collapse.md",
+      "notion_id": "352bacd2-7dee-812d-a308-da2e884c1461",
+      "notion_url": "https://www.notion.so/352bacd27dee812da308da2e884c1461",
+      "notion_path": "Product Docs / Boring-technical-stuff / Frontend / Ui-widgets / Layout-and-nav / Collapse — Collapsible Content Section",
+      "block_count": 37
+    },
+    {
+      "local_path": "boring-technical-stuff/frontend/ui-widgets/layout-and-nav/code-block.md",
+      "notion_id": "352bacd2-7dee-8141-8512-d99e598524a9",
+      "notion_url": "https://www.notion.so/352bacd27dee81418512d99e598524a9",
+      "notion_path": "Product Docs / Boring-technical-stuff / Frontend / Ui-widgets / Layout-and-nav / CodeBlock — JSON/Code Display Component",
+      "block_count": 47
+    },
+    {
+      "local_path": "boring-technical-stuff/frontend/ui-widgets/layout-and-nav/app-search.md",
+      "notion_id": "352bacd2-7dee-815f-8673-ca8565e95e6c",
+      "notion_url": "https://www.notion.so/352bacd27dee815f8673ca8565e95e6c",
+      "notion_path": "Product Docs / Boring-technical-stuff / Frontend / Ui-widgets / Layout-and-nav / App Search — Global Entity Search System",
+      "block_count": 44
+    },
+    {
+      "local_path": "boring-technical-stuff/frontend/ui-widgets/layout-and-nav/_index.md",
+      "notion_id": "352bacd2-7dee-811a-8e5e-ca61bb1856cd",
+      "notion_url": "https://www.notion.so/352bacd27dee811a8e5eca61bb1856cd",
+      "notion_path": "Product Docs / Boring-technical-stuff / Frontend / Ui-widgets / Layout-and-nav",
+      "block_count": 17
+    },
+    {
+      "local_path": "boring-technical-stuff/frontend/ui-widgets/tables-and-data/sort-button.md",
+      "notion_id": "352bacd2-7dee-8188-8324-e9be2f78b234",
+      "notion_url": "https://www.notion.so/352bacd27dee81888324e9be2f78b234",
+      "notion_path": "Product Docs / Boring-technical-stuff / Frontend / Ui-widgets / Tables-and-data / SortButton & useSortState",
+      "block_count": 49
+    },
+    {
+      "local_path": "boring-technical-stuff/frontend/ui-widgets/tables-and-data/generic-table.md",
+      "notion_id": "352bacd2-7dee-818e-ad41-e1f2917320aa",
+      "notion_url": "https://www.notion.so/352bacd27dee818ead41e1f2917320aa",
+      "notion_path": "Product Docs / Boring-technical-stuff / Frontend / Ui-widgets / Tables-and-data / GenericTable",
+      "block_count": 116
+    },
+    {
+      "local_path": "boring-technical-stuff/frontend/ui-widgets/tables-and-data/pagination.md",
+      "notion_id": "352bacd2-7dee-81a1-a883-daef117bbede",
+      "notion_url": "https://www.notion.so/352bacd27dee81a1a883daef117bbede",
+      "notion_path": "Product Docs / Boring-technical-stuff / Frontend / Ui-widgets / Tables-and-data / Pagination — usePaginationStateV2 + PaginationHandleV2",
+      "block_count": 43
+    },
+    {
+      "local_path": "boring-technical-stuff/frontend/ui-widgets/tables-and-data/row-menu.md",
+      "notion_id": "352bacd2-7dee-8174-ad92-c4d23fed0aff",
+      "notion_url": "https://www.notion.so/352bacd27dee8174ad92c4d23fed0aff",
+      "notion_path": "Product Docs / Boring-technical-stuff / Frontend / Ui-widgets / Tables-and-data / RowMenuListV2",
+      "block_count": 34
+    },
+    {
+      "local_path": "boring-technical-stuff/frontend/ui-widgets/tables-and-data/filter-tabs.md",
+      "notion_id": "352bacd2-7dee-81f8-be45-fc8cdc33a78e",
+      "notion_url": "https://www.notion.so/352bacd27dee81f8be45fc8cdc33a78e",
+      "notion_path": "Product Docs / Boring-technical-stuff / Frontend / Ui-widgets / Tables-and-data / FilterTabs",
+      "block_count": 75
+    },
+    {
+      "local_path": "boring-technical-stuff/frontend/ui-widgets/tables-and-data/_index.md",
+      "notion_id": "352bacd2-7dee-8140-be6c-e43636f334ff",
+      "notion_url": "https://www.notion.so/352bacd27dee8140be6ce43636f334ff",
+      "notion_path": "Product Docs / Boring-technical-stuff / Frontend / Ui-widgets / Tables-and-data",
+      "block_count": 19
+    },
+    {
+      "local_path": "boring-technical-stuff/frontend/ui-widgets/hooks/use-api-status.md",
+      "notion_id": "352bacd2-7dee-8167-a63b-cdc08fa235da",
+      "notion_url": "https://www.notion.so/352bacd27dee8167a63bcdc08fa235da",
+      "notion_path": "Product Docs / Boring-technical-stuff / Frontend / Ui-widgets / Hooks / useConnectivityStatus",
+      "block_count": 53
+    },
+    {
+      "local_path": "boring-technical-stuff/frontend/ui-widgets/hooks/use-eta.md",
+      "notion_id": "352bacd2-7dee-81b1-bf1b-edf808624636",
+      "notion_url": "https://www.notion.so/352bacd27dee81b1bf1bedf808624636",
+      "notion_path": "Product Docs / Boring-technical-stuff / Frontend / Ui-widgets / Hooks / useTimeToCompletion (useEta) — ETA Calculation Hook",
+      "block_count": 27
+    },
+    {
+      "local_path": "boring-technical-stuff/frontend/ui-widgets/hooks/use-list.md",
+      "notion_id": "352bacd2-7dee-8109-a222-fd0ff5f33444",
+      "notion_url": "https://www.notion.so/352bacd27dee8109a222fd0ff5f33444",
+      "notion_path": "Product Docs / Boring-technical-stuff / Frontend / Ui-widgets / Hooks / useArray / useArrayV2",
+      "block_count": 46
+    },
+    {
+      "local_path": "boring-technical-stuff/frontend/ui-widgets/hooks/global-context.md",
+      "notion_id": "352bacd2-7dee-819e-93e6-c02278a84d3c",
+      "notion_url": "https://www.notion.so/352bacd27dee819e93e6c02278a84d3c",
+      "notion_path": "Product Docs / Boring-technical-stuff / Frontend / Ui-widgets / Hooks / global-context.tsx — Typed React Context System",
+      "block_count": 49
+    },
+    {
+      "local_path": "boring-technical-stuff/frontend/ui-widgets/hooks/use-query-sync.md",
+      "notion_id": "352bacd2-7dee-819d-bdf3-ef27f4c10869",
+      "notion_url": "https://www.notion.so/352bacd27dee819dbdf3ef27f4c10869",
+      "notion_path": "Product Docs / Boring-technical-stuff / Frontend / Ui-widgets / Hooks / useQSync — Bidirectional URL ↔ State Sync",
+      "block_count": 109
+    },
+    {
+      "local_path": "boring-technical-stuff/frontend/ui-widgets/hooks/use-data.md",
+      "notion_id": "352bacd2-7dee-8152-bcd3-f6d1a2d6db7c",
+      "notion_url": "https://www.notion.so/352bacd27dee8152bcd3f6d1a2d6db7c",
+      "notion_path": "Product Docs / Boring-technical-stuff / Frontend / Ui-widgets / Hooks / useData — Combined Filter + Search + Paginate Hook",
+      "block_count": 43
+    },
+    {
+      "local_path": "boring-technical-stuff/frontend/ui-widgets/hooks/data-layer.md",
+      "notion_id": "352bacd2-7dee-8149-9a9b-d987332170ca",
+      "notion_url": "https://www.notion.so/352bacd27dee81499a9bd987332170ca",
+      "notion_path": "Product Docs / Boring-technical-stuff / Frontend / Ui-widgets / Hooks / Data Layer — Server-Side Data Fetching (`src/data/`)",
+      "block_count": 55
+    },
+    {
+      "local_path": "boring-technical-stuff/frontend/ui-widgets/hooks/use-q.md",
+      "notion_id": "352bacd2-7dee-8108-a68d-e7c98ee21105",
+      "notion_url": "https://www.notion.so/352bacd27dee8108a68de7c98ee21105",
+      "notion_path": "Product Docs / Boring-technical-stuff / Frontend / Ui-widgets / Hooks / useQ — React Query Wrapper for Data Fetching",
+      "block_count": 55
+    },
+    {
+      "local_path": "boring-technical-stuff/frontend/ui-widgets/hooks/use-storage.md",
+      "notion_id": "352bacd2-7dee-8157-a2ec-c278d16b01ef",
+      "notion_url": "https://www.notion.so/352bacd27dee8157a2ecc278d16b01ef",
+      "notion_path": "Product Docs / Boring-technical-stuff / Frontend / Ui-widgets / Hooks / useLocalStorage / useSessionStorage — Persisted State Hooks",
+      "block_count": 40
+    },
+    {
+      "local_path": "boring-technical-stuff/frontend/ui-widgets/hooks/use-m.md",
+      "notion_id": "352bacd2-7dee-814a-adba-e36ed32b9140",
+      "notion_url": "https://www.notion.so/352bacd27dee814aadbae36ed32b9140",
+      "notion_path": "Product Docs / Boring-technical-stuff / Frontend / Ui-widgets / Hooks / useM — React Query Wrapper for Mutations",
+      "block_count": 53
+    },
+    {
+      "local_path": "boring-technical-stuff/frontend/ui-widgets/hooks/react-query.md",
+      "notion_id": "352bacd2-7dee-8103-ac04-cda88afabe7f",
+      "notion_url": "https://www.notion.so/352bacd27dee8103ac04cda88afabe7f",
+      "notion_path": "Product Docs / Boring-technical-stuff / Frontend / Ui-widgets / Hooks / react-query.ts — Query Client & Key Registry",
+      "block_count": 59
+    },
+    {
+      "local_path": "boring-technical-stuff/frontend/ui-widgets/hooks/use-keypress.md",
+      "notion_id": "352bacd2-7dee-81ab-8b80-f125bc3e509e",
+      "notion_url": "https://www.notion.so/352bacd27dee81ab8b80f125bc3e509e",
+      "notion_path": "Product Docs / Boring-technical-stuff / Frontend / Ui-widgets / Hooks / useKeyPress — Keyboard Event Hook",
+      "block_count": 45
+    },
+    {
+      "local_path": "boring-technical-stuff/frontend/ui-widgets/hooks/use-query-params.md",
+      "notion_id": "352bacd2-7dee-81a3-8008-d2541da59bf6",
+      "notion_url": "https://www.notion.so/352bacd27dee81a38008d2541da59bf6",
+      "notion_path": "Product Docs / Boring-technical-stuff / Frontend / Ui-widgets / Hooks / useQueryParams / useQParam / useQValue — URL Search Params Management",
+      "block_count": 58
+    },
+    {
+      "local_path": "boring-technical-stuff/frontend/ui-widgets/hooks/minor-hooks.md",
+      "notion_id": "352bacd2-7dee-817a-a7bf-ec91f9fd3ff1",
+      "notion_url": "https://www.notion.so/352bacd27dee817aa7bfec91f9fd3ff1",
+      "notion_path": "Product Docs / Boring-technical-stuff / Frontend / Ui-widgets / Hooks / Minor Hooks — Quick Reference",
+      "block_count": 93
+    },
+    {
+      "local_path": "boring-technical-stuff/frontend/ui-widgets/hooks/_index.md",
+      "notion_id": "352bacd2-7dee-815d-a06b-eff5b4f32e1f",
+      "notion_url": "https://www.notion.so/352bacd27dee815da06beff5b4f32e1f",
+      "notion_path": "Product Docs / Boring-technical-stuff / Frontend / Ui-widgets / Hooks",
+      "block_count": 28
+    },
+    {
+      "local_path": "boring-technical-stuff/frontend/ui-widgets/auth-and-access/use-team.md",
+      "notion_id": "352bacd2-7dee-8139-a976-dd8cbd4e13f2",
+      "notion_url": "https://www.notion.so/352bacd27dee8139a976dd8cbd4e13f2",
+      "notion_path": "Product Docs / Boring-technical-stuff / Frontend / Ui-widgets / Auth-and-access / useTeamData — Team Data, Config, and Permissions Hook",
+      "block_count": 36
+    },
+    {
+      "local_path": "boring-technical-stuff/frontend/ui-widgets/auth-and-access/server-wrappers.md",
+      "notion_id": "352bacd2-7dee-817d-97d9-fa3f387001d4",
+      "notion_url": "https://www.notion.so/352bacd27dee817d97d9fa3f387001d4",
+      "notion_path": "Product Docs / Boring-technical-stuff / Frontend / Ui-widgets / Auth-and-access / Server-Side Wrappers",
+      "block_count": 74
+    },
+    {
+      "local_path": "boring-technical-stuff/frontend/ui-widgets/auth-and-access/permissions.md",
+      "notion_id": "352bacd2-7dee-816c-b381-e1fddce88da1",
+      "notion_url": "https://www.notion.so/352bacd27dee816cb381e1fddce88da1",
+      "notion_path": "Product Docs / Boring-technical-stuff / Frontend / Ui-widgets / Auth-and-access / Permission System — Roles, Guards, and Route Protection",
+      "block_count": 64
+    },
+    {
+      "local_path": "boring-technical-stuff/frontend/ui-widgets/auth-and-access/use-user-usage.md",
+      "notion_id": "352bacd2-7dee-81e2-9dd7-d64f96722e57",
+      "notion_url": "https://www.notion.so/352bacd27dee81e29dd7d64f96722e57",
+      "notion_path": "Product Docs / Boring-technical-stuff / Frontend / Ui-widgets / Auth-and-access / useUserUsageV2",
+      "block_count": 42
+    },
+    {
+      "local_path": "boring-technical-stuff/frontend/ui-widgets/auth-and-access/auth.md",
+      "notion_id": "352bacd2-7dee-8163-8eb7-dd57a638186c",
+      "notion_url": "https://www.notion.so/352bacd27dee81638eb7dd57a638186c",
+      "notion_path": "Product Docs / Boring-technical-stuff / Frontend / Ui-widgets / Auth-and-access / Auth System — Hooks, Utils, and Providers",
+      "block_count": 61
+    },
+    {
+      "local_path": "boring-technical-stuff/frontend/ui-widgets/auth-and-access/_index.md",
+      "notion_id": "352bacd2-7dee-81b8-9a8e-e8890574981c",
+      "notion_url": "https://www.notion.so/352bacd27dee81b89a8ee8890574981c",
+      "notion_path": "Product Docs / Boring-technical-stuff / Frontend / Ui-widgets / Auth-and-access",
+      "block_count": 19
+    },
+    {
+      "local_path": "boring-technical-stuff/frontend/ui-widgets/integrations-and-ops/prompt-editor.md",
+      "notion_id": "352bacd2-7dee-8173-bbb2-c1d0e1b62fbc",
+      "notion_url": "https://www.notion.so/352bacd27dee8173bbb2c1d0e1b62fbc",
+      "notion_path": "Product Docs / Boring-technical-stuff / Frontend / Ui-widgets / Integrations-and-ops / PromptEditor — Rich Text Editor with Variable Interpolation",
+      "block_count": 48
+    },
+    {
+      "local_path": "boring-technical-stuff/frontend/ui-widgets/integrations-and-ops/routing.md",
+      "notion_id": "352bacd2-7dee-819c-b455-cf52221e8a78",
+      "notion_url": "https://www.notion.so/352bacd27dee819cb455cf52221e8a78",
+      "notion_path": "Product Docs / Boring-technical-stuff / Frontend / Ui-widgets / Integrations-and-ops / routing.ts — Route Path Definitions",
+      "block_count": 24
+    },
+    {
+      "local_path": "boring-technical-stuff/frontend/ui-widgets/integrations-and-ops/app-pages-overview.md",
+      "notion_id": "352bacd2-7dee-818c-a309-ee7c89fa7383",
+      "notion_url": "https://www.notion.so/352bacd27dee818ca309ee7c89fa7383",
+      "notion_path": "Product Docs / Boring-technical-stuff / Frontend / Ui-widgets / Integrations-and-ops / App Pages Overview",
+      "block_count": 87
+    },
+    {
+      "local_path": "boring-technical-stuff/frontend/ui-widgets/integrations-and-ops/toast.md",
+      "notion_id": "352bacd2-7dee-81ad-b482-dc565409d435",
+      "notion_url": "https://www.notion.so/352bacd27dee81adb482dc565409d435",
+      "notion_path": "Product Docs / Boring-technical-stuff / Frontend / Ui-widgets / Integrations-and-ops / Toast / Alert Notification System",
+      "block_count": 81
+    },
+    {
+      "local_path": "boring-technical-stuff/frontend/ui-widgets/integrations-and-ops/wizard.md",
+      "notion_id": "352bacd2-7dee-8190-818d-fdfea1aefd17",
+      "notion_url": "https://www.notion.so/352bacd27dee8190818dfdfea1aefd17",
+      "notion_path": "Product Docs / Boring-technical-stuff / Frontend / Ui-widgets / Integrations-and-ops / Wizard — WizardStepper + WizardAction",
+      "block_count": 45
+    },
+    {
+      "local_path": "boring-technical-stuff/frontend/ui-widgets/integrations-and-ops/url.md",
+      "notion_id": "352bacd2-7dee-81e7-9c9f-fbb42b184668",
+      "notion_url": "https://www.notion.so/352bacd27dee81e79c9ffbb42b184668",
+      "notion_path": "Product Docs / Boring-technical-stuff / Frontend / Ui-widgets / Integrations-and-ops / url.ts — URL Utilities & Query Parameter Constants",
+      "block_count": 40
+    },
+    {
+      "local_path": "boring-technical-stuff/frontend/ui-widgets/integrations-and-ops/code-audit.md",
+      "notion_id": "352bacd2-7dee-8197-bc30-d01083d24bec",
+      "notion_url": "https://www.notion.so/352bacd27dee8197bc30d01083d24bec",
+      "notion_path": "Product Docs / Boring-technical-stuff / Frontend / Ui-widgets / Integrations-and-ops / Code Audit — Versable Enhancement Product Frontend",
+      "block_count": 183
+    },
+    {
+      "local_path": "boring-technical-stuff/frontend/ui-widgets/integrations-and-ops/buy-credits.md",
+      "notion_id": "352bacd2-7dee-817a-a6f0-c13f8bdf865e",
+      "notion_url": "https://www.notion.so/352bacd27dee817aa6f0c13f8bdf865e",
+      "notion_path": "Product Docs / Boring-technical-stuff / Frontend / Ui-widgets / Integrations-and-ops / BuyCreditsModal",
+      "block_count": 46
+    },
+    {
+      "local_path": "boring-technical-stuff/frontend/ui-widgets/integrations-and-ops/email-system.md",
+      "notion_id": "352bacd2-7dee-8143-b502-ddb0532b1c3d",
+      "notion_url": "https://www.notion.so/352bacd27dee8143b502ddb0532b1c3d",
+      "notion_path": "Product Docs / Boring-technical-stuff / Frontend / Ui-widgets / Integrations-and-ops / Email System",
+      "block_count": 71
+    },
+    {
+      "local_path": "boring-technical-stuff/frontend/ui-widgets/integrations-and-ops/credits-utils.md",
+      "notion_id": "352bacd2-7dee-8166-997c-eef821edd1a4",
+      "notion_url": "https://www.notion.so/352bacd27dee8166997ceef821edd1a4",
+      "notion_path": "Product Docs / Boring-technical-stuff / Frontend / Ui-widgets / Integrations-and-ops / Credits Utilities",
+      "block_count": 39
+    },
+    {
+      "local_path": "boring-technical-stuff/frontend/ui-widgets/integrations-and-ops/integrations.md",
+      "notion_id": "352bacd2-7dee-81c8-9fd2-fbaeb56a79a9",
+      "notion_url": "https://www.notion.so/352bacd27dee81c89fd2fbaeb56a79a9",
+      "notion_path": "Product Docs / Boring-technical-stuff / Frontend / Ui-widgets / Integrations-and-ops / External Integrations",
+      "block_count": 91
+    },
+    {
+      "local_path": "boring-technical-stuff/frontend/ui-widgets/integrations-and-ops/drizzle-db.md",
+      "notion_id": "352bacd2-7dee-816d-8480-ec2e93bd8d85",
+      "notion_url": "https://www.notion.so/352bacd27dee816d8480ec2e93bd8d85",
+      "notion_path": "Product Docs / Boring-technical-stuff / Frontend / Ui-widgets / Integrations-and-ops / Drizzle ORM Database Layer",
+      "block_count": 166
+    },
+    {
+      "local_path": "boring-technical-stuff/frontend/ui-widgets/integrations-and-ops/alert.md",
+      "notion_id": "352bacd2-7dee-816e-8edd-e28e5142f812",
+      "notion_url": "https://www.notion.so/352bacd27dee816e8edde28e5142f812",
+      "notion_path": "Product Docs / Boring-technical-stuff / Frontend / Ui-widgets / Integrations-and-ops / Alert Component",
+      "block_count": 61
+    },
+    {
+      "local_path": "boring-technical-stuff/frontend/ui-widgets/integrations-and-ops/app-init.md",
+      "notion_id": "352bacd2-7dee-8128-9588-c26635d5dff9",
+      "notion_url": "https://www.notion.so/352bacd27dee81289588c26635d5dff9",
+      "notion_path": "Product Docs / Boring-technical-stuff / Frontend / Ui-widgets / Integrations-and-ops / App Init — Startup Configuration & Auth Atoms",
+      "block_count": 48
+    },
+    {
+      "local_path": "boring-technical-stuff/frontend/ui-widgets/integrations-and-ops/testing.md",
+      "notion_id": "352bacd2-7dee-8156-b6bc-c2055a14a904",
+      "notion_url": "https://www.notion.so/352bacd27dee8156b6bcc2055a14a904",
+      "notion_path": "Product Docs / Boring-technical-stuff / Frontend / Ui-widgets / Integrations-and-ops / Playwright E2E Testing Framework",
+      "block_count": 244
+    },
+    {
+      "local_path": "boring-technical-stuff/frontend/ui-widgets/integrations-and-ops/error.md",
+      "notion_id": "352bacd2-7dee-810a-bf2f-d4d50df69c29",
+      "notion_url": "https://www.notion.so/352bacd27dee810abf2fd4d50df69c29",
+      "notion_path": "Product Docs / Boring-technical-stuff / Frontend / Ui-widgets / Integrations-and-ops / error.ts — Error Handling Utilities",
+      "block_count": 65
+    },
+    {
+      "local_path": "boring-technical-stuff/frontend/ui-widgets/integrations-and-ops/team-scaling-guide.md",
+      "notion_id": "352bacd2-7dee-817c-8132-fc88f63ff224",
+      "notion_url": "https://www.notion.so/352bacd27dee817c8132fc88f63ff224",
+      "notion_path": "Product Docs / Boring-technical-stuff / Frontend / Ui-widgets / Integrations-and-ops / Team Scaling Guide — Preparing the Codebase for Senior + Junior Engineers",
+      "block_count": 157
+    },
+    {
+      "local_path": "boring-technical-stuff/frontend/ui-widgets/integrations-and-ops/object.md",
+      "notion_id": "352bacd2-7dee-81e6-85ad-f52f8d5be0c6",
+      "notion_url": "https://www.notion.so/352bacd27dee81e685adf52f8d5be0c6",
+      "notion_path": "Product Docs / Boring-technical-stuff / Frontend / Ui-widgets / Integrations-and-ops / object.ts — Object Manipulation Utilities",
+      "block_count": 57
+    },
+    {
+      "local_path": "boring-technical-stuff/frontend/ui-widgets/integrations-and-ops/iter.md",
+      "notion_id": "352bacd2-7dee-8125-acc2-cc118aa22202",
+      "notion_url": "https://www.notion.so/352bacd27dee8125acc2cc118aa22202",
+      "notion_path": "Product Docs / Boring-technical-stuff / Frontend / Ui-widgets / Integrations-and-ops / iter.ts — Array & Data Iteration Utilities",
+      "block_count": 63
+    },
+    {
+      "local_path": "boring-technical-stuff/frontend/ui-widgets/integrations-and-ops/use-init-app.md",
+      "notion_id": "352bacd2-7dee-814a-b42d-c7004be2eea5",
+      "notion_url": "https://www.notion.so/352bacd27dee814ab42dc7004be2eea5",
+      "notion_path": "Product Docs / Boring-technical-stuff / Frontend / Ui-widgets / Integrations-and-ops / useInitApp",
+      "block_count": 52
+    },
+    {
+      "local_path": "boring-technical-stuff/frontend/ui-widgets/integrations-and-ops/worker-status.md",
+      "notion_id": "352bacd2-7dee-81fa-a8eb-df7659a97456",
+      "notion_url": "https://www.notion.so/352bacd27dee81faa8ebdf7659a97456",
+      "notion_path": "Product Docs / Boring-technical-stuff / Frontend / Ui-widgets / Integrations-and-ops / WorkerStatus",
+      "block_count": 45
+    },
+    {
+      "local_path": "boring-technical-stuff/frontend/ui-widgets/integrations-and-ops/page-components.md",
+      "notion_id": "352bacd2-7dee-8163-8a1f-ecac9d209aeb",
+      "notion_url": "https://www.notion.so/352bacd27dee81638a1fecac9d209aeb",
+      "notion_path": "Product Docs / Boring-technical-stuff / Frontend / Ui-widgets / Integrations-and-ops / Page-Level Components — States, Header, Toggle",
+      "block_count": 41
+    },
+    {
+      "local_path": "boring-technical-stuff/frontend/ui-widgets/integrations-and-ops/use-payment.md",
+      "notion_id": "352bacd2-7dee-819d-8e2a-ed904a49fc9a",
+      "notion_url": "https://www.notion.so/352bacd27dee819d8e2aed904a49fc9a",
+      "notion_path": "Product Docs / Boring-technical-stuff / Frontend / Ui-widgets / Integrations-and-ops / usePaymentList / usePaymentPlan",
+      "block_count": 60
+    },
+    {
+      "local_path": "boring-technical-stuff/frontend/ui-widgets/integrations-and-ops/redis-cache.md",
+      "notion_id": "352bacd2-7dee-81ac-9f2a-dada46b41687",
+      "notion_url": "https://www.notion.so/352bacd27dee81ac9f2adada46b41687",
+      "notion_path": "Product Docs / Boring-technical-stuff / Frontend / Ui-widgets / Integrations-and-ops / Redis Caching Layer",
+      "block_count": 85
+    },
+    {
+      "local_path": "boring-technical-stuff/frontend/ui-widgets/integrations-and-ops/utils-types.md",
+      "notion_id": "352bacd2-7dee-81de-9e00-c77e750462f5",
+      "notion_url": "https://www.notion.so/352bacd27dee81de9e00c77e750462f5",
+      "notion_path": "Product Docs / Boring-technical-stuff / Frontend / Ui-widgets / Integrations-and-ops / utils.types.ts — Core Type Definitions",
+      "block_count": 35
+    },
+    {
+      "local_path": "boring-technical-stuff/frontend/ui-widgets/integrations-and-ops/_index.md",
+      "notion_id": "352bacd2-7dee-81df-842c-fc569528ba3f",
+      "notion_url": "https://www.notion.so/352bacd27dee81df842cfc569528ba3f",
+      "notion_path": "Product Docs / Boring-technical-stuff / Frontend / Ui-widgets / Integrations-and-ops",
+      "block_count": 40
+    },
+    {
+      "local_path": "boring-technical-stuff/frontend/ui-widgets/integrations-and-ops/use-job-data.md",
+      "notion_id": "352bacd2-7dee-8188-b2e4-cc60e9e962ff",
+      "notion_url": "https://www.notion.so/352bacd27dee8188b2e4cc60e9e962ff",
+      "notion_path": "Product Docs / Boring-technical-stuff / Frontend / Ui-widgets / Integrations-and-ops / useJobData — Job Details, Source Preview, and Metadata Hook",
+      "block_count": 37
+    },
+    {
+      "local_path": "boring-technical-stuff/frontend/ui-widgets/_index.md",
+      "notion_id": "352bacd2-7dee-8166-9df3-f6b05f9af5cc",
+      "notion_url": "https://www.notion.so/352bacd27dee81669df3f6b05f9af5cc",
+      "notion_path": "Product Docs / Boring-technical-stuff / Frontend / Ui-widgets",
+      "block_count": 38
+    },
+    {
+      "local_path": "boring-technical-stuff/frontend/jobs-architecture.md",
+      "notion_id": "352bacd2-7dee-816f-b8a6-f5b19389d6ee",
+      "notion_url": "https://www.notion.so/352bacd27dee816fb8a6f5b19389d6ee",
+      "notion_path": "Product Docs / Boring-technical-stuff / Frontend / Jobs — architecture",
+      "block_count": 155
+    },
+    {
+      "local_path": "boring-technical-stuff/frontend/data-patterns/storage.md",
+      "notion_id": "352bacd2-7dee-812f-8707-e2f6d84e3d85",
+      "notion_url": "https://www.notion.so/352bacd27dee812f8707e2f6d84e3d85",
+      "notion_path": "Product Docs / Boring-technical-stuff / Frontend / Data-patterns / System — Storage (AWS S3)",
+      "block_count": 25
+    },
+    {
+      "local_path": "boring-technical-stuff/frontend/data-patterns/use-query-sync/todo.md",
+      "notion_id": "352bacd2-7dee-81b1-baeb-c7291cd599c0",
+      "notion_url": "https://www.notion.so/352bacd27dee81b1baebc7291cd599c0",
+      "notion_path": "Product Docs / Boring-technical-stuff / Frontend / Data-patterns / Use-query-sync / useQSync — Implementation TODO & Running Log",
+      "block_count": 127
+    },
+    {
+      "local_path": "boring-technical-stuff/frontend/data-patterns/use-query-sync/plan.md",
+      "notion_id": "352bacd2-7dee-8143-9609-d0ffa73d671d",
+      "notion_url": "https://www.notion.so/352bacd27dee81439609d0ffa73d671d",
+      "notion_path": "Product Docs / Boring-technical-stuff / Frontend / Data-patterns / Use-query-sync / `useQSync` — Plan",
+      "block_count": 562
+    },
+    {
+      "local_path": "boring-technical-stuff/frontend/data-patterns/_index.md",
+      "notion_id": "352bacd2-7dee-81e9-ac05-cb21b95d70c5",
+      "notion_url": "https://www.notion.so/352bacd27dee81e9ac05cb21b95d70c5",
+      "notion_path": "Product Docs / Boring-technical-stuff / Frontend / Data-patterns",
+      "block_count": 16
+    },
+    {
+      "local_path": "boring-technical-stuff/frontend/services/cron-tick/render-setup.md",
+      "notion_id": "352bacd2-7dee-81a3-b515-e0229f60a58f",
+      "notion_url": "https://www.notion.so/352bacd27dee81a3b515e0229f60a58f",
+      "notion_path": "Product Docs / Boring-technical-stuff / Frontend / Services / Cron-tick / Cron Tick — Render Setup",
+      "block_count": 82
+    },
+    {
+      "local_path": "boring-technical-stuff/frontend/services/cron-tick/v1-implementation.md",
+      "notion_id": "352bacd2-7dee-816c-ae80-eab089fc7ca0",
+      "notion_url": "https://www.notion.so/352bacd27dee816cae80eab089fc7ca0",
+      "notion_path": "Product Docs / Boring-technical-stuff / Frontend / Services / Cron-tick / Cron Tick — V1 Implementation Plan",
+      "block_count": 243
+    },
+    {
+      "local_path": "boring-technical-stuff/frontend/services/cron-tick/index.md",
+      "notion_id": "352bacd2-7dee-81a9-8a3c-d6900d3b5aef",
+      "notion_url": "https://www.notion.so/352bacd27dee81a98a3cd6900d3b5aef",
+      "notion_path": "Product Docs / Boring-technical-stuff / Frontend / Services / Cron-tick / BTS/Frontend — Services / Cron Tick",
+      "block_count": 37
+    },
+    {
+      "local_path": "boring-technical-stuff/frontend/services/cron-tick/v1-plan.md",
+      "notion_id": "352bacd2-7dee-8172-adc7-c45342dea1c7",
+      "notion_url": "https://www.notion.so/352bacd27dee8172adc7c45342dea1c7",
+      "notion_path": "Product Docs / Boring-technical-stuff / Frontend / Services / Cron-tick / Cron Tick — V1 Plan",
+      "block_count": 159
+    },
+    {
+      "local_path": "boring-technical-stuff/frontend/_index.md",
+      "notion_id": "352bacd2-7dee-8194-bea4-f49a33e63c0c",
+      "notion_url": "https://www.notion.so/352bacd27dee8194bea4f49a33e63c0c",
+      "notion_path": "Product Docs / Boring-technical-stuff / Frontend",
+      "block_count": 38
+    },
+    {
+      "local_path": "boring-technical-stuff/external-services.md",
+      "notion_id": "352bacd2-7dee-8114-843a-fdeb9a550b17",
+      "notion_url": "https://www.notion.so/352bacd27dee8114843afdeb9a550b17",
+      "notion_path": "Product Docs / Boring-technical-stuff / External Services — Integration Index",
+      "block_count": 31
+    },
+    {
+      "local_path": "boring-technical-stuff/env-setup.md",
+      "notion_id": "352bacd2-7dee-81ff-b189-cad9e6dc3093",
+      "notion_url": "https://www.notion.so/352bacd27dee81ffb189cad9e6dc3093",
+      "notion_path": "Product Docs / Boring-technical-stuff / Env Setup — One-Stop Reference",
+      "block_count": 39
+    },
+    {
+      "local_path": "boring-technical-stuff/backend/db-models.md",
+      "notion_id": "352bacd2-7dee-81ba-beba-cde8fa61bf75",
+      "notion_url": "https://www.notion.so/352bacd27dee81babebacde8fa61bf75",
+      "notion_path": "Product Docs / Boring-technical-stuff / Backend / DB Models — Central Index",
+      "block_count": 43
+    },
+    {
+      "local_path": "boring-technical-stuff/backend/cron-jobs.md",
+      "notion_id": "352bacd2-7dee-81b7-826c-c727e700be0d",
+      "notion_url": "https://www.notion.so/352bacd27dee81b7826cc727e700be0d",
+      "notion_path": "Product Docs / Boring-technical-stuff / Backend / Cron Jobs — Catalogue",
+      "block_count": 24
+    },
+    {
+      "local_path": "boring-technical-stuff/backend/ai-agents/image-gen-and-color-remap.md",
+      "notion_id": "352bacd2-7dee-817d-8da7-d42d4d9ab7d4",
+      "notion_url": "https://www.notion.so/352bacd27dee817d8da7d42d4d9ab7d4",
+      "notion_path": "Product Docs / Boring-technical-stuff / Backend / Ai-agents / BTS/Backend — AI Agents / Image-Gen + Color-Remap",
+      "block_count": 52
+    },
+    {
+      "local_path": "boring-technical-stuff/backend/ai-agents/enhancement-agent-v2.md",
+      "notion_id": "352bacd2-7dee-814d-b21e-cb9a3b77e25d",
+      "notion_url": "https://www.notion.so/352bacd27dee814db21ecb9a3b77e25d",
+      "notion_path": "Product Docs / Boring-technical-stuff / Backend / Ai-agents / BTS/Backend — AI Agents / EnhancementAgentV2",
+      "block_count": 92
+    },
+    {
+      "local_path": "boring-technical-stuff/backend/ai-agents/improvements/enhancement-agent-v3/v2-qa-report.md",
+      "notion_id": "352bacd2-7dee-81cc-be00-ca54f25fb33d",
+      "notion_url": "https://www.notion.so/352bacd27dee81ccbe00ca54f25fb33d",
+      "notion_path": "Product Docs / Boring-technical-stuff / Backend / Ai-agents / Improvements / Enhancement-agent-v3 / Enhancement Agent V2 — reference Q&A Report",
+      "block_count": 92
+    },
+    {
+      "local_path": "boring-technical-stuff/backend/ai-agents/improvements/enhancement-agent-v3/ab-dashboard.md",
+      "notion_id": "352bacd2-7dee-8143-b123-d4f462f5a172",
+      "notion_url": "https://www.notion.so/352bacd27dee8143b123d4f462f5a172",
+      "notion_path": "Product Docs / Boring-technical-stuff / Backend / Ai-agents / Improvements / Enhancement-agent-v3 / Enhancement Agent — A/B Testing Dashboard",
+      "block_count": 93
+    },
+    {
+      "local_path": "boring-technical-stuff/backend/ai-agents/improvements/enhancement-agent-v3/v2-qa-appendix.md",
+      "notion_id": "352bacd2-7dee-818b-9d9b-fdef7e041e60",
+      "notion_url": "https://www.notion.so/352bacd27dee818b9d9bfdef7e041e60",
+      "notion_path": "Product Docs / Boring-technical-stuff / Backend / Ai-agents / Improvements / Enhancement-agent-v3 / Enhancement Agent V2 — QA Appendix: Feedback and Improvement Audit",
+      "block_count": 136
+    },
+    {
+      "local_path": "boring-technical-stuff/backend/ai-agents/improvements/enhancement-agent-v3/_index.md",
+      "notion_id": "352bacd2-7dee-811e-a42a-cd36e481ae39",
+      "notion_url": "https://www.notion.so/352bacd27dee811ea42acd36e481ae39",
+      "notion_path": "Product Docs / Boring-technical-stuff / Backend / Ai-agents / Improvements / Enhancement-agent-v3",
+      "block_count": 157
+    },
+    {
+      "local_path": "boring-technical-stuff/backend/ai-agents/image.md",
+      "notion_id": "352bacd2-7dee-81cb-81a7-cff5527ddcea",
+      "notion_url": "https://www.notion.so/352bacd27dee81cb81a7cff5527ddcea",
+      "notion_path": "Product Docs / Boring-technical-stuff / Backend / Ai-agents / Agents — Image Generation and Recolor",
+      "block_count": 45
+    },
+    {
+      "local_path": "boring-technical-stuff/backend/ai-agents/price-lookup.md",
+      "notion_id": "352bacd2-7dee-8104-a6e7-ef106c1fb8fa",
+      "notion_url": "https://www.notion.so/352bacd27dee8104a6e7ef106c1fb8fa",
+      "notion_path": "Product Docs / Boring-technical-stuff / Backend / Ai-agents / BTS/Backend — AI Agents / PriceLookupAgent",
+      "block_count": 66
+    },
+    {
+      "local_path": "boring-technical-stuff/backend/ai-agents/tp-interchange.md",
+      "notion_id": "352bacd2-7dee-817b-a60e-d08f47a7b654",
+      "notion_url": "https://www.notion.so/352bacd27dee817ba60ed08f47a7b654",
+      "notion_path": "Product Docs / Boring-technical-stuff / Backend / Ai-agents / BTS/Backend — AI Agents / TPInterchangeAgent + InterchangeValidatorAgent",
+      "block_count": 89
+    },
+    {
+      "local_path": "boring-technical-stuff/backend/ai-agents/fitment-extractor.md",
+      "notion_id": "352bacd2-7dee-8185-905c-d8af49cb9774",
+      "notion_url": "https://www.notion.so/352bacd27dee8185905cd8af49cb9774",
+      "notion_path": "Product Docs / Boring-technical-stuff / Backend / Ai-agents / BTS/Backend — AI Agents / FitmentExtractorAgent",
+      "block_count": 74
+    },
+    {
+      "local_path": "boring-technical-stuff/backend/ai-agents/part-type-matcher.md",
+      "notion_id": "352bacd2-7dee-8156-8077-c1fdfed1faae",
+      "notion_url": "https://www.notion.so/352bacd27dee81568077c1fdfed1faae",
+      "notion_path": "Product Docs / Boring-technical-stuff / Backend / Ai-agents / BTS/Backend — AI Agents / PartTypeMatcherAgent",
+      "block_count": 73
+    },
+    {
+      "local_path": "boring-technical-stuff/backend/ai-agents/scraper-llm-extraction.md",
+      "notion_id": "352bacd2-7dee-8101-8247-fdd60964965d",
+      "notion_url": "https://www.notion.so/352bacd27dee81018247fdd60964965d",
+      "notion_path": "Product Docs / Boring-technical-stuff / Backend / Ai-agents / BTS/Backend — AI Agents / Scraper LLM Extraction",
+      "block_count": 87
+    },
+    {
+      "local_path": "boring-technical-stuff/backend/ai-agents/vcdb-matcher.md",
+      "notion_id": "352bacd2-7dee-8172-986c-f4c6326dcce1",
+      "notion_url": "https://www.notion.so/352bacd27dee8172986cf4c6326dcce1",
+      "notion_path": "Product Docs / Boring-technical-stuff / Backend / Ai-agents / BTS/Backend — AI Agents / VCDB Matcher",
+      "block_count": 72
+    },
+    {
+      "local_path": "boring-technical-stuff/backend/ai-agents/_index.md",
+      "notion_id": "352bacd2-7dee-8150-b09b-fc82501640fa",
+      "notion_url": "https://www.notion.so/352bacd27dee8150b09bfc82501640fa",
+      "notion_path": "Product Docs / Boring-technical-stuff / Backend / Ai-agents",
+      "block_count": 30
+    },
+    {
+      "local_path": "boring-technical-stuff/backend/pipelines/enhancement-agent-v2.md",
+      "notion_id": "352bacd2-7dee-811b-a04d-c8815ed4ac2e",
+      "notion_url": "https://www.notion.so/352bacd27dee811ba04dc8815ed4ac2e",
+      "notion_path": "Product Docs / Boring-technical-stuff / Backend / Pipelines / BTS/Backend — Pipelines / `enhancement_search_agent_v2`",
+      "block_count": 80
+    },
+    {
+      "local_path": "boring-technical-stuff/backend/pipelines/llm2.md",
+      "notion_id": "352bacd2-7dee-81a8-a664-e1d8751f60ec",
+      "notion_url": "https://www.notion.so/352bacd27dee81a8a664e1d8751f60ec",
+      "notion_path": "Product Docs / Boring-technical-stuff / Backend / Pipelines / BTS/Backend — Pipelines / `llm2_provider` + post-processors",
+      "block_count": 70
+    },
+    {
+      "local_path": "boring-technical-stuff/backend/pipelines/image-gen.md",
+      "notion_id": "352bacd2-7dee-8157-87d6-c463bc29a53d",
+      "notion_url": "https://www.notion.so/352bacd27dee815787d6c463bc29a53d",
+      "notion_path": "Product Docs / Boring-technical-stuff / Backend / Pipelines / BTS/Backend — Pipelines / `image_generation`",
+      "block_count": 49
+    },
+    {
+      "local_path": "boring-technical-stuff/backend/pipelines/color-remap.md",
+      "notion_id": "352bacd2-7dee-811f-9724-c4ae71526c31",
+      "notion_url": "https://www.notion.so/352bacd27dee811f9724c4ae71526c31",
+      "notion_path": "Product Docs / Boring-technical-stuff / Backend / Pipelines / BTS/Backend — Pipelines / `color_remap`",
+      "block_count": 51
+    },
+    {
+      "local_path": "boring-technical-stuff/backend/pipelines/scraper-llm-smart-extract.md",
+      "notion_id": "352bacd2-7dee-81cf-ba09-ded3d5b556bb",
+      "notion_url": "https://www.notion.so/352bacd27dee81cfba09ded3d5b556bb",
+      "notion_path": "Product Docs / Boring-technical-stuff / Backend / Pipelines / BTS/Backend — Pipelines / `llm_smart_extract`",
+      "block_count": 88
+    },
+    {
+      "local_path": "boring-technical-stuff/backend/pipelines/validation-agent.md",
+      "notion_id": "352bacd2-7dee-81b5-8a1c-f634ecb1ba8d",
+      "notion_url": "https://www.notion.so/352bacd27dee81b58a1cf634ecb1ba8d",
+      "notion_path": "Product Docs / Boring-technical-stuff / Backend / Pipelines / BTS/Backend — Pipelines / `validation_agent`",
+      "block_count": 61
+    },
+    {
+      "local_path": "boring-technical-stuff/backend/pipelines/data-methods.md",
+      "notion_id": "352bacd2-7dee-810c-a03c-d8cb2434712b",
+      "notion_url": "https://www.notion.so/352bacd27dee810ca03cd8cb2434712b",
+      "notion_path": "Product Docs / Boring-technical-stuff / Backend / Pipelines / BTS/Backend — Pipelines / Data primitives",
+      "block_count": 61
+    },
+    {
+      "local_path": "boring-technical-stuff/backend/pipelines/vcdb-matcher.md",
+      "notion_id": "352bacd2-7dee-8111-81da-eb351f794aa8",
+      "notion_url": "https://www.notion.so/352bacd27dee811181daeb351f794aa8",
+      "notion_path": "Product Docs / Boring-technical-stuff / Backend / Pipelines / BTS/Backend — Pipelines / `vcdb_matcher`",
+      "block_count": 52
+    },
+    {
+      "local_path": "boring-technical-stuff/backend/pipelines/context-store.md",
+      "notion_id": "352bacd2-7dee-8195-abcb-e1f2340392a4",
+      "notion_url": "https://www.notion.so/352bacd27dee8195abcbe1f2340392a4",
+      "notion_path": "Product Docs / Boring-technical-stuff / Backend / Pipelines / BTS/Backend — Pipelines / `context_get` + `context_set`",
+      "block_count": 54
+    },
+    {
+      "local_path": "boring-technical-stuff/backend/pipelines/pipeline-step-runner.md",
+      "notion_id": "352bacd2-7dee-8162-a1b7-c248ddc919a1",
+      "notion_url": "https://www.notion.so/352bacd27dee8162a1b7c248ddc919a1",
+      "notion_path": "Product Docs / Boring-technical-stuff / Backend / Pipelines / BTS/Backend — Pipelines / `pipeline_runner`",
+      "block_count": 45
+    },
+    {
+      "local_path": "boring-technical-stuff/backend/pipelines/_index.md",
+      "notion_id": "352bacd2-7dee-81f0-9124-c8cf88d9875b",
+      "notion_url": "https://www.notion.so/352bacd27dee81f09124c8cf88d9875b",
+      "notion_path": "Product Docs / Boring-technical-stuff / Backend / Pipelines",
+      "block_count": 60
+    },
+    {
+      "local_path": "boring-technical-stuff/backend/data-patterns/config-and-boot.md",
+      "notion_id": "352bacd2-7dee-8116-bd23-f895dcfd634c",
+      "notion_url": "https://www.notion.so/352bacd27dee8116bd23f895dcfd634c",
+      "notion_path": "Product Docs / Boring-technical-stuff / Backend / Data-patterns / BTS/Backend — Data Patterns / Config & Boot",
+      "block_count": 77
+    },
+    {
+      "local_path": "boring-technical-stuff/backend/data-patterns/meta-utils.md",
+      "notion_id": "352bacd2-7dee-81f6-ad8d-d5587452e82c",
+      "notion_url": "https://www.notion.so/352bacd27dee81f6ad8dd5587452e82c",
+      "notion_path": "Product Docs / Boring-technical-stuff / Backend / Data-patterns / BTS/Backend — Data Patterns / Meta-Utils",
+      "block_count": 71
+    },
+    {
+      "local_path": "boring-technical-stuff/backend/data-patterns/job-output-flow.md",
+      "notion_id": "352bacd2-7dee-8120-ab13-de399220f8a2",
+      "notion_url": "https://www.notion.so/352bacd27dee8120ab13de399220f8a2",
+      "notion_path": "Product Docs / Boring-technical-stuff / Backend / Data-patterns / BTS/Backend — Data Patterns / Job Output Flow",
+      "block_count": 64
+    },
+    {
+      "local_path": "boring-technical-stuff/backend/data-patterns/cache-backends.md",
+      "notion_id": "352bacd2-7dee-818e-8484-fd767607f8f9",
+      "notion_url": "https://www.notion.so/352bacd27dee818e8484fd767607f8f9",
+      "notion_path": "Product Docs / Boring-technical-stuff / Backend / Data-patterns / BTS/Backend — Data Patterns / Cache Backends",
+      "block_count": 76
+    },
+    {
+      "local_path": "boring-technical-stuff/backend/data-patterns/redis-surface.md",
+      "notion_id": "352bacd2-7dee-811c-89ab-feef220fe950",
+      "notion_url": "https://www.notion.so/352bacd27dee811c89abfeef220fe950",
+      "notion_path": "Product Docs / Boring-technical-stuff / Backend / Data-patterns / BTS/Backend — Data Patterns / Redis Surface",
+      "block_count": 65
+    },
+    {
+      "local_path": "boring-technical-stuff/backend/data-patterns/mongo-sync-vs-async.md",
+      "notion_id": "352bacd2-7dee-81a5-b0a6-edc8f6e07555",
+      "notion_url": "https://www.notion.so/352bacd27dee81a5b0a6edc8f6e07555",
+      "notion_path": "Product Docs / Boring-technical-stuff / Backend / Data-patterns / BTS/Backend — Data Patterns / Mongo sync vs async",
+      "block_count": 60
+    },
+    {
+      "local_path": "boring-technical-stuff/backend/data-patterns/pipeline-seeding.md",
+      "notion_id": "352bacd2-7dee-81e9-9b20-f5bd9d15e052",
+      "notion_url": "https://www.notion.so/352bacd27dee81e99b20f5bd9d15e052",
+      "notion_path": "Product Docs / Boring-technical-stuff / Backend / Data-patterns / BTS/Backend — Data Patterns / Pipeline Seeding",
+      "block_count": 54
+    },
+    {
+      "local_path": "boring-technical-stuff/backend/data-patterns/_index.md",
+      "notion_id": "352bacd2-7dee-815b-94e5-cdc679000721",
+      "notion_url": "https://www.notion.so/352bacd27dee815b94e5cdc679000721",
+      "notion_path": "Product Docs / Boring-technical-stuff / Backend / Data-patterns",
+      "block_count": 69
+    },
+    {
+      "local_path": "boring-technical-stuff/backend/api/notifications.md",
+      "notion_id": "352bacd2-7dee-8193-a7a1-f3ba697061ba",
+      "notion_url": "https://www.notion.so/352bacd27dee8193a7a1f3ba697061ba",
+      "notion_path": "Product Docs / Boring-technical-stuff / Backend / Api / BTS/Backend — API / Notifications",
+      "block_count": 39
+    },
+    {
+      "local_path": "boring-technical-stuff/backend/api/image-enhancement.md",
+      "notion_id": "352bacd2-7dee-81c4-8183-cf02175c19ed",
+      "notion_url": "https://www.notion.so/352bacd27dee81c48183cf02175c19ed",
+      "notion_path": "Product Docs / Boring-technical-stuff / Backend / Api / BTS/Backend — API / Image Enhancement",
+      "block_count": 45
+    },
+    {
+      "local_path": "boring-technical-stuff/backend/api/jobs.md",
+      "notion_id": "352bacd2-7dee-816b-8c4b-e1568fcf0386",
+      "notion_url": "https://www.notion.so/352bacd27dee816b8c4be1568fcf0386",
+      "notion_path": "Product Docs / Boring-technical-stuff / Backend / Api / BTS/Backend — API / Jobs + Runs",
+      "block_count": 68
+    },
+    {
+      "local_path": "boring-technical-stuff/backend/api/workers-and-info.md",
+      "notion_id": "352bacd2-7dee-8176-9bf5-e64e772a937c",
+      "notion_url": "https://www.notion.so/352bacd27dee81769bf5e64e772a937c",
+      "notion_path": "Product Docs / Boring-technical-stuff / Backend / Api / BTS/Backend — API / Workers + Info",
+      "block_count": 31
+    },
+    {
+      "local_path": "boring-technical-stuff/backend/api/pipelines.md",
+      "notion_id": "352bacd2-7dee-8184-8aa1-f411c4f0c58c",
+      "notion_url": "https://www.notion.so/352bacd27dee81848aa1f411c4f0c58c",
+      "notion_path": "Product Docs / Boring-technical-stuff / Backend / Api / BTS/Backend — API / Pipelines",
+      "block_count": 36
+    },
+    {
+      "local_path": "boring-technical-stuff/backend/api/job-config.md",
+      "notion_id": "352bacd2-7dee-81e9-8d91-ecaee33f0fcf",
+      "notion_url": "https://www.notion.so/352bacd27dee81e98d91ecaee33f0fcf",
+      "notion_path": "Product Docs / Boring-technical-stuff / Backend / Api / BTS/Backend — API / Job Configs",
+      "block_count": 38
+    },
+    {
+      "local_path": "boring-technical-stuff/backend/api/admin-and-internal.md",
+      "notion_id": "352bacd2-7dee-816b-b992-e25a5e74c69e",
+      "notion_url": "https://www.notion.so/352bacd27dee816bb992e25a5e74c69e",
+      "notion_path": "Product Docs / Boring-technical-stuff / Backend / Api / BTS/Backend — API / Admin & Internal Routes",
+      "block_count": 52
+    },
+    {
+      "local_path": "boring-technical-stuff/backend/api/tasks.md",
+      "notion_id": "352bacd2-7dee-815f-b753-d33a7b25fbf5",
+      "notion_url": "https://www.notion.so/352bacd27dee815fb753d33a7b25fbf5",
+      "notion_path": "Product Docs / Boring-technical-stuff / Backend / Api / BTS/Backend — API / Tasks",
+      "block_count": 31
+    },
+    {
+      "local_path": "boring-technical-stuff/backend/api/internal-dashboard.md",
+      "notion_id": "352bacd2-7dee-81f2-876b-cb3a9e6236bf",
+      "notion_url": "https://www.notion.so/352bacd27dee81f2876bcb3a9e6236bf",
+      "notion_path": "Product Docs / Boring-technical-stuff / Backend / Api / BTS/Backend — API / Internal Dashboard",
+      "block_count": 69
+    },
+    {
+      "local_path": "boring-technical-stuff/backend/api/auth.md",
+      "notion_id": "352bacd2-7dee-8139-8d12-f90a4924fe54",
+      "notion_url": "https://www.notion.so/352bacd27dee81398d12f90a4924fe54",
+      "notion_path": "Product Docs / Boring-technical-stuff / Backend / Api / BTS/Backend — API / Auth",
+      "block_count": 54
+    },
+    {
+      "local_path": "boring-technical-stuff/backend/api/scraper.md",
+      "notion_id": "352bacd2-7dee-8119-ae1e-f0d867d18f0e",
+      "notion_url": "https://www.notion.so/352bacd27dee8119ae1ef0d867d18f0e",
+      "notion_path": "Product Docs / Boring-technical-stuff / Backend / Api / BTS/Backend — API / Scraper",
+      "block_count": 68
+    },
+    {
+      "local_path": "boring-technical-stuff/backend/api/files.md",
+      "notion_id": "352bacd2-7dee-8180-a7e2-db715593bd6f",
+      "notion_url": "https://www.notion.so/352bacd27dee8180a7e2db715593bd6f",
+      "notion_path": "Product Docs / Boring-technical-stuff / Backend / Api / BTS/Backend — API / Files",
+      "block_count": 53
+    },
+    {
+      "local_path": "boring-technical-stuff/backend/api/metrics.md",
+      "notion_id": "352bacd2-7dee-819c-8a1b-c17088826ff7",
+      "notion_url": "https://www.notion.so/352bacd27dee819c8a1bc17088826ff7",
+      "notion_path": "Product Docs / Boring-technical-stuff / Backend / Api / BTS/Backend — API / Metrics",
+      "block_count": 43
+    },
+    {
+      "local_path": "boring-technical-stuff/backend/api/util.md",
+      "notion_id": "352bacd2-7dee-816e-8c50-d7d5e9238856",
+      "notion_url": "https://www.notion.so/352bacd27dee816e8c50d7d5e9238856",
+      "notion_path": "Product Docs / Boring-technical-stuff / Backend / Api / BTS/Backend — API / Util (root, health, dashboard, swagger, error handlers)",
+      "block_count": 60
+    },
+    {
+      "local_path": "boring-technical-stuff/backend/api/_index.md",
+      "notion_id": "352bacd2-7dee-81e5-be65-e544a398a4d7",
+      "notion_url": "https://www.notion.so/352bacd27dee81e5be65e544a398a4d7",
+      "notion_path": "Product Docs / Boring-technical-stuff / Backend / Api",
+      "block_count": 61
+    },
+    {
+      "local_path": "boring-technical-stuff/backend/api/agents-and-studio.md",
+      "notion_id": "352bacd2-7dee-81d8-870b-f702a08e067e",
+      "notion_url": "https://www.notion.so/352bacd27dee81d8870bf702a08e067e",
+      "notion_path": "Product Docs / Boring-technical-stuff / Backend / Api / BTS/Backend — API / Agents + Agent Studio",
+      "block_count": 37
+    },
+    {
+      "local_path": "boring-technical-stuff/backend/services/credit-worker.md",
+      "notion_id": "352bacd2-7dee-8152-8a3e-e2c08c5f9114",
+      "notion_url": "https://www.notion.so/352bacd27dee81528a3ee2c08c5f9114",
+      "notion_path": "Product Docs / Boring-technical-stuff / Backend / Services / BTS/Backend — Services / Credit Worker",
+      "block_count": 57
+    },
+    {
+      "local_path": "boring-technical-stuff/backend/services/scraper-service.md",
+      "notion_id": "352bacd2-7dee-81b0-bbb6-ec19cf488006",
+      "notion_url": "https://www.notion.so/352bacd27dee81b0bbb6ec19cf488006",
+      "notion_path": "Product Docs / Boring-technical-stuff / Backend / Services / Scraper Service — Extraction Runtime",
+      "block_count": 22
+    },
+    {
+      "local_path": "boring-technical-stuff/backend/services/_index.md",
+      "notion_id": "352bacd2-7dee-81c1-ba94-e8c6f8d99043",
+      "notion_url": "https://www.notion.so/352bacd27dee81c1ba94e8c6f8d99043",
+      "notion_path": "Product Docs / Boring-technical-stuff / Backend / Services",
+      "block_count": 30
+    },
+    {
+      "local_path": "boring-technical-stuff/backend/_index.md",
+      "notion_id": "352bacd2-7dee-8106-bb09-dfca79fe3ebc",
+      "notion_url": "https://www.notion.so/352bacd27dee8106bb09dfca79fe3ebc",
+      "notion_path": "Product Docs / Boring-technical-stuff / Backend",
+      "block_count": 31
+    },
+    {
+      "local_path": "boring-technical-stuff/_index.md",
+      "notion_id": "352bacd2-7dee-81e2-8673-e9dc081b041f",
+      "notion_url": "https://www.notion.so/352bacd27dee81e28673e9dc081b041f",
+      "notion_path": "Product Docs / Boring-technical-stuff",
+      "block_count": 20
+    },
+    {
+      "local_path": "improvements/admin-panel/general-pending-improvements.md",
+      "notion_id": "351bacd2-7dee-817e-be72-ed6ce3d8f6fe",
+      "notion_url": "https://www.notion.so/351bacd27dee817ebe72ed6ce3d8f6fe",
+      "notion_path": "Product Docs / Improvements / Admin-panel / Admin Panel — General Pending Improvements",
+      "block_count": 27
+    },
+    {
+      "local_path": "improvements/admin-panel/custom-job-output-url-promotion.md",
+      "notion_id": "351bacd2-7dee-81f3-9722-de5fd8396f2a",
+      "notion_url": "https://www.notion.so/351bacd27dee81f39722de5fd8396f2a",
+      "notion_path": "Product Docs / Improvements / Admin-panel / Admin Panel — Custom Job Output URL Promotion",
+      "block_count": 21
+    },
+    {
+      "local_path": "improvements/admin-panel/_index.md",
+      "notion_id": "351bacd2-7dee-810c-8331-c94aa76dab77",
+      "notion_url": "https://www.notion.so/351bacd27dee810c8331c94aa76dab77",
+      "notion_path": "Product Docs / Improvements / Admin-panel",
+      "block_count": 15
+    },
+    {
+      "local_path": "improvements/job-output-cleanup.md",
+      "notion_id": "351bacd2-7dee-81b9-82d7-dff5e4562282",
+      "notion_url": "https://www.notion.so/351bacd27dee81b982d7dff5e4562282",
+      "notion_path": "Product Docs / Improvements / Job Output Pipeline — Cleanup & Restructure Plan",
+      "block_count": 248
+    },
+    {
+      "local_path": "improvements/deployment/frontend-redis-caching-rollout.md",
+      "notion_id": "351bacd2-7dee-8176-bd1f-e332050b5c09",
+      "notion_url": "https://www.notion.so/351bacd27dee8176bd1fe332050b5c09",
+      "notion_path": "Product Docs / Improvements / Deployment / Deployment — Frontend Redis Caching Rollout",
+      "block_count": 23
+    },
+    {
+      "local_path": "improvements/deployment/migration-render-or-cloudflare.md",
+      "notion_id": "351bacd2-7dee-8141-9eda-d1af88557e97",
+      "notion_url": "https://www.notion.so/351bacd27dee81419edad1af88557e97",
+      "notion_path": "Product Docs / Improvements / Deployment / Deployment — Migration off Vercel (Render / Cloudflare)",
+      "block_count": 24
+    },
+    {
+      "local_path": "improvements/deployment/_index.md",
+      "notion_id": "351bacd2-7dee-81e7-a9ba-c3ce5ea1fd9a",
+      "notion_url": "https://www.notion.so/351bacd27dee81e7a9bac3ce5ea1fd9a",
+      "notion_path": "Product Docs / Improvements / Deployment",
+      "block_count": 20
+    },
+    {
+      "local_path": "improvements/deployment/vercel-cold-start.md",
+      "notion_id": "351bacd2-7dee-816f-92c0-da9ac40a8637",
+      "notion_url": "https://www.notion.so/351bacd27dee816f92c0da9ac40a8637",
+      "notion_path": "Product Docs / Improvements / Deployment / Deployment — Vercel Cold-Start Latency",
+      "block_count": 26
+    },
+    {
+      "local_path": "improvements/credits/multi-entry-charge-support.md",
+      "notion_id": "351bacd2-7dee-81a9-bf0b-e4054a7a5356",
+      "notion_url": "https://www.notion.so/351bacd27dee81a9bf0be4054a7a5356",
+      "notion_path": "Product Docs / Improvements / Credits / Credits — Multi-Entry Charge Support",
+      "block_count": 19
+    },
+    {
+      "local_path": "improvements/credits/dlq-surface-and-observability.md",
+      "notion_id": "351bacd2-7dee-81aa-ad1b-fa9fba9b7641",
+      "notion_url": "https://www.notion.so/351bacd27dee81aaad1bfa9fba9b7641",
+      "notion_path": "Product Docs / Improvements / Credits / Credits — DLQ Surface & Dispatch Observability",
+      "block_count": 25
+    },
+    {
+      "local_path": "improvements/credits/refund-call-separation.md",
+      "notion_id": "351bacd2-7dee-819c-9563-e4e96cd3b748",
+      "notion_url": "https://www.notion.so/351bacd27dee819c9563e4e96cd3b748",
+      "notion_path": "Product Docs / Improvements / Credits / Credits — Separate Refund API From `deductCredits`",
+      "block_count": 19
+    },
+    {
+      "local_path": "improvements/credits/decoupled-tables-rules.md",
+      "notion_id": "351bacd2-7dee-8101-9f51-d964c15c3245",
+      "notion_url": "https://www.notion.so/351bacd27dee81019f51d964c15c3245",
+      "notion_path": "Product Docs / Improvements / Credits / Credits — Decoupled Tables: Rules & Guardrails",
+      "block_count": 24
+    },
+    {
+      "local_path": "improvements/credits/reference-id-auto-derivation.md",
+      "notion_id": "351bacd2-7dee-8173-8401-efb045a72b34",
+      "notion_url": "https://www.notion.so/351bacd27dee81738401efb045a72b34",
+      "notion_path": "Product Docs / Improvements / Credits / Credits — `referenceId` Auto-Derivation",
+      "block_count": 16
+    },
+    {
+      "local_path": "improvements/credits/refund-cycle-handling.md",
+      "notion_id": "351bacd2-7dee-8110-b7df-ccf135b684f8",
+      "notion_url": "https://www.notion.so/351bacd27dee8110b7dfccf135b684f8",
+      "notion_path": "Product Docs / Improvements / Credits / Credits — Refund Cycle Handling",
+      "block_count": 17
+    },
+    {
+      "local_path": "improvements/credits/domain-credit-cycleId.md",
+      "notion_id": "351bacd2-7dee-816a-972a-c311870e155b",
+      "notion_url": "https://www.notion.so/351bacd27dee816a972ac311870e155b",
+      "notion_path": "Product Docs / Improvements / Credits / Credits — Domain Credit Cycle-ID Tracking",
+      "block_count": 17
+    },
+    {
+      "local_path": "improvements/credits/worker-queue-cancellation.md",
+      "notion_id": "351bacd2-7dee-8170-9c69-ffcc6f2060f3",
+      "notion_url": "https://www.notion.so/351bacd27dee81709c69ffcc6f2060f3",
+      "notion_path": "Product Docs / Improvements / Credits / Credits — Worker Queue Cancellation",
+      "block_count": 23
+    },
+    {
+      "local_path": "improvements/credits/admin-ui-credit-management.md",
+      "notion_id": "351bacd2-7dee-81ad-93dc-d4935d74f708",
+      "notion_url": "https://www.notion.so/351bacd27dee81ad93dcd4935d74f708",
+      "notion_path": "Product Docs / Improvements / Credits / Credits — Admin UI for Credit Management",
+      "block_count": 21
+    },
+    {
+      "local_path": "improvements/credits/_index.md",
+      "notion_id": "351bacd2-7dee-810c-b7bd-e9c25b7c28ec",
+      "notion_url": "https://www.notion.so/351bacd27dee810cb7bde9c25b7c28ec",
+      "notion_path": "Product Docs / Improvements / Credits",
+      "block_count": 38
+    },
+    {
+      "local_path": "improvements/CLAUDE.md",
+      "notion_id": "351bacd2-7dee-8171-84a6-e355e798ec1c",
+      "notion_url": "https://www.notion.so/351bacd27dee817184a6e355e798ec1c",
+      "notion_path": "Product Docs / Improvements / docs/improvements/ — folder guide",
+      "block_count": 58
+    },
+    {
+      "local_path": "runbooks/customer-support.md",
+      "notion_id": "352bacd2-7dee-8146-8b84-da7e47b03fb2",
+      "notion_url": "https://www.notion.so/352bacd27dee81468b84da7e47b03fb2",
+      "notion_path": "Product Docs / Runbooks / Customer Support Runbook",
+      "block_count": 92
+    },
+    {
+      "local_path": "runbooks/scraper-slack-workflow.md",
+      "notion_id": "352bacd2-7dee-812b-a05e-cd447c7dee3e",
+      "notion_url": "https://www.notion.so/352bacd27dee812ba05ecd447c7dee3e",
+      "notion_path": "Product Docs / Runbooks / Scraper Slack Workflow Runbook",
+      "block_count": 79
+    },
+    {
+      "local_path": "runbooks/_index.md",
+      "notion_id": "352bacd2-7dee-8108-aabc-ef3b5999fcb3",
+      "notion_url": "https://www.notion.so/352bacd27dee8108aabcef3b5999fcb3",
+      "notion_path": "Product Docs / Runbooks",
+      "block_count": 16
+    },
+    {
+      "local_path": "workflows/schema-migration-walkthrough.md",
+      "notion_id": "352bacd2-7dee-813a-9c18-d7b08474e3e9",
+      "notion_url": "https://www.notion.so/352bacd27dee813a9c18d7b08474e3e9",
+      "notion_path": "Product Docs / Workflows / Schema Migration Walkthrough (Drizzle + Postgres)",
+      "block_count": 36
+    },
+    {
+      "local_path": "workflows/gh-pages-restructure-rca.md",
+      "notion_id": "352bacd2-7dee-8107-9a70-dd0233accbab",
+      "notion_url": "https://www.notion.so/352bacd27dee81079a70dd0233accbab",
+      "notion_path": "Product Docs / Workflows / RCA — gh-pages restructure (April 2026)",
+      "block_count": 150
+    },
+    {
+      "local_path": "workflows/pr-review-checklist.md",
+      "notion_id": "352bacd2-7dee-811d-89b6-cf6f6a0e0e6d",
+      "notion_url": "https://www.notion.so/352bacd27dee811d89b6cf6f6a0e0e6d",
+      "notion_path": "Product Docs / Workflows / PR Review Checklist",
+      "block_count": 31
+    },
+    {
+      "local_path": "workflows/gh-pages-setup.md",
+      "notion_id": "352bacd2-7dee-81c8-b92d-f100e18b0273",
+      "notion_url": "https://www.notion.so/352bacd27dee81c8b92df100e18b0273",
+      "notion_path": "Product Docs / Workflows / GitHub Pages Restructure — Manual Setup Steps",
+      "block_count": 47
+    },
+    {
+      "local_path": "workflows/scraper-request-triage.md",
+      "notion_id": "352bacd2-7dee-810d-b4a4-e717d2316904",
+      "notion_url": "https://www.notion.so/352bacd27dee810db4a4e717d2316904",
+      "notion_path": "Product Docs / Workflows / Scraper Request Triage",
+      "block_count": 33
+    },
+    {
+      "local_path": "workflows/_index.md",
+      "notion_id": "352bacd2-7dee-81da-8c47-f052226023a3",
+      "notion_url": "https://www.notion.so/352bacd27dee81da8c47f052226023a3",
+      "notion_path": "Product Docs / Workflows",
+      "block_count": 32
+    },
+    {
+      "local_path": "product/app/pipeline.md",
+      "notion_id": "352bacd2-7dee-816a-b5a6-e814ec9013c7",
+      "notion_url": "https://www.notion.so/352bacd27dee816ab5a6e814ec9013c7",
+      "notion_path": "Product Docs / Product / App / App — Pipeline",
+      "block_count": 42
+    },
+    {
+      "local_path": "product/app/payment.md",
+      "notion_id": "352bacd2-7dee-8150-9222-f0624c4337ce",
+      "notion_url": "https://www.notion.so/352bacd27dee81509222f0624c4337ce",
+      "notion_path": "Product Docs / Product / App / App — Payment",
+      "block_count": 47
+    },
+    {
+      "local_path": "product/app/job-config.md",
+      "notion_id": "352bacd2-7dee-8114-a7ea-e976a2db6c61",
+      "notion_url": "https://www.notion.so/352bacd27dee8114a7eae976a2db6c61",
+      "notion_path": "Product Docs / Product / App / App — Job Configuration",
+      "block_count": 43
+    },
+    {
+      "local_path": "product/app/auth-flow.md",
+      "notion_id": "352bacd2-7dee-8177-b0d1-d1294510321a",
+      "notion_url": "https://www.notion.so/352bacd27dee8177b0d1d1294510321a",
+      "notion_path": "Product Docs / Product / App / App — Auth Flow",
+      "block_count": 41
+    },
+    {
+      "local_path": "product/app/_index.md",
+      "notion_id": "352bacd2-7dee-8133-8aba-d9ea52d61ed6",
+      "notion_url": "https://www.notion.so/352bacd27dee81338abad9ea52d61ed6",
+      "notion_path": "Product Docs / Product / App",
+      "block_count": 36
+    },
+    {
+      "local_path": "product/other/ui-widgets-index.md",
+      "notion_id": "352bacd2-7dee-81a0-b16d-f0d8751aa1af",
+      "notion_url": "https://www.notion.so/352bacd27dee81a0b16df0d8751aa1af",
+      "notion_path": "Product Docs / Product / Other / Other — UI Widgets (product reference)",
+      "block_count": 34
+    },
+    {
+      "local_path": "product/other/notifications.md",
+      "notion_id": "352bacd2-7dee-81ba-8555-d22750683ee4",
+      "notion_url": "https://www.notion.so/352bacd27dee81ba8555d22750683ee4",
+      "notion_path": "Product Docs / Product / Other / Other — Notifications (cross-channel)",
+      "block_count": 51
+    },
+    {
+      "local_path": "product/other/team-user-provisioning.md",
+      "notion_id": "352bacd2-7dee-817e-8957-e52080d42849",
+      "notion_url": "https://www.notion.so/352bacd27dee817e8957e52080d42849",
+      "notion_path": "Product Docs / Product / Other / Other — Team / User Provisioning",
+      "block_count": 41
+    },
+    {
+      "local_path": "product/other/logging.md",
+      "notion_id": "352bacd2-7dee-81b4-b0f2-db6930449eec",
+      "notion_url": "https://www.notion.so/352bacd27dee81b4b0f2db6930449eec",
+      "notion_path": "Product Docs / Product / Other / Other — Logging (customer-visible surface)",
+      "block_count": 39
+    },
+    {
+      "local_path": "product/other/error-handling.md",
+      "notion_id": "352bacd2-7dee-812a-a6be-f421780e77a0",
+      "notion_url": "https://www.notion.so/352bacd27dee812aa6bef421780e77a0",
+      "notion_path": "Product Docs / Product / Other / Other — Error Handling (boundary + Sentry)",
+      "block_count": 40
+    },
+    {
+      "local_path": "product/other/_index.md",
+      "notion_id": "352bacd2-7dee-810e-902e-da3b0235897b",
+      "notion_url": "https://www.notion.so/352bacd27dee810e902eda3b0235897b",
+      "notion_path": "Product Docs / Product / Other",
+      "block_count": 36
+    },
+    {
+      "local_path": "product/admin/debug-tools.md",
+      "notion_id": "352bacd2-7dee-8121-8d76-dbd0b730b5f0",
+      "notion_url": "https://www.notion.so/352bacd27dee81218d76dbd0b730b5f0",
+      "notion_path": "Product Docs / Product / Admin / Admin — Debug Tools",
+      "block_count": 181
+    },
+    {
+      "local_path": "product/admin/file-archive.md",
+      "notion_id": "352bacd2-7dee-81ea-90bb-f64ffd912bb1",
+      "notion_url": "https://www.notion.so/352bacd27dee81ea90bbf64ffd912bb1",
+      "notion_path": "Product Docs / Product / Admin / Admin — File Archive",
+      "block_count": 134
+    },
+    {
+      "local_path": "product/admin/job-configs.md",
+      "notion_id": "352bacd2-7dee-81d2-b655-f2846d562bf0",
+      "notion_url": "https://www.notion.so/352bacd27dee81d2b655f2846d562bf0",
+      "notion_path": "Product Docs / Product / Admin / Admin — Job Configs",
+      "block_count": 163
+    },
+    {
+      "local_path": "product/admin/users-management.md",
+      "notion_id": "352bacd2-7dee-819f-9820-e4103bfba433",
+      "notion_url": "https://www.notion.so/352bacd27dee819f9820e4103bfba433",
+      "notion_path": "Product Docs / Product / Admin / Admin — Users Management",
+      "block_count": 166
+    },
+    {
+      "local_path": "product/admin/scraper-requests.md",
+      "notion_id": "352bacd2-7dee-8120-aefd-e6e4b57a2199",
+      "notion_url": "https://www.notion.so/352bacd27dee8120aefde6e4b57a2199",
+      "notion_path": "Product Docs / Product / Admin / Admin — Scraper Requests",
+      "block_count": 163
+    },
+    {
+      "local_path": "product/admin/payment-plans.md",
+      "notion_id": "352bacd2-7dee-817c-a0fa-e1f3965b0e11",
+      "notion_url": "https://www.notion.so/352bacd27dee817ca0fae1f3965b0e11",
+      "notion_path": "Product Docs / Product / Admin / Admin — Payment Plans",
+      "block_count": 156
+    },
+    {
+      "local_path": "product/admin/parts-list.md",
+      "notion_id": "352bacd2-7dee-816c-9dc2-fc628bfc611e",
+      "notion_url": "https://www.notion.so/352bacd27dee816c9dc2fc628bfc611e",
+      "notion_path": "Product Docs / Product / Admin / Admin Parts List Tab — Final Documentation",
+      "block_count": 245
+    },
+    {
+      "local_path": "product/admin/teams-overview.md",
+      "notion_id": "352bacd2-7dee-81c3-8b73-d43b5bc88bef",
+      "notion_url": "https://www.notion.so/352bacd27dee81c38b73d43b5bc88bef",
+      "notion_path": "Product Docs / Product / Admin / Admin — Teams Overview",
+      "block_count": 161
+    },
+    {
+      "local_path": "product/admin/scraper-success.md",
+      "notion_id": "352bacd2-7dee-81c6-bd1f-d20bcb9cc3c1",
+      "notion_url": "https://www.notion.so/352bacd27dee81c6bd1fd20bcb9cc3c1",
+      "notion_path": "Product Docs / Product / Admin / Scraper Success Modal — Final Documentation",
+      "block_count": 274
+    },
+    {
+      "local_path": "product/admin/_index.md",
+      "notion_id": "352bacd2-7dee-8145-8ec1-c17ef1439e1a",
+      "notion_url": "https://www.notion.so/352bacd27dee81458ec1c17ef1439e1a",
+      "notion_path": "Product Docs / Product / Admin",
+      "block_count": 29
+    },
+    {
+      "local_path": "product/modals/preview-file-output.md",
+      "notion_id": "352bacd2-7dee-815d-8e9f-f6ca67505e1d",
+      "notion_url": "https://www.notion.so/352bacd27dee815d8e9ff6ca67505e1d",
+      "notion_path": "Product Docs / Product / Modals / Modal — Preview Input File",
+      "block_count": 29
+    },
+    {
+      "local_path": "product/modals/preview-job-output.md",
+      "notion_id": "352bacd2-7dee-81db-ba26-c266ba0f0928",
+      "notion_url": "https://www.notion.so/352bacd27dee81dbba26c266ba0f0928",
+      "notion_path": "Product Docs / Product / Modals / Modal — Preview Job Output",
+      "block_count": 29
+    },
+    {
+      "local_path": "product/modals/view-job-data.md",
+      "notion_id": "352bacd2-7dee-81a9-833b-e0a45c657d9c",
+      "notion_url": "https://www.notion.so/352bacd27dee81a9833be0a45c657d9c",
+      "notion_path": "Product Docs / Product / Modals / Modal — View Job Data (raw JSON inspector)",
+      "block_count": 29
+    },
+    {
+      "local_path": "product/modals/confirm.md",
+      "notion_id": "352bacd2-7dee-8153-a9fb-e8099c19a9aa",
+      "notion_url": "https://www.notion.so/352bacd27dee8153a9fbe8099c19a9aa",
+      "notion_path": "Product Docs / Product / Modals / Modal — Confirm (generic)",
+      "block_count": 30
+    },
+    {
+      "local_path": "product/modals/edit-job-metadata.md",
+      "notion_id": "352bacd2-7dee-81d2-8110-cbfcb4017634",
+      "notion_url": "https://www.notion.so/352bacd27dee81d28110cbfcb4017634",
+      "notion_path": "Product Docs / Product / Modals / Modal — Edit Job Metadata",
+      "block_count": 33
+    },
+    {
+      "local_path": "product/modals/_index.md",
+      "notion_id": "352bacd2-7dee-8150-aa7f-c599cfa24854",
+      "notion_url": "https://www.notion.so/352bacd27dee8150aa7fc599cfa24854",
+      "notion_path": "Product Docs / Product / Modals",
+      "block_count": 19
+    },
+    {
+      "local_path": "product/user/files-browser.md",
+      "notion_id": "352bacd2-7dee-8129-a9c7-dcbdba3dc538",
+      "notion_url": "https://www.notion.so/352bacd27dee8129a9c7dcbdba3dc538",
+      "notion_path": "Product Docs / Product / User / User — Files Browser",
+      "block_count": 205
+    },
+    {
+      "local_path": "product/user/help-docs.md",
+      "notion_id": "352bacd2-7dee-81a1-b7d9-cc7a0a1d3c3e",
+      "notion_url": "https://www.notion.so/352bacd27dee81a1b7d9cc7a0a1d3c3e",
+      "notion_path": "Product Docs / Product / User / User — Help & Docs",
+      "block_count": 198
+    },
+    {
+      "local_path": "product/user/buy-credits.md",
+      "notion_id": "352bacd2-7dee-8104-a210-fd3d4d62b192",
+      "notion_url": "https://www.notion.so/352bacd27dee8104a210fd3d4d62b192",
+      "notion_path": "Product Docs / Product / User / User — Buy Credits",
+      "block_count": 257
+    },
+    {
+      "local_path": "product/user/signup-login.md",
+      "notion_id": "352bacd2-7dee-811c-998f-d8d9cff9d893",
+      "notion_url": "https://www.notion.so/352bacd27dee811c998fd8d9cff9d893",
+      "notion_path": "Product Docs / Product / User / User — Signup, Login, and Password Reset",
+      "block_count": 249
+    },
+    {
+      "local_path": "product/user/account-ui.md",
+      "notion_id": "352bacd2-7dee-8122-90a7-ef46299565c7",
+      "notion_url": "https://www.notion.so/352bacd27dee812290a7ef46299565c7",
+      "notion_path": "Product Docs / Product / User / User — Account Settings",
+      "block_count": 221
+    },
+    {
+      "local_path": "product/user/_index.md",
+      "notion_id": "352bacd2-7dee-817a-a96f-fafc2f8e49c0",
+      "notion_url": "https://www.notion.so/352bacd27dee817aa96ffafc2f8e49c0",
+      "notion_path": "Product Docs / Product / User",
+      "block_count": 19
+    },
+    {
+      "local_path": "product/user/job-templates-product.md",
+      "notion_id": "352bacd2-7dee-81e6-9e64-e112c8498cbc",
+      "notion_url": "https://www.notion.so/352bacd27dee81e69e64e112c8498cbc",
+      "notion_path": "Product Docs / Product / User / User — Templates",
+      "block_count": 374
+    },
+    {
+      "local_path": "product/README.md",
+      "notion_id": "352bacd2-7dee-81dc-a727-c419741213a3",
+      "notion_url": "https://www.notion.so/352bacd27dee81dca727c419741213a3",
+      "notion_path": "Product Docs / Product / Versable — Product Documentation",
+      "block_count": 73
+    },
+    {
+      "local_path": "product/system/storage.md",
+      "notion_id": "352bacd2-7dee-8109-b406-e7628a58913a",
+      "notion_url": "https://www.notion.so/352bacd27dee8109b406e7628a58913a",
+      "notion_path": "Product Docs / Product / System / System — Storage (product intro)",
+      "block_count": 43
+    },
+    {
+      "local_path": "product/system/user-org-access.md",
+      "notion_id": "352bacd2-7dee-8132-b736-d807fb42bf1d",
+      "notion_url": "https://www.notion.so/352bacd27dee8132b736d807fb42bf1d",
+      "notion_path": "Product Docs / Product / System / System — User / Org / Access Model",
+      "block_count": 218
+    },
+    {
+      "local_path": "product/system/ui-component-library.md",
+      "notion_id": "352bacd2-7dee-81eb-9b59-c3d4d3ceb2cd",
+      "notion_url": "https://www.notion.so/352bacd27dee81eb9b59c3d4d3ceb2cd",
+      "notion_path": "Product Docs / Product / System / ui-component-library",
+      "block_count": 158
+    },
+    {
+      "local_path": "product/system/job-config-flow.md",
+      "notion_id": "352bacd2-7dee-81d9-95bf-f258ec6a5ed1",
+      "notion_url": "https://www.notion.so/352bacd27dee81d995bff258ec6a5ed1",
+      "notion_path": "Product Docs / Product / System / System — Job Configuration Flow",
+      "block_count": 233
+    },
+    {
+      "local_path": "product/system/credits-architecture.md",
+      "notion_id": "352bacd2-7dee-814a-8d68-fa325897f294",
+      "notion_url": "https://www.notion.so/352bacd27dee814a8d68fa325897f294",
+      "notion_path": "Product Docs / Product / System / System — Credits Architecture",
+      "block_count": 191
+    },
+    {
+      "local_path": "product/system/stripe-payments.md",
+      "notion_id": "352bacd2-7dee-81f6-8231-e355ee433a40",
+      "notion_url": "https://www.notion.so/352bacd27dee81f68231e355ee433a40",
+      "notion_path": "Product Docs / Product / System / System — Stripe Payments",
+      "block_count": 260
+    },
+    {
+      "local_path": "product/system/data-fetching-storage.md",
+      "notion_id": "352bacd2-7dee-8192-969c-e7d8243b21bb",
+      "notion_url": "https://www.notion.so/352bacd27dee8192969ce7d8243b21bb",
+      "notion_path": "Product Docs / Product / System / System — Data Fetching + Client Storage",
+      "block_count": 201
+    },
+    {
+      "local_path": "product/system/auth-permissions.md",
+      "notion_id": "352bacd2-7dee-8123-baa4-da7c006aba8c",
+      "notion_url": "https://www.notion.so/352bacd27dee8123baa4da7c006aba8c",
+      "notion_path": "Product Docs / Product / System / System — Auth & Permissions",
+      "block_count": 206
+    },
+    {
+      "local_path": "product/system/notifications-email.md",
+      "notion_id": "352bacd2-7dee-81a0-bd62-d20dce117c3c",
+      "notion_url": "https://www.notion.so/352bacd27dee81a0bd62d20dce117c3c",
+      "notion_path": "Product Docs / Product / System / System — Notifications & Email",
+      "block_count": 203
+    },
+    {
+      "local_path": "product/system/centralized-logging-v1.md",
+      "notion_id": "352bacd2-7dee-81bb-8c43-e809b3358dd3",
+      "notion_url": "https://www.notion.so/352bacd27dee81bb8c43e809b3358dd3",
+      "notion_path": "Product Docs / Product / System / System — Centralized Logging V1",
+      "block_count": 87
+    },
+    {
+      "local_path": "product/system/architecture-overview.md",
+      "notion_id": "352bacd2-7dee-819a-a0de-cd13ed9dd35f",
+      "notion_url": "https://www.notion.so/352bacd27dee819aa0decd13ed9dd35f",
+      "notion_path": "Product Docs / Product / System / System — Architecture Overview",
+      "block_count": 149
+    },
+    {
+      "local_path": "product/system/deployment-services.md",
+      "notion_id": "352bacd2-7dee-8112-8015-de691a5a35d5",
+      "notion_url": "https://www.notion.so/352bacd27dee81128015de691a5a35d5",
+      "notion_path": "Product Docs / Product / System / System — Deployment & Services",
+      "block_count": 206
+    },
+    {
+      "local_path": "product/system/db-stack.md",
+      "notion_id": "352bacd2-7dee-81c1-a8ad-c630e497c5f3",
+      "notion_url": "https://www.notion.so/352bacd27dee81c1a8adc630e497c5f3",
+      "notion_path": "Product Docs / Product / System / System — Database Stack",
+      "block_count": 195
+    },
+    {
+      "local_path": "product/system/credits-ledger.md",
+      "notion_id": "352bacd2-7dee-81f4-aceb-e7a5382ff155",
+      "notion_url": "https://www.notion.so/352bacd27dee81f4acebe7a5382ff155",
+      "notion_path": "Product Docs / Product / System / System — Credits & Ledger",
+      "block_count": 179
+    },
+    {
+      "local_path": "product/system/_index.md",
+      "notion_id": "352bacd2-7dee-81f9-ac12-fc689daaadf6",
+      "notion_url": "https://www.notion.so/352bacd27dee81f9ac12fc689daaadf6",
+      "notion_path": "Product Docs / Product / System",
+      "block_count": 40
+    },
+    {
+      "local_path": "product/system/widgets-v2.md",
+      "notion_id": "352bacd2-7dee-81f0-a41a-fd7fa9889635",
+      "notion_url": "https://www.notion.so/352bacd27dee81f0a41afd7fa9889635",
+      "notion_path": "Product Docs / Product / System / System — Widget System v2",
+      "block_count": 152
+    },
+    {
+      "local_path": "product/jobs/create-other-modules.md",
+      "notion_id": "352bacd2-7dee-81c2-a622-cbd490a9bb6b",
+      "notion_url": "https://www.notion.so/352bacd27dee81c2a622cbd490a9bb6b",
+      "notion_path": "Product Docs / Product / Jobs / Jobs — Deprecated Modules (Interchange, Matcher, Attributes)",
+      "block_count": 84
+    },
+    {
+      "local_path": "product/jobs/overview.md",
+      "notion_id": "352bacd2-7dee-819e-a4dc-e1f6b5d7814f",
+      "notion_url": "https://www.notion.so/352bacd27dee819ea4dce1f6b5d7814f",
+      "notion_path": "Product Docs / Product / Jobs / Jobs — Overview",
+      "block_count": 129
+    },
+    {
+      "local_path": "product/jobs/create-enhancements.md",
+      "notion_id": "352bacd2-7dee-81d8-b764-e73eff2d9101",
+      "notion_url": "https://www.notion.so/352bacd27dee81d8b764e73eff2d9101",
+      "notion_path": "Product Docs / Product / Jobs / Jobs — Create Enhancement",
+      "block_count": 185
+    },
+    {
+      "local_path": "product/jobs/create-upload.md",
+      "notion_id": "352bacd2-7dee-811c-b5bf-c286ec05aab9",
+      "notion_url": "https://www.notion.so/352bacd27dee811cb5bfc286ec05aab9",
+      "notion_path": "Product Docs / Product / Jobs / Jobs — Create Upload",
+      "block_count": 288
+    },
+    {
+      "local_path": "product/jobs/data-history.md",
+      "notion_id": "352bacd2-7dee-8164-b8dc-c9b717d67678",
+      "notion_url": "https://www.notion.so/352bacd27dee8164b8dcc9b717d67678",
+      "notion_path": "Product Docs / Product / Jobs / Jobs dashboard — data-history",
+      "block_count": 146
+    },
+    {
+      "local_path": "product/jobs/create-scraper.md",
+      "notion_id": "352bacd2-7dee-81c4-b07f-ef8fc4b570ab",
+      "notion_url": "https://www.notion.so/352bacd27dee81c4b07fef8fc4b570ab",
+      "notion_path": "Product Docs / Product / Jobs / Jobs — Create Data Extraction",
+      "block_count": 182
+    },
+    {
+      "local_path": "product/jobs/create-image-gen.md",
+      "notion_id": "352bacd2-7dee-8193-bc65-f10731f513c6",
+      "notion_url": "https://www.notion.so/352bacd27dee8193bc65f10731f513c6",
+      "notion_path": "Product Docs / Product / Jobs / Jobs — Create Image Generation",
+      "block_count": 140
+    },
+    {
+      "local_path": "product/jobs/create-validation.md",
+      "notion_id": "352bacd2-7dee-8174-b1d7-e955f959d976",
+      "notion_url": "https://www.notion.so/352bacd27dee8174b1d7e955f959d976",
+      "notion_path": "Product Docs / Product / Jobs / Jobs — Create Validation",
+      "block_count": 71
+    },
+    {
+      "local_path": "product/jobs/_index.md",
+      "notion_id": "352bacd2-7dee-81a4-a53d-e063b3094432",
+      "notion_url": "https://www.notion.so/352bacd27dee81a4a53de063b3094432",
+      "notion_path": "Product Docs / Product / Jobs",
+      "block_count": 25
+    },
+    {
+      "local_path": "product/_index.md",
+      "notion_id": "352bacd2-7dee-81aa-a79e-c7b80ec8479c",
+      "notion_url": "https://www.notion.so/352bacd27dee81aaa79ec7b80ec8479c",
+      "notion_path": "Product Docs / Product",
+      "block_count": 16
+    },
+    {
+      "local_path": "decisions/ADR-004-tanstack-query-not-persisted.md",
+      "notion_id": "352bacd2-7dee-8188-be0e-cf720b1a3cce",
+      "notion_url": "https://www.notion.so/352bacd27dee8188be0ecf720b1a3cce",
+      "notion_path": "Product Docs / Decisions / ADR-004 — TanStack Query NOT persisted (in-memory cache only)",
+      "block_count": 27
+    },
+    {
+      "local_path": "decisions/ADR-006-component-level-suspense.md",
+      "notion_id": "352bacd2-7dee-81bf-b6e2-f09ecb0440b9",
+      "notion_url": "https://www.notion.so/352bacd27dee81bfb6e2f09ecb0440b9",
+      "notion_path": "Product Docs / Decisions / ADR-006 — Component-level Suspense (over Next.js route-level `loading.tsx`)",
+      "block_count": 24
+    },
+    {
+      "local_path": "decisions/ADR-003-force-dynamic-root-layout.md",
+      "notion_id": "352bacd2-7dee-8181-9d2e-f01271702b11",
+      "notion_url": "https://www.notion.so/352bacd27dee81819d2ef01271702b11",
+      "notion_path": "Product Docs / Decisions / ADR-003 — `force-dynamic` on root layout",
+      "block_count": 24
+    },
+    {
+      "local_path": "decisions/ADR-001-local-storage-provider.md",
+      "notion_id": "352bacd2-7dee-81c1-9c91-f7a63e8416b7",
+      "notion_url": "https://www.notion.so/352bacd27dee81c19c91f7a63e8416b7",
+      "notion_path": "Product Docs / Decisions / ADR-001 — Local-Storage Provider for S3-equivalent reads/writes in dev",
+      "block_count": 28
+    },
+    {
+      "local_path": "decisions/ADR-005-react-compiler-enabled.md",
+      "notion_id": "352bacd2-7dee-8115-805b-ed405857e0bd",
+      "notion_url": "https://www.notion.so/352bacd27dee8115805bed405857e0bd",
+      "notion_path": "Product Docs / Decisions / ADR-005 — React Compiler enabled (`babel-plugin-react-compiler`)",
+      "block_count": 24
+    },
+    {
+      "local_path": "decisions/ADR-002-decoupled-credit-tables.md",
+      "notion_id": "352bacd2-7dee-818c-ac19-f82f6b2735f4",
+      "notion_url": "https://www.notion.so/352bacd27dee818cac19f82f6b2735f4",
+      "notion_path": "Product Docs / Decisions / ADR-002 — Decoupled Credit Tables (3-store split)",
+      "block_count": 34
+    },
+    {
+      "local_path": "decisions/_index.md",
+      "notion_id": "352bacd2-7dee-81f5-8047-c8926f2dc783",
+      "notion_url": "https://www.notion.so/352bacd27dee81f58047c8926f2dc783",
+      "notion_path": "Product Docs / Decisions",
+      "block_count": 27
+    },
+    {
+      "local_path": "testing/e2e-implementation-detail.md",
+      "notion_id": "352bacd2-7dee-81ab-bed7-c116acd5afef",
+      "notion_url": "https://www.notion.so/352bacd27dee81abbed7c116acd5afef",
+      "notion_path": "Product Docs / Testing / E2E Test Suite — Detailed Implementation Plan",
+      "block_count": 241
+    },
+    {
+      "local_path": "testing/e2e-test-architecture.md",
+      "notion_id": "352bacd2-7dee-8157-b2e4-e71a21a3d6c4",
+      "notion_url": "https://www.notion.so/352bacd27dee8157b2e4e71a21a3d6c4",
+      "notion_path": "Product Docs / Testing / E2E Test Suite — Full Flow Architecture",
+      "block_count": 192
+    },
+    {
+      "local_path": "testing/e2e-test-improvement-plan.md",
+      "notion_id": "352bacd2-7dee-81d6-ab3d-d64d197c649c",
+      "notion_url": "https://www.notion.so/352bacd27dee81d6ab3dd64d197c649c",
+      "notion_path": "Product Docs / Testing / E2E Test Suite Improvement Plan",
+      "block_count": 160
+    },
+    {
+      "local_path": "testing/e2e-how-it-works.md",
+      "notion_id": "352bacd2-7dee-81fd-bf3a-d71a8997cb23",
+      "notion_url": "https://www.notion.so/352bacd27dee81fdbf3ad71a8997cb23",
+      "notion_path": "Product Docs / Testing / E2E — How It Works",
+      "block_count": 75
+    },
+    {
+      "local_path": "testing/e2e-get-started.md",
+      "notion_id": "352bacd2-7dee-81a6-9a09-ed8b68186080",
+      "notion_url": "https://www.notion.so/352bacd27dee81a69a09ed8b68186080",
+      "notion_path": "Product Docs / Testing / E2E — Get Started",
+      "block_count": 71
+    },
+    {
+      "local_path": "testing/_index.md",
+      "notion_id": "352bacd2-7dee-8178-85a3-fd86aff1d972",
+      "notion_url": "https://www.notion.so/352bacd27dee817885a3fd86aff1d972",
+      "notion_path": "Product Docs / Testing",
+      "block_count": 18
+    },
+    {
+      "local_path": "cross-repo/where-things-live.md",
+      "notion_id": "352bacd2-7dee-815c-9d22-fdad4feeebe1",
+      "notion_url": "https://www.notion.so/352bacd27dee815c9d22fdad4feeebe1",
+      "notion_path": "Product Docs / Cross-repo / Where Things Live — FE↔BE Routing Map",
+      "block_count": 19
+    },
+    {
+      "local_path": "cross-repo/contract.md",
+      "notion_id": "352bacd2-7dee-81a0-bffb-dad2b0b48f68",
+      "notion_url": "https://www.notion.so/352bacd27dee81a0bffbdad2b0b48f68",
+      "notion_path": "Product Docs / Cross-repo / API Contract — FE↔BE Source of Truth",
+      "block_count": 32
+    },
+    {
+      "local_path": "cross-repo/deploy.md",
+      "notion_id": "352bacd2-7dee-81ba-ab3d-ef611a3829b9",
+      "notion_url": "https://www.notion.so/352bacd27dee81baab3def611a3829b9",
+      "notion_path": "Product Docs / Cross-repo / Cross-Repo Deploy Ordering",
+      "block_count": 40
+    },
+    {
+      "local_path": "cross-repo/_index.md",
+      "notion_id": "352bacd2-7dee-81c4-b598-f1de37eaec86",
+      "notion_url": "https://www.notion.so/352bacd27dee81c4b598f1de37eaec86",
+      "notion_path": "Product Docs / Cross-repo",
+      "block_count": 25
+    },
+    {
+      "local_path": "conventions/legacy-peer-deps.md",
+      "notion_id": "352bacd2-7dee-813e-9344-ea0fdab4101a",
+      "notion_url": "https://www.notion.so/352bacd27dee813e9344ea0fdab4101a",
+      "notion_path": "Product Docs / Conventions / `legacy-peer-deps=true` for npm",
+      "block_count": 20
+    },
+    {
+      "local_path": "conventions/early-returns-over-top-level-ternaries.md",
+      "notion_id": "352bacd2-7dee-8159-81e2-f5580caec7f9",
+      "notion_url": "https://www.notion.so/352bacd27dee815981e2f5580caec7f9",
+      "notion_path": "Product Docs / Conventions / Early returns over top-level ternaries in components",
+      "block_count": 21
+    },
+    {
+      "local_path": "conventions/kebab-case-naming.md",
+      "notion_id": "352bacd2-7dee-81f2-a073-c8289f5793ee",
+      "notion_url": "https://www.notion.so/352bacd27dee81f2a073c8289f5793ee",
+      "notion_path": "Product Docs / Conventions / kebab-case for files and folders",
+      "block_count": 26
+    },
+    {
+      "local_path": "conventions/e2e-suite-versioning.md",
+      "notion_id": "352bacd2-7dee-8192-b3a8-fadf51e0b98c",
+      "notion_url": "https://www.notion.so/352bacd27dee8192b3a8fadf51e0b98c",
+      "notion_path": "Product Docs / Conventions / E2E test-suite version bumps",
+      "block_count": 22
+    },
+    {
+      "local_path": "conventions/react-compiler-no-manual-memo.md",
+      "notion_id": "352bacd2-7dee-81e6-8d6f-d30f5275b3a8",
+      "notion_url": "https://www.notion.so/352bacd27dee81e68d6fd30f5275b3a8",
+      "notion_path": "Product Docs / Conventions / Don't add manual `useMemo` / `useCallback` — React Compiler handles it",
+      "block_count": 24
+    },
+    {
+      "local_path": "conventions/loading-underscore-prefix.md",
+      "notion_id": "352bacd2-7dee-8128-934f-dd8d63127f3c",
+      "notion_url": "https://www.notion.so/352bacd27dee8128934fdd8d63127f3c",
+      "notion_path": "Product Docs / Conventions / Loading skeletons use `_loading.tsx` (underscore prefix)",
+      "block_count": 21
+    },
+    {
+      "local_path": "conventions/force-dynamic-on-root-layout.md",
+      "notion_id": "352bacd2-7dee-8129-8251-d7e482f907b3",
+      "notion_url": "https://www.notion.so/352bacd27dee81298251d7e482f907b3",
+      "notion_path": "Product Docs / Conventions / `force-dynamic` on root layout",
+      "block_count": 21
+    },
+    {
+      "local_path": "conventions/console-log-eslint.md",
+      "notion_id": "352bacd2-7dee-81a7-b6c7-f11f71d49e67",
+      "notion_url": "https://www.notion.so/352bacd27dee81a7b6c7f11f71d49e67",
+      "notion_path": "Product Docs / Conventions / Use `console.info` / `console.warn` / `console.error` — not `console.log`",
+      "block_count": 21
+    },
+    {
+      "local_path": "conventions/no-new-packages-without-checking.md",
+      "notion_id": "352bacd2-7dee-8174-8bc2-eab611cab37e",
+      "notion_url": "https://www.notion.so/352bacd27dee81748bc2eab611cab37e",
+      "notion_path": "Product Docs / Conventions / No new packages without checking existing dependencies",
+      "block_count": 22
+    },
+    {
+      "local_path": "conventions/comment-style.md",
+      "notion_id": "352bacd2-7dee-81c3-9343-f29e07310ce9",
+      "notion_url": "https://www.notion.so/352bacd27dee81c39343f29e07310ce9",
+      "notion_path": "Product Docs / Conventions / Comment style — `[claude@<timestamp>]` for agent-authored comments",
+      "block_count": 23
+    },
+    {
+      "local_path": "conventions/no-nested-ternaries-in-jsx.md",
+      "notion_id": "352bacd2-7dee-8141-9f6c-d96ba0bd8c7e",
+      "notion_url": "https://www.notion.so/352bacd27dee81419f6cd96ba0bd8c7e",
+      "notion_path": "Product Docs / Conventions / No nested ternaries in JSX — extract to `useMemo` + `switch`",
+      "block_count": 21
+    },
+    {
+      "local_path": "conventions/deprecation-handling.md",
+      "notion_id": "352bacd2-7dee-814e-9da5-c4d38209447b",
+      "notion_url": "https://www.notion.so/352bacd27dee814e9da5c4d38209447b",
+      "notion_path": "Product Docs / Conventions / Deprecation Handling — How the Frontend Reads Backend Deprecation Signals",
+      "block_count": 29
+    },
+    {
+      "local_path": "conventions/tanstack-query-invalidation.md",
+      "notion_id": "352bacd2-7dee-8139-8817-c8c287e8bd12",
+      "notion_url": "https://www.notion.so/352bacd27dee81398817c8c287e8bd12",
+      "notion_path": "Product Docs / Conventions / Always invalidate TanStack Query keys explicitly after mutations",
+      "block_count": 22
+    },
+    {
+      "local_path": "conventions/_index.md",
+      "notion_id": "352bacd2-7dee-81b7-aba1-cddec67fcddc",
+      "notion_url": "https://www.notion.so/352bacd27dee81b7aba1cddec67fcddc",
+      "notion_path": "Product Docs / Conventions",
+      "block_count": 53
+    },
+    {
+      "local_path": "onboarding/project-set-up.md",
+      "notion_id": "351bacd2-7dee-8144-992d-d53daceb282a",
+      "notion_url": "https://www.notion.so/351bacd27dee8144992dd53daceb282a",
+      "notion_path": "Product Docs / Onboarding / Onboarding — Project Set-Up",
+      "block_count": 89
+    },
+    {
+      "local_path": "onboarding/team-intro.md",
+      "notion_id": "351bacd2-7dee-81c7-8e8e-eb6bea31df64",
+      "notion_url": "https://www.notion.so/351bacd27dee81c78e8eeb6bea31df64",
+      "notion_path": "Product Docs / Onboarding / Onboarding — Team Intro",
+      "block_count": 48
+    },
+    {
+      "local_path": "onboarding/comms.md",
+      "notion_id": "351bacd2-7dee-8162-b96d-c08efbdd98a5",
+      "notion_url": "https://www.notion.so/351bacd27dee8162b96dc08efbdd98a5",
+      "notion_path": "Product Docs / Onboarding / Onboarding — Communications",
+      "block_count": 69
+    },
+    {
+      "local_path": "onboarding/_index.md",
+      "notion_id": "351bacd2-7dee-81a3-a690-ea2d88296536",
+      "notion_url": "https://www.notion.so/351bacd27dee81a3a690ea2d88296536",
+      "notion_path": "Product Docs / Onboarding",
+      "block_count": 17
+    },
+    {
+      "local_path": "_index.md",
+      "notion_id": "34abacd27dee80f3be8fe230c7d1ff9d",
+      "notion_url": "https://www.notion.so/34abacd27dee80f3be8fe230c7d1ff9d",
+      "notion_path": "Product Docs",
+      "block_count": 14
+    }
+  ],
+  "missing_on_remote": [
+    {
+      "local_path": "structure.md",
+      "title": "Docs Structure — Sidebar Map & Rationale",
+      "expected_parent_path": "",
+      "body_chars": 15792,
+      "reason": "no Notion page at file path or matching sibling title"
+    },
+    {
+      "local_path": "boring-technical-stuff/frontend/auth/_index.md",
+      "title": "Auth (Frontend)",
+      "expected_parent_path": "boring-technical-stuff / frontend",
+      "body_chars": 569,
+      "reason": "no Notion page at directory path"
+    },
+    {
+      "local_path": "boring-technical-stuff/frontend/widgets-v2/_index.md",
+      "title": "Widgets v2",
+      "expected_parent_path": "boring-technical-stuff / frontend",
+      "body_chars": 985,
+      "reason": "no Notion page at directory path"
+    },
+    {
+      "local_path": "boring-technical-stuff/frontend/flows/_index.md",
+      "title": "Frontend — Flows",
+      "expected_parent_path": "boring-technical-stuff / frontend",
+      "body_chars": 308,
+      "reason": "no Notion page at directory path"
+    },
+    {
+      "local_path": "boring-technical-stuff/backend/tooling/_index.md",
+      "title": "BTS/Backend — Tooling",
+      "expected_parent_path": "boring-technical-stuff / backend",
+      "body_chars": 5255,
+      "reason": "no Notion page at directory path"
+    },
+    {
+      "local_path": "boring-technical-stuff/backend/workers/_index.md",
+      "title": "BTS/Backend — Workers (scheduler + async task runner)",
+      "expected_parent_path": "boring-technical-stuff / backend",
+      "body_chars": 7556,
+      "reason": "no Notion page at directory path"
+    },
+    {
+      "local_path": "boring-technical-stuff/observability/_index.md",
+      "title": "Observability",
+      "expected_parent_path": "boring-technical-stuff",
+      "body_chars": 802,
+      "reason": "no Notion page at directory path"
+    },
+    {
+      "local_path": "product-todos.md",
+      "title": "Product TODOs — consolidated backlog",
+      "expected_parent_path": "",
+      "body_chars": 63482,
+      "reason": "no Notion page at file path or matching sibling title"
+    }
+  ],
+  "extra_on_remote": [],
+  "thin_remote_pages": []
+}

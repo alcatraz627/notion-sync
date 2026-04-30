@@ -1,0 +1,93 @@
+[1m
+Diff: remote vs local[0m
+[2m────────────────────────────────────────────────────────────────────────[0m
+[2mLocal docs:[0m    298
+[2mRemote pages:[0m  295  [2m(excluding root)[0m
+[2m────────────────────────────────────────────────────────────────────────[0m
+
+[1m[31m✗ Remote-only (37)[0m[0m  [2m— pages on Notion with no matching local title[0m
+    [36mKnown-pitfalls[0m  [2mhttps://www.notion.so/351bacd27dee817e9716dfc9bc7dc6d4[0m
+    [36mImprovements[0m  [2mhttps://www.notion.so/351bacd27dee817899e8cebea932b84d[0m
+    [36mAdmin-panel[0m  [2mhttps://www.notion.so/351bacd27dee810c8331c94aa76dab77[0m
+    [36mDeployment[0m  [2mhttps://www.notion.so/351bacd27dee81e7a9bac3ce5ea1fd9a[0m
+    [36mCredits[0m  [2mhttps://www.notion.so/351bacd27dee810cb7bde9c25b7c28ec[0m
+    [36mBoring-technical-stuff[0m  [2mhttps://www.notion.so/352bacd27dee81e28673e9dc081b041f[0m
+    [36mFrontend[0m  [2mhttps://www.notion.so/352bacd27dee8194bea4f49a33e63c0c[0m
+    [36mUi-widgets[0m  [2mhttps://www.notion.so/352bacd27dee81669df3f6b05f9af5cc[0m
+    [36mForms[0m  [2mhttps://www.notion.so/352bacd27dee81668b34f96ad24671cd[0m
+    [36mPrimitives[0m  [2mhttps://www.notion.so/352bacd27dee81679e98d9ba70a00aaa[0m
+    [36mLayout-and-nav[0m  [2mhttps://www.notion.so/352bacd27dee811a8e5eca61bb1856cd[0m
+    [36mModal-improvements[0m  [2mhttps://www.notion.so/352bacd27dee814588d3dd8f9ff122f8[0m
+    [36mTables-and-data[0m  [2mhttps://www.notion.so/352bacd27dee8140be6ce43636f334ff[0m
+    [36mHooks[0m  [2mhttps://www.notion.so/352bacd27dee815da06beff5b4f32e1f[0m
+    [36mAuth-and-access[0m  [2mhttps://www.notion.so/352bacd27dee81b89a8ee8890574981c[0m
+    [36mIntegrations-and-ops[0m  [2mhttps://www.notion.so/352bacd27dee81df842cfc569528ba3f[0m
+    [36mData-patterns[0m  [2mhttps://www.notion.so/352bacd27dee81e9ac05cb21b95d70c5[0m
+    [36mUse-query-sync[0m  [2mhttps://www.notion.so/352bacd27dee81faa264f9a5c9c1c89f[0m
+    [36mServices[0m  [2mhttps://www.notion.so/352bacd27dee81f09257ea0d9c76ab06[0m
+    [36mCron-tick[0m  [2mhttps://www.notion.so/352bacd27dee81dab20cdb2b4c47aae9[0m
+    [36mBackend[0m  [2mhttps://www.notion.so/352bacd27dee8106bb09dfca79fe3ebc[0m
+    [36mAi-agents[0m  [2mhttps://www.notion.so/352bacd27dee8150b09bfc82501640fa[0m
+    [36mImprovements[0m  [2mhttps://www.notion.so/352bacd27dee8168be4cff06e1e765c6[0m
+    [36mEnhancement-agent-v3[0m  [2mhttps://www.notion.so/352bacd27dee811ea42acd36e481ae39[0m
+    [36mPipelines[0m  [2mhttps://www.notion.so/352bacd27dee81f09124c8cf88d9875b[0m
+    [36mData-patterns[0m  [2mhttps://www.notion.so/352bacd27dee815b94e5cdc679000721[0m
+    [36mApi[0m  [2mhttps://www.notion.so/352bacd27dee81e5be65e544a398a4d7[0m
+    [36mServices[0m  [2mhttps://www.notion.so/352bacd27dee81c1ba94e8c6f8d99043[0m
+    [36mApp[0m  [2mhttps://www.notion.so/352bacd27dee81338abad9ea52d61ed6[0m
+    [36mOther[0m  [2mhttps://www.notion.so/352bacd27dee810e902eda3b0235897b[0m
+    [36mAdmin[0m  [2mhttps://www.notion.so/352bacd27dee81458ec1c17ef1439e1a[0m
+    [36mModals[0m  [2mhttps://www.notion.so/352bacd27dee8150aa7fc599cfa24854[0m
+    [36mUser[0m  [2mhttps://www.notion.so/352bacd27dee817aa96ffafc2f8e49c0[0m
+    [36mSystem[0m  [2mhttps://www.notion.so/352bacd27dee81f9ac12fc689daaadf6[0m
+    [36mJobs[0m  [2mhttps://www.notion.so/352bacd27dee81a4a53de063b3094432[0m
+    [36mDecisions[0m  [2mhttps://www.notion.so/352bacd27dee81f58047c8926f2dc783[0m
+    [36mCross-repo[0m  [2mhttps://www.notion.so/352bacd27dee81c4b598f1de37eaec86[0m
+
+[1m[33m⚠ Empty remote pages (0)[0m[0m  [2m— page exists but has 0 blocks[0m
+
+[1m[32m+ Local-only (40)[0m[0m  [2m— local docs with no matching remote page title[0m
+    [36mKnown Pitfalls[0m  [2m↳ known-pitfalls/_index.md[0m
+    [36mDocs Structure — Sidebar Map & Rationale[0m  [2m↳ structure.md[0m
+    [36mUI Widgets — Forms[0m  [2m↳ boring-technical-stuff/frontend/ui-widgets/forms/_index.md[0m
+    [36mUI Widgets — Primitives[0m  [2m↳ boring-technical-stuff/frontend/ui-widgets/primitives/_index.md[0m
+    [36mUI Widgets — Layout And Nav[0m  [2m↳ boring-technical-stuff/frontend/ui-widgets/layout-and-nav/_index.md[0m
+    [36mUI Widgets — Tables And Data[0m  [2m↳ boring-technical-stuff/frontend/ui-widgets/tables-and-data/_index.md[0m
+    [36mUI Widgets — Hooks[0m  [2m↳ boring-technical-stuff/frontend/ui-widgets/hooks/_index.md[0m
+    [36mUI Widgets — Auth And Access[0m  [2m↳ boring-technical-stuff/frontend/ui-widgets/auth-and-access/_index.md[0m
+    [36mUI Widgets — Integrations And Ops[0m  [2m↳ boring-technical-stuff/frontend/ui-widgets/integrations-and-ops/_index.md[0m
+    [36mUI Widgets — Master Index[0m  [2m↳ boring-technical-stuff/frontend/ui-widgets/_index.md[0m
+    [36mAuth (Frontend)[0m  [2m↳ boring-technical-stuff/frontend/auth/_index.md[0m
+    [36mWidgets v2[0m  [2m↳ boring-technical-stuff/frontend/widgets-v2/_index.md[0m
+    [36mFrontend — Data Patterns[0m  [2m↳ boring-technical-stuff/frontend/data-patterns/_index.md[0m
+    [36mFrontend — Flows[0m  [2m↳ boring-technical-stuff/frontend/flows/_index.md[0m
+    [36mBTS — Frontend (engineering index)[0m  [2m↳ boring-technical-stuff/frontend/_index.md[0m
+    [36mBTS/Backend — Tooling[0m  [2m↳ boring-technical-stuff/backend/tooling/_index.md[0m
+    [36mEnhancement Agent V3[0m  [2m↳ boring-technical-stuff/backend/ai-agents/improvements/enhancement-agent-v3/_index.md[0m
+    [36mBTS/Backend — AI Agents[0m  [2m↳ boring-technical-stuff/backend/ai-agents/_index.md[0m
+    [36mBTS/Backend — Pipelines[0m  [2m↳ boring-technical-stuff/backend/pipelines/_index.md[0m
+    [36mBTS/Backend — Data Patterns[0m  [2m↳ boring-technical-stuff/backend/data-patterns/_index.md[0m
+    [36mBTS/Backend — API (FastAPI)[0m  [2m↳ boring-technical-stuff/backend/api/_index.md[0m
+    [36mBTS/Backend — Workers (scheduler + async task runner)[0m  [2m↳ boring-technical-stuff/backend/workers/_index.md[0m
+    [36mBTS/Backend — Services[0m  [2m↳ boring-technical-stuff/backend/services/_index.md[0m
+    [36mBTS — Backend (engineering index)[0m  [2m↳ boring-technical-stuff/backend/_index.md[0m
+    [36mObservability[0m  [2m↳ boring-technical-stuff/observability/_index.md[0m
+    [36mBoring Technical Stuff (BTS)[0m  [2m↳ boring-technical-stuff/_index.md[0m
+    [36mImprovements — Admin Panel[0m  [2m↳ improvements/admin-panel/_index.md[0m
+    [36mImprovements — Deployment[0m  [2m↳ improvements/deployment/_index.md[0m
+    [36mImprovements — Credits[0m  [2m↳ improvements/credits/_index.md[0m
+    [36mApp — product surface catalog[0m  [2m↳ product/app/_index.md[0m
+    [36mOther — product surface catalog[0m  [2m↳ product/other/_index.md[0m
+    [36mProduct — Admin[0m  [2m↳ product/admin/_index.md[0m
+    [36mProduct — Modals[0m  [2m↳ product/modals/_index.md[0m
+    [36mProduct — User[0m  [2m↳ product/user/_index.md[0m
+    [36mProduct — System[0m  [2m↳ product/system/_index.md[0m
+    [36mProduct — Jobs[0m  [2m↳ product/jobs/_index.md[0m
+    [36mDecisions (ADRs)[0m  [2m↳ decisions/_index.md[0m
+    [36mCross-Repo[0m  [2m↳ cross-repo/_index.md[0m
+    [36mProduct TODOs — consolidated backlog[0m  [2m↳ product-todos.md[0m
+    [36mVersable Docs[0m  [2m↳ _index.md[0m
+
+[2m────────────────────────────────────────────────────────────────────────[0m
+Tip: title-based match is brittle — a follow-up will compare by parent path.
+

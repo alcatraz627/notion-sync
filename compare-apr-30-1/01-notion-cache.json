@@ -1,0 +1,4132 @@
+{
+  "fetched_at": "2026-04-30T14:53:08.974Z",
+  "root_id": "34abacd27dee80f3be8fe230c7d1ff9d",
+  "pages": [
+    {
+      "id": "34abacd27dee80f3be8fe230c7d1ff9d",
+      "title": "Product Docs",
+      "parent_id": null,
+      "url": "https://www.notion.so/34abacd27dee80f3be8fe230c7d1ff9d",
+      "block_count": 14,
+      "child_page_count": 11,
+      "has_content": true,
+      "icon": {
+        "type": "icon",
+        "value": ""
+      },
+      "depth": 0
+    },
+    {
+      "id": "351bacd2-7dee-817e-9716-dfc9bc7dc6d4",
+      "title": "Known-pitfalls",
+      "parent_id": "34abacd27dee80f3be8fe230c7d1ff9d",
+      "url": "https://www.notion.so/351bacd27dee817e9716dfc9bc7dc6d4",
+      "block_count": 31,
+      "child_page_count": 15,
+      "has_content": true,
+      "icon": {
+        "type": "emoji",
+        "value": "⚠️"
+      },
+      "depth": 1
+    },
+    {
+      "id": "351bacd2-7dee-8150-9fcc-c17f38614601",
+      "title": "TanStack Query is NOT persisted across cold-starts",
+      "parent_id": "351bacd2-7dee-817e-9716-dfc9bc7dc6d4",
+      "url": "https://www.notion.so/351bacd27dee81509fccc17f38614601",
+      "block_count": 24,
+      "child_page_count": 0,
+      "has_content": true,
+      "icon": {
+        "type": "emoji",
+        "value": "⚠️"
+      },
+      "depth": 2
+    },
+    {
+      "id": "351bacd2-7dee-8127-a215-c84bb002f481",
+      "title": "`_loading.tsx` underscore prefix — Next.js will not pick it up as a route loading skeleton",
+      "parent_id": "351bacd2-7dee-817e-9716-dfc9bc7dc6d4",
+      "url": "https://www.notion.so/351bacd27dee8127a215c84bb002f481",
+      "block_count": 22,
+      "child_page_count": 0,
+      "has_content": true,
+      "icon": {
+        "type": "emoji",
+        "value": "⚠️"
+      },
+      "depth": 2
+    },
+    {
+      "id": "351bacd2-7dee-8134-90a1-ed62d9302ed7",
+      "title": "`.mcp.json` stdio entries silently shadowed by Claude plugins",
+      "parent_id": "351bacd2-7dee-817e-9716-dfc9bc7dc6d4",
+      "url": "https://www.notion.so/351bacd27dee813490a1ed62d9302ed7",
+      "block_count": 26,
+      "child_page_count": 0,
+      "has_content": true,
+      "icon": {
+        "type": "emoji",
+        "value": "⚠️"
+      },
+      "depth": 2
+    },
+    {
+      "id": "351bacd2-7dee-811b-b6d2-ed9fb42aa1c1",
+      "title": "Token validation has no graceful failure path",
+      "parent_id": "351bacd2-7dee-817e-9716-dfc9bc7dc6d4",
+      "url": "https://www.notion.so/351bacd27dee811bb6d2ed9fb42aa1c1",
+      "block_count": 20,
+      "child_page_count": 0,
+      "has_content": true,
+      "icon": {
+        "type": "emoji",
+        "value": "⚠️"
+      },
+      "depth": 2
+    },
+    {
+      "id": "351bacd2-7dee-81bd-9149-e1616f426b72",
+      "title": "`punycode` deprecation warning at install/build",
+      "parent_id": "351bacd2-7dee-817e-9716-dfc9bc7dc6d4",
+      "url": "https://www.notion.so/351bacd27dee81bd9149e1616f426b72",
+      "block_count": 20,
+      "child_page_count": 0,
+      "has_content": true,
+      "icon": {
+        "type": "emoji",
+        "value": "⚠️"
+      },
+      "depth": 2
+    },
+    {
+      "id": "351bacd2-7dee-812e-a35b-e1f03dff9eed",
+      "title": "`CreateJobBulkResponse.ctx` is always undefined",
+      "parent_id": "351bacd2-7dee-817e-9716-dfc9bc7dc6d4",
+      "url": "https://www.notion.so/351bacd27dee812ea35be1f03dff9eed",
+      "block_count": 19,
+      "child_page_count": 0,
+      "has_content": true,
+      "icon": {
+        "type": "emoji",
+        "value": "⚠️"
+      },
+      "depth": 2
+    },
+    {
+      "id": "351bacd2-7dee-8170-83f2-fd6cacc45fe3",
+      "title": "Node `crypto` module unsupported in Edge runtime — use `jose`",
+      "parent_id": "351bacd2-7dee-817e-9716-dfc9bc7dc6d4",
+      "url": "https://www.notion.so/351bacd27dee817083f2fd6cacc45fe3",
+      "block_count": 23,
+      "child_page_count": 0,
+      "has_content": true,
+      "icon": {
+        "type": "emoji",
+        "value": "⚠️"
+      },
+      "depth": 2
+    },
+    {
+      "id": "351bacd2-7dee-81ae-9637-e19b6322a527",
+      "title": "Always grep import sites before flagging a component as unused",
+      "parent_id": "351bacd2-7dee-817e-9716-dfc9bc7dc6d4",
+      "url": "https://www.notion.so/351bacd27dee81ae9637e19b6322a527",
+      "block_count": 24,
+      "child_page_count": 0,
+      "has_content": true,
+      "icon": {
+        "type": "emoji",
+        "value": "⚠️"
+      },
+      "depth": 2
+    },
+    {
+      "id": "351bacd2-7dee-81e7-9713-c780725c5366",
+      "title": "`force-dynamic` on root layout — looks redundant, don't remove",
+      "parent_id": "351bacd2-7dee-817e-9716-dfc9bc7dc6d4",
+      "url": "https://www.notion.so/351bacd27dee81e79713c780725c5366",
+      "block_count": 20,
+      "child_page_count": 0,
+      "has_content": true,
+      "icon": {
+        "type": "emoji",
+        "value": "⚠️"
+      },
+      "depth": 2
+    },
+    {
+      "id": "351bacd2-7dee-81db-bf68-da3899a79c11",
+      "title": "Axios 401 triggers immediate sign-out (no refresh)",
+      "parent_id": "351bacd2-7dee-817e-9716-dfc9bc7dc6d4",
+      "url": "https://www.notion.so/351bacd27dee81dbbf68da3899a79c11",
+      "block_count": 21,
+      "child_page_count": 0,
+      "has_content": true,
+      "icon": {
+        "type": "emoji",
+        "value": "⚠️"
+      },
+      "depth": 2
+    },
+    {
+      "id": "351bacd2-7dee-8101-8a25-f52d5423da24",
+      "title": "`/_info` routes have no admin check at the proxy layer",
+      "parent_id": "351bacd2-7dee-817e-9716-dfc9bc7dc6d4",
+      "url": "https://www.notion.so/351bacd27dee81018a25f52d5423da24",
+      "block_count": 25,
+      "child_page_count": 0,
+      "has_content": true,
+      "icon": {
+        "type": "emoji",
+        "value": "⚠️"
+      },
+      "depth": 2
+    },
+    {
+      "id": "351bacd2-7dee-81b0-9bbe-f15065edd457",
+      "title": "`pipeline.run.ts` dispatch defaults to `false` (preview-only)",
+      "parent_id": "351bacd2-7dee-817e-9716-dfc9bc7dc6d4",
+      "url": "https://www.notion.so/351bacd27dee81b09bbef15065edd457",
+      "block_count": 19,
+      "child_page_count": 0,
+      "has_content": true,
+      "icon": {
+        "type": "emoji",
+        "value": "⚠️"
+      },
+      "depth": 2
+    },
+    {
+      "id": "351bacd2-7dee-8139-94e0-d952cab6dcff",
+      "title": "Vercel deployment blocked on `gh-pages` branch",
+      "parent_id": "351bacd2-7dee-817e-9716-dfc9bc7dc6d4",
+      "url": "https://www.notion.so/351bacd27dee813994e0d952cab6dcff",
+      "block_count": 36,
+      "child_page_count": 0,
+      "has_content": true,
+      "icon": {
+        "type": "emoji",
+        "value": "⚠️"
+      },
+      "depth": 2
+    },
+    {
+      "id": "351bacd2-7dee-812e-8caa-f5dd1d37fac6",
+      "title": "lodash.get breaks Edge Middleware",
+      "parent_id": "351bacd2-7dee-817e-9716-dfc9bc7dc6d4",
+      "url": "https://www.notion.so/351bacd27dee812e8caaf5dd1d37fac6",
+      "block_count": 21,
+      "child_page_count": 0,
+      "has_content": true,
+      "icon": {
+        "type": "emoji",
+        "value": "⚠️"
+      },
+      "depth": 2
+    },
+    {
+      "id": "351bacd2-7dee-8189-9980-e4b22925de76",
+      "title": "DB schema mixes camelCase and snake_case columns",
+      "parent_id": "351bacd2-7dee-817e-9716-dfc9bc7dc6d4",
+      "url": "https://www.notion.so/351bacd27dee81899980e4b22925de76",
+      "block_count": 23,
+      "child_page_count": 0,
+      "has_content": true,
+      "icon": {
+        "type": "emoji",
+        "value": "⚠️"
+      },
+      "depth": 2
+    },
+    {
+      "id": "351bacd2-7dee-8178-99e8-cebea932b84d",
+      "title": "Improvements",
+      "parent_id": "34abacd27dee80f3be8fe230c7d1ff9d",
+      "url": "https://www.notion.so/351bacd27dee817899e8cebea932b84d",
+      "block_count": 12,
+      "child_page_count": 5,
+      "has_content": true,
+      "icon": null,
+      "depth": 1
+    },
+    {
+      "id": "351bacd2-7dee-81b9-82d7-dff5e4562282",
+      "title": "Job Output Pipeline — Cleanup & Restructure Plan",
+      "parent_id": "351bacd2-7dee-8178-99e8-cebea932b84d",
+      "url": "https://www.notion.so/351bacd27dee81b982d7dff5e4562282",
+      "block_count": 248,
+      "child_page_count": 0,
+      "has_content": true,
+      "icon": {
+        "type": "emoji",
+        "value": "🧹"
+      },
+      "depth": 2
+    },
+    {
+      "id": "351bacd2-7dee-8171-84a6-e355e798ec1c",
+      "title": "docs/improvements/ — folder guide",
+      "parent_id": "351bacd2-7dee-8178-99e8-cebea932b84d",
+      "url": "https://www.notion.so/351bacd27dee817184a6e355e798ec1c",
+      "block_count": 58,
+      "child_page_count": 0,
+      "has_content": true,
+      "icon": {
+        "type": "emoji",
+        "value": "🗺️"
+      },
+      "depth": 2
+    },
+    {
+      "id": "351bacd2-7dee-810c-8331-c94aa76dab77",
+      "title": "Admin-panel",
+      "parent_id": "351bacd2-7dee-8178-99e8-cebea932b84d",
+      "url": "https://www.notion.so/351bacd27dee810c8331c94aa76dab77",
+      "block_count": 15,
+      "child_page_count": 2,
+      "has_content": true,
+      "icon": {
+        "type": "emoji",
+        "value": "🛡️"
+      },
+      "depth": 2
+    },
+    {
+      "id": "351bacd2-7dee-817e-be72-ed6ce3d8f6fe",
+      "title": "Admin Panel — General Pending Improvements",
+      "parent_id": "351bacd2-7dee-810c-8331-c94aa76dab77",
+      "url": "https://www.notion.so/351bacd27dee817ebe72ed6ce3d8f6fe",
+      "block_count": 27,
+      "child_page_count": 0,
+      "has_content": true,
+      "icon": {
+        "type": "emoji",
+        "value": "🛡️"
+      },
+      "depth": 3
+    },
+    {
+      "id": "351bacd2-7dee-81f3-9722-de5fd8396f2a",
+      "title": "Admin Panel — Custom Job Output URL Promotion",
+      "parent_id": "351bacd2-7dee-810c-8331-c94aa76dab77",
+      "url": "https://www.notion.so/351bacd27dee81f39722de5fd8396f2a",
+      "block_count": 21,
+      "child_page_count": 0,
+      "has_content": true,
+      "icon": {
+        "type": "emoji",
+        "value": "🛡️"
+      },
+      "depth": 3
+    },
+    {
+      "id": "351bacd2-7dee-81e7-a9ba-c3ce5ea1fd9a",
+      "title": "Deployment",
+      "parent_id": "351bacd2-7dee-8178-99e8-cebea932b84d",
+      "url": "https://www.notion.so/351bacd27dee81e7a9bac3ce5ea1fd9a",
+      "block_count": 20,
+      "child_page_count": 3,
+      "has_content": true,
+      "icon": {
+        "type": "emoji",
+        "value": "🚀"
+      },
+      "depth": 2
+    },
+    {
+      "id": "351bacd2-7dee-8176-bd1f-e332050b5c09",
+      "title": "Deployment — Frontend Redis Caching Rollout",
+      "parent_id": "351bacd2-7dee-81e7-a9ba-c3ce5ea1fd9a",
+      "url": "https://www.notion.so/351bacd27dee8176bd1fe332050b5c09",
+      "block_count": 23,
+      "child_page_count": 0,
+      "has_content": true,
+      "icon": {
+        "type": "emoji",
+        "value": "🚀"
+      },
+      "depth": 3
+    },
+    {
+      "id": "351bacd2-7dee-8141-9eda-d1af88557e97",
+      "title": "Deployment — Migration off Vercel (Render / Cloudflare)",
+      "parent_id": "351bacd2-7dee-81e7-a9ba-c3ce5ea1fd9a",
+      "url": "https://www.notion.so/351bacd27dee81419edad1af88557e97",
+      "block_count": 24,
+      "child_page_count": 0,
+      "has_content": true,
+      "icon": {
+        "type": "emoji",
+        "value": "🚀"
+      },
+      "depth": 3
+    },
+    {
+      "id": "351bacd2-7dee-816f-92c0-da9ac40a8637",
+      "title": "Deployment — Vercel Cold-Start Latency",
+      "parent_id": "351bacd2-7dee-81e7-a9ba-c3ce5ea1fd9a",
+      "url": "https://www.notion.so/351bacd27dee816f92c0da9ac40a8637",
+      "block_count": 26,
+      "child_page_count": 0,
+      "has_content": true,
+      "icon": {
+        "type": "emoji",
+        "value": "🚀"
+      },
+      "depth": 3
+    },
+    {
+      "id": "351bacd2-7dee-810c-b7bd-e9c25b7c28ec",
+      "title": "Credits",
+      "parent_id": "351bacd2-7dee-8178-99e8-cebea932b84d",
+      "url": "https://www.notion.so/351bacd27dee810cb7bde9c25b7c28ec",
+      "block_count": 38,
+      "child_page_count": 9,
+      "has_content": true,
+      "icon": {
+        "type": "emoji",
+        "value": "🪙"
+      },
+      "depth": 2
+    },
+    {
+      "id": "351bacd2-7dee-81a9-bf0b-e4054a7a5356",
+      "title": "Credits — Multi-Entry Charge Support",
+      "parent_id": "351bacd2-7dee-810c-b7bd-e9c25b7c28ec",
+      "url": "https://www.notion.so/351bacd27dee81a9bf0be4054a7a5356",
+      "block_count": 19,
+      "child_page_count": 0,
+      "has_content": true,
+      "icon": {
+        "type": "emoji",
+        "value": "🪙"
+      },
+      "depth": 3
+    },
+    {
+      "id": "351bacd2-7dee-81aa-ad1b-fa9fba9b7641",
+      "title": "Credits — DLQ Surface & Dispatch Observability",
+      "parent_id": "351bacd2-7dee-810c-b7bd-e9c25b7c28ec",
+      "url": "https://www.notion.so/351bacd27dee81aaad1bfa9fba9b7641",
+      "block_count": 25,
+      "child_page_count": 0,
+      "has_content": true,
+      "icon": {
+        "type": "emoji",
+        "value": "🪙"
+      },
+      "depth": 3
+    },
+    {
+      "id": "351bacd2-7dee-819c-9563-e4e96cd3b748",
+      "title": "Credits — Separate Refund API From `deductCredits`",
+      "parent_id": "351bacd2-7dee-810c-b7bd-e9c25b7c28ec",
+      "url": "https://www.notion.so/351bacd27dee819c9563e4e96cd3b748",
+      "block_count": 19,
+      "child_page_count": 0,
+      "has_content": true,
+      "icon": {
+        "type": "emoji",
+        "value": "🪙"
+      },
+      "depth": 3
+    },
+    {
+      "id": "351bacd2-7dee-8101-9f51-d964c15c3245",
+      "title": "Credits — Decoupled Tables: Rules & Guardrails",
+      "parent_id": "351bacd2-7dee-810c-b7bd-e9c25b7c28ec",
+      "url": "https://www.notion.so/351bacd27dee81019f51d964c15c3245",
+      "block_count": 24,
+      "child_page_count": 0,
+      "has_content": true,
+      "icon": {
+        "type": "emoji",
+        "value": "🪙"
+      },
+      "depth": 3
+    },
+    {
+      "id": "351bacd2-7dee-8173-8401-efb045a72b34",
+      "title": "Credits — `referenceId` Auto-Derivation",
+      "parent_id": "351bacd2-7dee-810c-b7bd-e9c25b7c28ec",
+      "url": "https://www.notion.so/351bacd27dee81738401efb045a72b34",
+      "block_count": 16,
+      "child_page_count": 0,
+      "has_content": true,
+      "icon": {
+        "type": "emoji",
+        "value": "🪙"
+      },
+      "depth": 3
+    },
+    {
+      "id": "351bacd2-7dee-8110-b7df-ccf135b684f8",
+      "title": "Credits — Refund Cycle Handling",
+      "parent_id": "351bacd2-7dee-810c-b7bd-e9c25b7c28ec",
+      "url": "https://www.notion.so/351bacd27dee8110b7dfccf135b684f8",
+      "block_count": 17,
+      "child_page_count": 0,
+      "has_content": true,
+      "icon": {
+        "type": "emoji",
+        "value": "🪙"
+      },
+      "depth": 3
+    },
+    {
+      "id": "351bacd2-7dee-816a-972a-c311870e155b",
+      "title": "Credits — Domain Credit Cycle-ID Tracking",
+      "parent_id": "351bacd2-7dee-810c-b7bd-e9c25b7c28ec",
+      "url": "https://www.notion.so/351bacd27dee816a972ac311870e155b",
+      "block_count": 17,
+      "child_page_count": 0,
+      "has_content": true,
+      "icon": {
+        "type": "emoji",
+        "value": "🪙"
+      },
+      "depth": 3
+    },
+    {
+      "id": "351bacd2-7dee-8170-9c69-ffcc6f2060f3",
+      "title": "Credits — Worker Queue Cancellation",
+      "parent_id": "351bacd2-7dee-810c-b7bd-e9c25b7c28ec",
+      "url": "https://www.notion.so/351bacd27dee81709c69ffcc6f2060f3",
+      "block_count": 23,
+      "child_page_count": 0,
+      "has_content": true,
+      "icon": {
+        "type": "emoji",
+        "value": "🪙"
+      },
+      "depth": 3
+    },
+    {
+      "id": "351bacd2-7dee-81ad-93dc-d4935d74f708",
+      "title": "Credits — Admin UI for Credit Management",
+      "parent_id": "351bacd2-7dee-810c-b7bd-e9c25b7c28ec",
+      "url": "https://www.notion.so/351bacd27dee81ad93dcd4935d74f708",
+      "block_count": 21,
+      "child_page_count": 0,
+      "has_content": true,
+      "icon": {
+        "type": "emoji",
+        "value": "🪙"
+      },
+      "depth": 3
+    },
+    {
+      "id": "351bacd2-7dee-81a3-a690-ea2d88296536",
+      "title": "Onboarding",
+      "parent_id": "34abacd27dee80f3be8fe230c7d1ff9d",
+      "url": "https://www.notion.so/351bacd27dee81a3a690ea2d88296536",
+      "block_count": 17,
+      "child_page_count": 3,
+      "has_content": true,
+      "icon": {
+        "type": "emoji",
+        "value": "🎓"
+      },
+      "depth": 1
+    },
+    {
+      "id": "351bacd2-7dee-8144-992d-d53daceb282a",
+      "title": "Onboarding — Project Set-Up",
+      "parent_id": "351bacd2-7dee-81a3-a690-ea2d88296536",
+      "url": "https://www.notion.so/351bacd27dee8144992dd53daceb282a",
+      "block_count": 89,
+      "child_page_count": 0,
+      "has_content": true,
+      "icon": {
+        "type": "emoji",
+        "value": "🧰"
+      },
+      "depth": 2
+    },
+    {
+      "id": "351bacd2-7dee-81c7-8e8e-eb6bea31df64",
+      "title": "Onboarding — Team Intro",
+      "parent_id": "351bacd2-7dee-81a3-a690-ea2d88296536",
+      "url": "https://www.notion.so/351bacd27dee81c78e8eeb6bea31df64",
+      "block_count": 48,
+      "child_page_count": 0,
+      "has_content": true,
+      "icon": {
+        "type": "emoji",
+        "value": "👋"
+      },
+      "depth": 2
+    },
+    {
+      "id": "351bacd2-7dee-8162-b96d-c08efbdd98a5",
+      "title": "Onboarding — Communications",
+      "parent_id": "351bacd2-7dee-81a3-a690-ea2d88296536",
+      "url": "https://www.notion.so/351bacd27dee8162b96dc08efbdd98a5",
+      "block_count": 69,
+      "child_page_count": 0,
+      "has_content": true,
+      "icon": {
+        "type": "emoji",
+        "value": "💬"
+      },
+      "depth": 2
+    },
+    {
+      "id": "352bacd2-7dee-81e2-8673-e9dc081b041f",
+      "title": "Boring-technical-stuff",
+      "parent_id": "34abacd27dee80f3be8fe230c7d1ff9d",
+      "url": "https://www.notion.so/352bacd27dee81e28673e9dc081b041f",
+      "block_count": 20,
+      "child_page_count": 4,
+      "has_content": true,
+      "icon": {
+        "type": "emoji",
+        "value": "🧠"
+      },
+      "depth": 1
+    },
+    {
+      "id": "352bacd2-7dee-8114-843a-fdeb9a550b17",
+      "title": "External Services — Integration Index",
+      "parent_id": "352bacd2-7dee-81e2-8673-e9dc081b041f",
+      "url": "https://www.notion.so/352bacd27dee8114843afdeb9a550b17",
+      "block_count": 31,
+      "child_page_count": 0,
+      "has_content": true,
+      "icon": {
+        "type": "emoji",
+        "value": "🤝"
+      },
+      "depth": 2
+    },
+    {
+      "id": "352bacd2-7dee-81ff-b189-cad9e6dc3093",
+      "title": "Env Setup — One-Stop Reference",
+      "parent_id": "352bacd2-7dee-81e2-8673-e9dc081b041f",
+      "url": "https://www.notion.so/352bacd27dee81ffb189cad9e6dc3093",
+      "block_count": 39,
+      "child_page_count": 0,
+      "has_content": true,
+      "icon": {
+        "type": "emoji",
+        "value": "🔑"
+      },
+      "depth": 2
+    },
+    {
+      "id": "352bacd2-7dee-8194-bea4-f49a33e63c0c",
+      "title": "Frontend",
+      "parent_id": "352bacd2-7dee-81e2-8673-e9dc081b041f",
+      "url": "https://www.notion.so/352bacd27dee8194bea4f49a33e63c0c",
+      "block_count": 38,
+      "child_page_count": 4,
+      "has_content": true,
+      "icon": {
+        "type": "emoji",
+        "value": "⚙️"
+      },
+      "depth": 2
+    },
+    {
+      "id": "352bacd2-7dee-816f-b8a6-f5b19389d6ee",
+      "title": "Jobs — architecture",
+      "parent_id": "352bacd2-7dee-8194-bea4-f49a33e63c0c",
+      "url": "https://www.notion.so/352bacd27dee816fb8a6f5b19389d6ee",
+      "block_count": 155,
+      "child_page_count": 0,
+      "has_content": true,
+      "icon": {
+        "type": "emoji",
+        "value": "🏗️"
+      },
+      "depth": 3
+    },
+    {
+      "id": "352bacd2-7dee-8166-9df3-f6b05f9af5cc",
+      "title": "Ui-widgets",
+      "parent_id": "352bacd2-7dee-8194-bea4-f49a33e63c0c",
+      "url": "https://www.notion.so/352bacd27dee81669df3f6b05f9af5cc",
+      "block_count": 38,
+      "child_page_count": 7,
+      "has_content": true,
+      "icon": {
+        "type": "emoji",
+        "value": "🧩"
+      },
+      "depth": 3
+    },
+    {
+      "id": "352bacd2-7dee-8166-8b34-f96ad24671cd",
+      "title": "Forms",
+      "parent_id": "352bacd2-7dee-8166-9df3-f6b05f9af5cc",
+      "url": "https://www.notion.so/352bacd27dee81668b34f96ad24671cd",
+      "block_count": 19,
+      "child_page_count": 5,
+      "has_content": true,
+      "icon": {
+        "type": "emoji",
+        "value": "🧩"
+      },
+      "depth": 4
+    },
+    {
+      "id": "352bacd2-7dee-8179-8d02-f0a5de1c9bc8",
+      "title": "ImageUploader — Drag-Drop Image Upload with Preview",
+      "parent_id": "352bacd2-7dee-8166-8b34-f96ad24671cd",
+      "url": "https://www.notion.so/352bacd27dee81798d02f0a5de1c9bc8",
+      "block_count": 37,
+      "child_page_count": 0,
+      "has_content": true,
+      "icon": {
+        "type": "emoji",
+        "value": "📋"
+      },
+      "depth": 5
+    },
+    {
+      "id": "352bacd2-7dee-8184-9c35-f6c163540952",
+      "title": "CopyButton — Clipboard Copy Component",
+      "parent_id": "352bacd2-7dee-8166-8b34-f96ad24671cd",
+      "url": "https://www.notion.so/352bacd27dee81849c35f6c163540952",
+      "block_count": 46,
+      "child_page_count": 0,
+      "has_content": true,
+      "icon": {
+        "type": "emoji",
+        "value": "📋"
+      },
+      "depth": 5
+    },
+    {
+      "id": "352bacd2-7dee-8195-b3c7-d8ea67e29147",
+      "title": "GenericForm — Configuration-Driven Form Builder",
+      "parent_id": "352bacd2-7dee-8166-8b34-f96ad24671cd",
+      "url": "https://www.notion.so/352bacd27dee8195b3c7d8ea67e29147",
+      "block_count": 46,
+      "child_page_count": 0,
+      "has_content": true,
+      "icon": {
+        "type": "emoji",
+        "value": "📋"
+      },
+      "depth": 5
+    },
+    {
+      "id": "352bacd2-7dee-8172-ae6f-dbed1777877d",
+      "title": "SearchSelectV2",
+      "parent_id": "352bacd2-7dee-8166-8b34-f96ad24671cd",
+      "url": "https://www.notion.so/352bacd27dee8172ae6fdbed1777877d",
+      "block_count": 104,
+      "child_page_count": 0,
+      "has_content": true,
+      "icon": {
+        "type": "emoji",
+        "value": "📋"
+      },
+      "depth": 5
+    },
+    {
+      "id": "352bacd2-7dee-81a6-a9f2-f2f9be40dddb",
+      "title": "File & Download Utilities",
+      "parent_id": "352bacd2-7dee-8166-8b34-f96ad24671cd",
+      "url": "https://www.notion.so/352bacd27dee81a6a9f2f2f9be40dddb",
+      "block_count": 43,
+      "child_page_count": 0,
+      "has_content": true,
+      "icon": {
+        "type": "emoji",
+        "value": "📋"
+      },
+      "depth": 5
+    },
+    {
+      "id": "352bacd2-7dee-8167-9e98-d9ba70a00aaa",
+      "title": "Primitives",
+      "parent_id": "352bacd2-7dee-8166-9df3-f6b05f9af5cc",
+      "url": "https://www.notion.so/352bacd27dee81679e98d9ba70a00aaa",
+      "block_count": 23,
+      "child_page_count": 9,
+      "has_content": true,
+      "icon": {
+        "type": "emoji",
+        "value": "🧩"
+      },
+      "depth": 4
+    },
+    {
+      "id": "352bacd2-7dee-81c0-992d-fda79074b4e3",
+      "title": "ButtonV1",
+      "parent_id": "352bacd2-7dee-8167-9e98-d9ba70a00aaa",
+      "url": "https://www.notion.so/352bacd27dee81c0992dfda79074b4e3",
+      "block_count": 103,
+      "child_page_count": 0,
+      "has_content": true,
+      "icon": {
+        "type": "emoji",
+        "value": "🔤"
+      },
+      "depth": 5
+    },
+    {
+      "id": "352bacd2-7dee-8114-be70-d6e44e3d6a6e",
+      "title": "Card — Content Container Component",
+      "parent_id": "352bacd2-7dee-8167-9e98-d9ba70a00aaa",
+      "url": "https://www.notion.so/352bacd27dee8114be70d6e44e3d6a6e",
+      "block_count": 54,
+      "child_page_count": 0,
+      "has_content": true,
+      "icon": {
+        "type": "emoji",
+        "value": "🔤"
+      },
+      "depth": 5
+    },
+    {
+      "id": "352bacd2-7dee-8109-82fc-f79892ce5476",
+      "title": "date.ts — Date & Time Utilities",
+      "parent_id": "352bacd2-7dee-8167-9e98-d9ba70a00aaa",
+      "url": "https://www.notion.so/352bacd27dee810982fcf79892ce5476",
+      "block_count": 63,
+      "child_page_count": 0,
+      "has_content": true,
+      "icon": {
+        "type": "emoji",
+        "value": "🔤"
+      },
+      "depth": 5
+    },
+    {
+      "id": "352bacd2-7dee-81f6-8380-dcf7a6aaca60",
+      "title": "InputV1",
+      "parent_id": "352bacd2-7dee-8167-9e98-d9ba70a00aaa",
+      "url": "https://www.notion.so/352bacd27dee81f68380dcf7a6aaca60",
+      "block_count": 75,
+      "child_page_count": 0,
+      "has_content": true,
+      "icon": {
+        "type": "emoji",
+        "value": "🔤"
+      },
+      "depth": 5
+    },
+    {
+      "id": "352bacd2-7dee-818a-b689-d253ef6ac470",
+      "title": "string.ts — String Utilities & Regex Patterns",
+      "parent_id": "352bacd2-7dee-8167-9e98-d9ba70a00aaa",
+      "url": "https://www.notion.so/352bacd27dee818ab689d253ef6ac470",
+      "block_count": 40,
+      "child_page_count": 0,
+      "has_content": true,
+      "icon": {
+        "type": "emoji",
+        "value": "🔤"
+      },
+      "depth": 5
+    },
+    {
+      "id": "352bacd2-7dee-81e4-b37c-eca5d26bf86a",
+      "title": "ShowTooltip",
+      "parent_id": "352bacd2-7dee-8167-9e98-d9ba70a00aaa",
+      "url": "https://www.notion.so/352bacd27dee81e4b37ceca5d26bf86a",
+      "block_count": 94,
+      "child_page_count": 0,
+      "has_content": true,
+      "icon": {
+        "type": "emoji",
+        "value": "🔤"
+      },
+      "depth": 5
+    },
+    {
+      "id": "352bacd2-7dee-812d-a5f7-c2d6682d56e8",
+      "title": "Icon Rendering System",
+      "parent_id": "352bacd2-7dee-8167-9e98-d9ba70a00aaa",
+      "url": "https://www.notion.so/352bacd27dee812da5f7c2d6682d56e8",
+      "block_count": 81,
+      "child_page_count": 0,
+      "has_content": true,
+      "icon": {
+        "type": "emoji",
+        "value": "🔤"
+      },
+      "depth": 5
+    },
+    {
+      "id": "352bacd2-7dee-817d-ab4e-cc8a9b7e9b60",
+      "title": "Chip",
+      "parent_id": "352bacd2-7dee-8167-9e98-d9ba70a00aaa",
+      "url": "https://www.notion.so/352bacd27dee817dab4ecc8a9b7e9b60",
+      "block_count": 60,
+      "child_page_count": 0,
+      "has_content": true,
+      "icon": {
+        "type": "emoji",
+        "value": "🔤"
+      },
+      "depth": 5
+    },
+    {
+      "id": "352bacd2-7dee-818d-afed-f0f5a55b9475",
+      "title": "number.ts — Number Formatting Utilities",
+      "parent_id": "352bacd2-7dee-8167-9e98-d9ba70a00aaa",
+      "url": "https://www.notion.so/352bacd27dee818dafedf0f5a55b9475",
+      "block_count": 30,
+      "child_page_count": 0,
+      "has_content": true,
+      "icon": {
+        "type": "emoji",
+        "value": "🔤"
+      },
+      "depth": 5
+    },
+    {
+      "id": "352bacd2-7dee-811a-8e5e-ca61bb1856cd",
+      "title": "Layout-and-nav",
+      "parent_id": "352bacd2-7dee-8166-9df3-f6b05f9af5cc",
+      "url": "https://www.notion.so/352bacd27dee811a8e5eca61bb1856cd",
+      "block_count": 17,
+      "child_page_count": 8,
+      "has_content": true,
+      "icon": {
+        "type": "emoji",
+        "value": "🧩"
+      },
+      "depth": 4
+    },
+    {
+      "id": "352bacd2-7dee-8118-a1a0-d0e7b650e148",
+      "title": "App Layout System — AppWrapper, Navbar, Sidebar, Providers",
+      "parent_id": "352bacd2-7dee-811a-8e5e-ca61bb1856cd",
+      "url": "https://www.notion.so/352bacd27dee8118a1a0d0e7b650e148",
+      "block_count": 81,
+      "child_page_count": 0,
+      "has_content": true,
+      "icon": {
+        "type": "emoji",
+        "value": "🧱"
+      },
+      "depth": 5
+    },
+    {
+      "id": "352bacd2-7dee-81a5-8ea1-fc5e4b140ed5",
+      "title": "Modal System",
+      "parent_id": "352bacd2-7dee-811a-8e5e-ca61bb1856cd",
+      "url": "https://www.notion.so/352bacd27dee81a58ea1fc5e4b140ed5",
+      "block_count": 92,
+      "child_page_count": 0,
+      "has_content": true,
+      "icon": {
+        "type": "emoji",
+        "value": "🧱"
+      },
+      "depth": 5
+    },
+    {
+      "id": "352bacd2-7dee-8169-ac71-e179fd74de52",
+      "title": "Dropdown — Floating UI Dropdown Component",
+      "parent_id": "352bacd2-7dee-811a-8e5e-ca61bb1856cd",
+      "url": "https://www.notion.so/352bacd27dee8169ac71e179fd74de52",
+      "block_count": 33,
+      "child_page_count": 0,
+      "has_content": true,
+      "icon": {
+        "type": "emoji",
+        "value": "🧱"
+      },
+      "depth": 5
+    },
+    {
+      "id": "352bacd2-7dee-81ef-80e7-ecca49dc351d",
+      "title": "Portal — DOM Escape Hatch Component",
+      "parent_id": "352bacd2-7dee-811a-8e5e-ca61bb1856cd",
+      "url": "https://www.notion.so/352bacd27dee81ef80e7ecca49dc351d",
+      "block_count": 50,
+      "child_page_count": 0,
+      "has_content": true,
+      "icon": {
+        "type": "emoji",
+        "value": "🧱"
+      },
+      "depth": 5
+    },
+    {
+      "id": "352bacd2-7dee-812d-a308-da2e884c1461",
+      "title": "Collapse — Collapsible Content Section",
+      "parent_id": "352bacd2-7dee-811a-8e5e-ca61bb1856cd",
+      "url": "https://www.notion.so/352bacd27dee812da308da2e884c1461",
+      "block_count": 37,
+      "child_page_count": 0,
+      "has_content": true,
+      "icon": {
+        "type": "emoji",
+        "value": "🧱"
+      },
+      "depth": 5
+    },
+    {
+      "id": "352bacd2-7dee-8141-8512-d99e598524a9",
+      "title": "CodeBlock — JSON/Code Display Component",
+      "parent_id": "352bacd2-7dee-811a-8e5e-ca61bb1856cd",
+      "url": "https://www.notion.so/352bacd27dee81418512d99e598524a9",
+      "block_count": 47,
+      "child_page_count": 0,
+      "has_content": true,
+      "icon": {
+        "type": "emoji",
+        "value": "🧱"
+      },
+      "depth": 5
+    },
+    {
+      "id": "352bacd2-7dee-815f-8673-ca8565e95e6c",
+      "title": "App Search — Global Entity Search System",
+      "parent_id": "352bacd2-7dee-811a-8e5e-ca61bb1856cd",
+      "url": "https://www.notion.so/352bacd27dee815f8673ca8565e95e6c",
+      "block_count": 44,
+      "child_page_count": 0,
+      "has_content": true,
+      "icon": {
+        "type": "emoji",
+        "value": "🧱"
+      },
+      "depth": 5
+    },
+    {
+      "id": "352bacd2-7dee-8145-88d3-dd8f9ff122f8",
+      "title": "Modal-improvements",
+      "parent_id": "352bacd2-7dee-811a-8e5e-ca61bb1856cd",
+      "url": "https://www.notion.so/352bacd27dee814588d3dd8f9ff122f8",
+      "block_count": 7,
+      "child_page_count": 2,
+      "has_content": true,
+      "icon": null,
+      "depth": 5
+    },
+    {
+      "id": "352bacd2-7dee-8176-ba17-c9015965da21",
+      "title": "Modal Duplicate-Mount Tracker — Practical Applications",
+      "parent_id": "352bacd2-7dee-8145-88d3-dd8f9ff122f8",
+      "url": "https://www.notion.so/352bacd27dee8176ba17c9015965da21",
+      "block_count": 43,
+      "child_page_count": 0,
+      "has_content": true,
+      "icon": {
+        "type": "emoji",
+        "value": "🚨"
+      },
+      "depth": 6
+    },
+    {
+      "id": "352bacd2-7dee-8165-b419-edc9dd55b5fa",
+      "title": "Modal System — Improvement Plan",
+      "parent_id": "352bacd2-7dee-8145-88d3-dd8f9ff122f8",
+      "url": "https://www.notion.so/352bacd27dee8165b419edc9dd55b5fa",
+      "block_count": 192,
+      "child_page_count": 0,
+      "has_content": true,
+      "icon": {
+        "type": "emoji",
+        "value": "🛠️"
+      },
+      "depth": 6
+    },
+    {
+      "id": "352bacd2-7dee-8140-be6c-e43636f334ff",
+      "title": "Tables-and-data",
+      "parent_id": "352bacd2-7dee-8166-9df3-f6b05f9af5cc",
+      "url": "https://www.notion.so/352bacd27dee8140be6ce43636f334ff",
+      "block_count": 19,
+      "child_page_count": 5,
+      "has_content": true,
+      "icon": {
+        "type": "emoji",
+        "value": "🧩"
+      },
+      "depth": 4
+    },
+    {
+      "id": "352bacd2-7dee-8188-8324-e9be2f78b234",
+      "title": "SortButton & useSortState",
+      "parent_id": "352bacd2-7dee-8140-be6c-e43636f334ff",
+      "url": "https://www.notion.so/352bacd27dee81888324e9be2f78b234",
+      "block_count": 49,
+      "child_page_count": 0,
+      "has_content": true,
+      "icon": {
+        "type": "emoji",
+        "value": "📊"
+      },
+      "depth": 5
+    },
+    {
+      "id": "352bacd2-7dee-818e-ad41-e1f2917320aa",
+      "title": "GenericTable",
+      "parent_id": "352bacd2-7dee-8140-be6c-e43636f334ff",
+      "url": "https://www.notion.so/352bacd27dee818ead41e1f2917320aa",
+      "block_count": 116,
+      "child_page_count": 0,
+      "has_content": true,
+      "icon": {
+        "type": "emoji",
+        "value": "📊"
+      },
+      "depth": 5
+    },
+    {
+      "id": "352bacd2-7dee-81a1-a883-daef117bbede",
+      "title": "Pagination — usePaginationStateV2 + PaginationHandleV2",
+      "parent_id": "352bacd2-7dee-8140-be6c-e43636f334ff",
+      "url": "https://www.notion.so/352bacd27dee81a1a883daef117bbede",
+      "block_count": 43,
+      "child_page_count": 0,
+      "has_content": true,
+      "icon": {
+        "type": "emoji",
+        "value": "📊"
+      },
+      "depth": 5
+    },
+    {
+      "id": "352bacd2-7dee-8174-ad92-c4d23fed0aff",
+      "title": "RowMenuListV2",
+      "parent_id": "352bacd2-7dee-8140-be6c-e43636f334ff",
+      "url": "https://www.notion.so/352bacd27dee8174ad92c4d23fed0aff",
+      "block_count": 34,
+      "child_page_count": 0,
+      "has_content": true,
+      "icon": {
+        "type": "emoji",
+        "value": "📊"
+      },
+      "depth": 5
+    },
+    {
+      "id": "352bacd2-7dee-81f8-be45-fc8cdc33a78e",
+      "title": "FilterTabs",
+      "parent_id": "352bacd2-7dee-8140-be6c-e43636f334ff",
+      "url": "https://www.notion.so/352bacd27dee81f8be45fc8cdc33a78e",
+      "block_count": 75,
+      "child_page_count": 0,
+      "has_content": true,
+      "icon": {
+        "type": "emoji",
+        "value": "📊"
+      },
+      "depth": 5
+    },
+    {
+      "id": "352bacd2-7dee-815d-a06b-eff5b4f32e1f",
+      "title": "Hooks",
+      "parent_id": "352bacd2-7dee-8166-9df3-f6b05f9af5cc",
+      "url": "https://www.notion.so/352bacd27dee815da06beff5b4f32e1f",
+      "block_count": 28,
+      "child_page_count": 14,
+      "has_content": true,
+      "icon": {
+        "type": "emoji",
+        "value": "🧩"
+      },
+      "depth": 4
+    },
+    {
+      "id": "352bacd2-7dee-8167-a63b-cdc08fa235da",
+      "title": "useConnectivityStatus",
+      "parent_id": "352bacd2-7dee-815d-a06b-eff5b4f32e1f",
+      "url": "https://www.notion.so/352bacd27dee8167a63bcdc08fa235da",
+      "block_count": 53,
+      "child_page_count": 0,
+      "has_content": true,
+      "icon": {
+        "type": "emoji",
+        "value": "🪝"
+      },
+      "depth": 5
+    },
+    {
+      "id": "352bacd2-7dee-81b1-bf1b-edf808624636",
+      "title": "useTimeToCompletion (useEta) — ETA Calculation Hook",
+      "parent_id": "352bacd2-7dee-815d-a06b-eff5b4f32e1f",
+      "url": "https://www.notion.so/352bacd27dee81b1bf1bedf808624636",
+      "block_count": 27,
+      "child_page_count": 0,
+      "has_content": true,
+      "icon": {
+        "type": "emoji",
+        "value": "🪝"
+      },
+      "depth": 5
+    },
+    {
+      "id": "352bacd2-7dee-8109-a222-fd0ff5f33444",
+      "title": "useArray / useArrayV2",
+      "parent_id": "352bacd2-7dee-815d-a06b-eff5b4f32e1f",
+      "url": "https://www.notion.so/352bacd27dee8109a222fd0ff5f33444",
+      "block_count": 46,
+      "child_page_count": 0,
+      "has_content": true,
+      "icon": {
+        "type": "emoji",
+        "value": "🪝"
+      },
+      "depth": 5
+    },
+    {
+      "id": "352bacd2-7dee-819e-93e6-c02278a84d3c",
+      "title": "global-context.tsx — Typed React Context System",
+      "parent_id": "352bacd2-7dee-815d-a06b-eff5b4f32e1f",
+      "url": "https://www.notion.so/352bacd27dee819e93e6c02278a84d3c",
+      "block_count": 49,
+      "child_page_count": 0,
+      "has_content": true,
+      "icon": {
+        "type": "emoji",
+        "value": "🪝"
+      },
+      "depth": 5
+    },
+    {
+      "id": "352bacd2-7dee-819d-bdf3-ef27f4c10869",
+      "title": "useQSync — Bidirectional URL ↔ State Sync",
+      "parent_id": "352bacd2-7dee-815d-a06b-eff5b4f32e1f",
+      "url": "https://www.notion.so/352bacd27dee819dbdf3ef27f4c10869",
+      "block_count": 109,
+      "child_page_count": 0,
+      "has_content": true,
+      "icon": {
+        "type": "emoji",
+        "value": "🪝"
+      },
+      "depth": 5
+    },
+    {
+      "id": "352bacd2-7dee-8152-bcd3-f6d1a2d6db7c",
+      "title": "useData — Combined Filter + Search + Paginate Hook",
+      "parent_id": "352bacd2-7dee-815d-a06b-eff5b4f32e1f",
+      "url": "https://www.notion.so/352bacd27dee8152bcd3f6d1a2d6db7c",
+      "block_count": 43,
+      "child_page_count": 0,
+      "has_content": true,
+      "icon": {
+        "type": "emoji",
+        "value": "🪝"
+      },
+      "depth": 5
+    },
+    {
+      "id": "352bacd2-7dee-8149-9a9b-d987332170ca",
+      "title": "Data Layer — Server-Side Data Fetching (`src/data/`)",
+      "parent_id": "352bacd2-7dee-815d-a06b-eff5b4f32e1f",
+      "url": "https://www.notion.so/352bacd27dee81499a9bd987332170ca",
+      "block_count": 55,
+      "child_page_count": 0,
+      "has_content": true,
+      "icon": {
+        "type": "emoji",
+        "value": "🪝"
+      },
+      "depth": 5
+    },
+    {
+      "id": "352bacd2-7dee-8108-a68d-e7c98ee21105",
+      "title": "useQ — React Query Wrapper for Data Fetching",
+      "parent_id": "352bacd2-7dee-815d-a06b-eff5b4f32e1f",
+      "url": "https://www.notion.so/352bacd27dee8108a68de7c98ee21105",
+      "block_count": 55,
+      "child_page_count": 0,
+      "has_content": true,
+      "icon": {
+        "type": "emoji",
+        "value": "🪝"
+      },
+      "depth": 5
+    },
+    {
+      "id": "352bacd2-7dee-8157-a2ec-c278d16b01ef",
+      "title": "useLocalStorage / useSessionStorage — Persisted State Hooks",
+      "parent_id": "352bacd2-7dee-815d-a06b-eff5b4f32e1f",
+      "url": "https://www.notion.so/352bacd27dee8157a2ecc278d16b01ef",
+      "block_count": 40,
+      "child_page_count": 0,
+      "has_content": true,
+      "icon": {
+        "type": "emoji",
+        "value": "🪝"
+      },
+      "depth": 5
+    },
+    {
+      "id": "352bacd2-7dee-814a-adba-e36ed32b9140",
+      "title": "useM — React Query Wrapper for Mutations",
+      "parent_id": "352bacd2-7dee-815d-a06b-eff5b4f32e1f",
+      "url": "https://www.notion.so/352bacd27dee814aadbae36ed32b9140",
+      "block_count": 53,
+      "child_page_count": 0,
+      "has_content": true,
+      "icon": {
+        "type": "emoji",
+        "value": "🪝"
+      },
+      "depth": 5
+    },
+    {
+      "id": "352bacd2-7dee-8103-ac04-cda88afabe7f",
+      "title": "react-query.ts — Query Client & Key Registry",
+      "parent_id": "352bacd2-7dee-815d-a06b-eff5b4f32e1f",
+      "url": "https://www.notion.so/352bacd27dee8103ac04cda88afabe7f",
+      "block_count": 59,
+      "child_page_count": 0,
+      "has_content": true,
+      "icon": {
+        "type": "emoji",
+        "value": "🪝"
+      },
+      "depth": 5
+    },
+    {
+      "id": "352bacd2-7dee-81ab-8b80-f125bc3e509e",
+      "title": "useKeyPress — Keyboard Event Hook",
+      "parent_id": "352bacd2-7dee-815d-a06b-eff5b4f32e1f",
+      "url": "https://www.notion.so/352bacd27dee81ab8b80f125bc3e509e",
+      "block_count": 45,
+      "child_page_count": 0,
+      "has_content": true,
+      "icon": {
+        "type": "emoji",
+        "value": "🪝"
+      },
+      "depth": 5
+    },
+    {
+      "id": "352bacd2-7dee-81a3-8008-d2541da59bf6",
+      "title": "useQueryParams / useQParam / useQValue — URL Search Params Management",
+      "parent_id": "352bacd2-7dee-815d-a06b-eff5b4f32e1f",
+      "url": "https://www.notion.so/352bacd27dee81a38008d2541da59bf6",
+      "block_count": 58,
+      "child_page_count": 0,
+      "has_content": true,
+      "icon": {
+        "type": "emoji",
+        "value": "🪝"
+      },
+      "depth": 5
+    },
+    {
+      "id": "352bacd2-7dee-817a-a7bf-ec91f9fd3ff1",
+      "title": "Minor Hooks — Quick Reference",
+      "parent_id": "352bacd2-7dee-815d-a06b-eff5b4f32e1f",
+      "url": "https://www.notion.so/352bacd27dee817aa7bfec91f9fd3ff1",
+      "block_count": 93,
+      "child_page_count": 0,
+      "has_content": true,
+      "icon": {
+        "type": "emoji",
+        "value": "🪝"
+      },
+      "depth": 5
+    },
+    {
+      "id": "352bacd2-7dee-81b8-9a8e-e8890574981c",
+      "title": "Auth-and-access",
+      "parent_id": "352bacd2-7dee-8166-9df3-f6b05f9af5cc",
+      "url": "https://www.notion.so/352bacd27dee81b89a8ee8890574981c",
+      "block_count": 19,
+      "child_page_count": 5,
+      "has_content": true,
+      "icon": {
+        "type": "emoji",
+        "value": "🧩"
+      },
+      "depth": 4
+    },
+    {
+      "id": "352bacd2-7dee-8139-a976-dd8cbd4e13f2",
+      "title": "useTeamData — Team Data, Config, and Permissions Hook",
+      "parent_id": "352bacd2-7dee-81b8-9a8e-e8890574981c",
+      "url": "https://www.notion.so/352bacd27dee8139a976dd8cbd4e13f2",
+      "block_count": 36,
+      "child_page_count": 0,
+      "has_content": true,
+      "icon": {
+        "type": "emoji",
+        "value": "🔐"
+      },
+      "depth": 5
+    },
+    {
+      "id": "352bacd2-7dee-817d-97d9-fa3f387001d4",
+      "title": "Server-Side Wrappers",
+      "parent_id": "352bacd2-7dee-81b8-9a8e-e8890574981c",
+      "url": "https://www.notion.so/352bacd27dee817d97d9fa3f387001d4",
+      "block_count": 74,
+      "child_page_count": 0,
+      "has_content": true,
+      "icon": {
+        "type": "emoji",
+        "value": "🔐"
+      },
+      "depth": 5
+    },
+    {
+      "id": "352bacd2-7dee-816c-b381-e1fddce88da1",
+      "title": "Permission System — Roles, Guards, and Route Protection",
+      "parent_id": "352bacd2-7dee-81b8-9a8e-e8890574981c",
+      "url": "https://www.notion.so/352bacd27dee816cb381e1fddce88da1",
+      "block_count": 64,
+      "child_page_count": 0,
+      "has_content": true,
+      "icon": {
+        "type": "emoji",
+        "value": "🔐"
+      },
+      "depth": 5
+    },
+    {
+      "id": "352bacd2-7dee-81e2-9dd7-d64f96722e57",
+      "title": "useUserUsageV2",
+      "parent_id": "352bacd2-7dee-81b8-9a8e-e8890574981c",
+      "url": "https://www.notion.so/352bacd27dee81e29dd7d64f96722e57",
+      "block_count": 42,
+      "child_page_count": 0,
+      "has_content": true,
+      "icon": {
+        "type": "emoji",
+        "value": "🔐"
+      },
+      "depth": 5
+    },
+    {
+      "id": "352bacd2-7dee-8163-8eb7-dd57a638186c",
+      "title": "Auth System — Hooks, Utils, and Providers",
+      "parent_id": "352bacd2-7dee-81b8-9a8e-e8890574981c",
+      "url": "https://www.notion.so/352bacd27dee81638eb7dd57a638186c",
+      "block_count": 61,
+      "child_page_count": 0,
+      "has_content": true,
+      "icon": {
+        "type": "emoji",
+        "value": "🔐"
+      },
+      "depth": 5
+    },
+    {
+      "id": "352bacd2-7dee-81df-842c-fc569528ba3f",
+      "title": "Integrations-and-ops",
+      "parent_id": "352bacd2-7dee-8166-9df3-f6b05f9af5cc",
+      "url": "https://www.notion.so/352bacd27dee81df842cfc569528ba3f",
+      "block_count": 40,
+      "child_page_count": 26,
+      "has_content": true,
+      "icon": {
+        "type": "emoji",
+        "value": "🧩"
+      },
+      "depth": 4
+    },
+    {
+      "id": "352bacd2-7dee-8173-bbb2-c1d0e1b62fbc",
+      "title": "PromptEditor — Rich Text Editor with Variable Interpolation",
+      "parent_id": "352bacd2-7dee-81df-842c-fc569528ba3f",
+      "url": "https://www.notion.so/352bacd27dee8173bbb2c1d0e1b62fbc",
+      "block_count": 48,
+      "child_page_count": 0,
+      "has_content": true,
+      "icon": {
+        "type": "emoji",
+        "value": "⚙️"
+      },
+      "depth": 5
+    },
+    {
+      "id": "352bacd2-7dee-819c-b455-cf52221e8a78",
+      "title": "routing.ts — Route Path Definitions",
+      "parent_id": "352bacd2-7dee-81df-842c-fc569528ba3f",
+      "url": "https://www.notion.so/352bacd27dee819cb455cf52221e8a78",
+      "block_count": 24,
+      "child_page_count": 0,
+      "has_content": true,
+      "icon": {
+        "type": "emoji",
+        "value": "⚙️"
+      },
+      "depth": 5
+    },
+    {
+      "id": "352bacd2-7dee-818c-a309-ee7c89fa7383",
+      "title": "App Pages Overview",
+      "parent_id": "352bacd2-7dee-81df-842c-fc569528ba3f",
+      "url": "https://www.notion.so/352bacd27dee818ca309ee7c89fa7383",
+      "block_count": 87,
+      "child_page_count": 0,
+      "has_content": true,
+      "icon": {
+        "type": "emoji",
+        "value": "⚙️"
+      },
+      "depth": 5
+    },
+    {
+      "id": "352bacd2-7dee-81ad-b482-dc565409d435",
+      "title": "Toast / Alert Notification System",
+      "parent_id": "352bacd2-7dee-81df-842c-fc569528ba3f",
+      "url": "https://www.notion.so/352bacd27dee81adb482dc565409d435",
+      "block_count": 81,
+      "child_page_count": 0,
+      "has_content": true,
+      "icon": {
+        "type": "emoji",
+        "value": "⚙️"
+      },
+      "depth": 5
+    },
+    {
+      "id": "352bacd2-7dee-8190-818d-fdfea1aefd17",
+      "title": "Wizard — WizardStepper + WizardAction",
+      "parent_id": "352bacd2-7dee-81df-842c-fc569528ba3f",
+      "url": "https://www.notion.so/352bacd27dee8190818dfdfea1aefd17",
+      "block_count": 45,
+      "child_page_count": 0,
+      "has_content": true,
+      "icon": {
+        "type": "emoji",
+        "value": "⚙️"
+      },
+      "depth": 5
+    },
+    {
+      "id": "352bacd2-7dee-81e7-9c9f-fbb42b184668",
+      "title": "url.ts — URL Utilities & Query Parameter Constants",
+      "parent_id": "352bacd2-7dee-81df-842c-fc569528ba3f",
+      "url": "https://www.notion.so/352bacd27dee81e79c9ffbb42b184668",
+      "block_count": 40,
+      "child_page_count": 0,
+      "has_content": true,
+      "icon": {
+        "type": "emoji",
+        "value": "⚙️"
+      },
+      "depth": 5
+    },
+    {
+      "id": "352bacd2-7dee-8197-bc30-d01083d24bec",
+      "title": "Code Audit — Versable Enhancement Product Frontend",
+      "parent_id": "352bacd2-7dee-81df-842c-fc569528ba3f",
+      "url": "https://www.notion.so/352bacd27dee8197bc30d01083d24bec",
+      "block_count": 183,
+      "child_page_count": 0,
+      "has_content": true,
+      "icon": {
+        "type": "emoji",
+        "value": "⚙️"
+      },
+      "depth": 5
+    },
+    {
+      "id": "352bacd2-7dee-817a-a6f0-c13f8bdf865e",
+      "title": "BuyCreditsModal",
+      "parent_id": "352bacd2-7dee-81df-842c-fc569528ba3f",
+      "url": "https://www.notion.so/352bacd27dee817aa6f0c13f8bdf865e",
+      "block_count": 46,
+      "child_page_count": 0,
+      "has_content": true,
+      "icon": {
+        "type": "emoji",
+        "value": "⚙️"
+      },
+      "depth": 5
+    },
+    {
+      "id": "352bacd2-7dee-8143-b502-ddb0532b1c3d",
+      "title": "Email System",
+      "parent_id": "352bacd2-7dee-81df-842c-fc569528ba3f",
+      "url": "https://www.notion.so/352bacd27dee8143b502ddb0532b1c3d",
+      "block_count": 71,
+      "child_page_count": 0,
+      "has_content": true,
+      "icon": {
+        "type": "emoji",
+        "value": "⚙️"
+      },
+      "depth": 5
+    },
+    {
+      "id": "352bacd2-7dee-8166-997c-eef821edd1a4",
+      "title": "Credits Utilities",
+      "parent_id": "352bacd2-7dee-81df-842c-fc569528ba3f",
+      "url": "https://www.notion.so/352bacd27dee8166997ceef821edd1a4",
+      "block_count": 39,
+      "child_page_count": 0,
+      "has_content": true,
+      "icon": {
+        "type": "emoji",
+        "value": "⚙️"
+      },
+      "depth": 5
+    },
+    {
+      "id": "352bacd2-7dee-81c8-9fd2-fbaeb56a79a9",
+      "title": "External Integrations",
+      "parent_id": "352bacd2-7dee-81df-842c-fc569528ba3f",
+      "url": "https://www.notion.so/352bacd27dee81c89fd2fbaeb56a79a9",
+      "block_count": 91,
+      "child_page_count": 0,
+      "has_content": true,
+      "icon": {
+        "type": "emoji",
+        "value": "⚙️"
+      },
+      "depth": 5
+    },
+    {
+      "id": "352bacd2-7dee-816d-8480-ec2e93bd8d85",
+      "title": "Drizzle ORM Database Layer",
+      "parent_id": "352bacd2-7dee-81df-842c-fc569528ba3f",
+      "url": "https://www.notion.so/352bacd27dee816d8480ec2e93bd8d85",
+      "block_count": 166,
+      "child_page_count": 0,
+      "has_content": true,
+      "icon": {
+        "type": "emoji",
+        "value": "⚙️"
+      },
+      "depth": 5
+    },
+    {
+      "id": "352bacd2-7dee-816e-8edd-e28e5142f812",
+      "title": "Alert Component",
+      "parent_id": "352bacd2-7dee-81df-842c-fc569528ba3f",
+      "url": "https://www.notion.so/352bacd27dee816e8edde28e5142f812",
+      "block_count": 61,
+      "child_page_count": 0,
+      "has_content": true,
+      "icon": {
+        "type": "emoji",
+        "value": "⚙️"
+      },
+      "depth": 5
+    },
+    {
+      "id": "352bacd2-7dee-8128-9588-c26635d5dff9",
+      "title": "App Init — Startup Configuration & Auth Atoms",
+      "parent_id": "352bacd2-7dee-81df-842c-fc569528ba3f",
+      "url": "https://www.notion.so/352bacd27dee81289588c26635d5dff9",
+      "block_count": 48,
+      "child_page_count": 0,
+      "has_content": true,
+      "icon": {
+        "type": "emoji",
+        "value": "⚙️"
+      },
+      "depth": 5
+    },
+    {
+      "id": "352bacd2-7dee-8156-b6bc-c2055a14a904",
+      "title": "Playwright E2E Testing Framework",
+      "parent_id": "352bacd2-7dee-81df-842c-fc569528ba3f",
+      "url": "https://www.notion.so/352bacd27dee8156b6bcc2055a14a904",
+      "block_count": 244,
+      "child_page_count": 0,
+      "has_content": true,
+      "icon": {
+        "type": "emoji",
+        "value": "⚙️"
+      },
+      "depth": 5
+    },
+    {
+      "id": "352bacd2-7dee-810a-bf2f-d4d50df69c29",
+      "title": "error.ts — Error Handling Utilities",
+      "parent_id": "352bacd2-7dee-81df-842c-fc569528ba3f",
+      "url": "https://www.notion.so/352bacd27dee810abf2fd4d50df69c29",
+      "block_count": 65,
+      "child_page_count": 0,
+      "has_content": true,
+      "icon": {
+        "type": "emoji",
+        "value": "⚙️"
+      },
+      "depth": 5
+    },
+    {
+      "id": "352bacd2-7dee-817c-8132-fc88f63ff224",
+      "title": "Team Scaling Guide — Preparing the Codebase for Senior + Junior Engineers",
+      "parent_id": "352bacd2-7dee-81df-842c-fc569528ba3f",
+      "url": "https://www.notion.so/352bacd27dee817c8132fc88f63ff224",
+      "block_count": 157,
+      "child_page_count": 0,
+      "has_content": true,
+      "icon": {
+        "type": "emoji",
+        "value": "⚙️"
+      },
+      "depth": 5
+    },
+    {
+      "id": "352bacd2-7dee-81e6-85ad-f52f8d5be0c6",
+      "title": "object.ts — Object Manipulation Utilities",
+      "parent_id": "352bacd2-7dee-81df-842c-fc569528ba3f",
+      "url": "https://www.notion.so/352bacd27dee81e685adf52f8d5be0c6",
+      "block_count": 57,
+      "child_page_count": 0,
+      "has_content": true,
+      "icon": {
+        "type": "emoji",
+        "value": "⚙️"
+      },
+      "depth": 5
+    },
+    {
+      "id": "352bacd2-7dee-8125-acc2-cc118aa22202",
+      "title": "iter.ts — Array & Data Iteration Utilities",
+      "parent_id": "352bacd2-7dee-81df-842c-fc569528ba3f",
+      "url": "https://www.notion.so/352bacd27dee8125acc2cc118aa22202",
+      "block_count": 63,
+      "child_page_count": 0,
+      "has_content": true,
+      "icon": {
+        "type": "emoji",
+        "value": "⚙️"
+      },
+      "depth": 5
+    },
+    {
+      "id": "352bacd2-7dee-814a-b42d-c7004be2eea5",
+      "title": "useInitApp",
+      "parent_id": "352bacd2-7dee-81df-842c-fc569528ba3f",
+      "url": "https://www.notion.so/352bacd27dee814ab42dc7004be2eea5",
+      "block_count": 52,
+      "child_page_count": 0,
+      "has_content": true,
+      "icon": {
+        "type": "emoji",
+        "value": "⚙️"
+      },
+      "depth": 5
+    },
+    {
+      "id": "352bacd2-7dee-81fa-a8eb-df7659a97456",
+      "title": "WorkerStatus",
+      "parent_id": "352bacd2-7dee-81df-842c-fc569528ba3f",
+      "url": "https://www.notion.so/352bacd27dee81faa8ebdf7659a97456",
+      "block_count": 45,
+      "child_page_count": 0,
+      "has_content": true,
+      "icon": {
+        "type": "emoji",
+        "value": "⚙️"
+      },
+      "depth": 5
+    },
+    {
+      "id": "352bacd2-7dee-8163-8a1f-ecac9d209aeb",
+      "title": "Page-Level Components — States, Header, Toggle",
+      "parent_id": "352bacd2-7dee-81df-842c-fc569528ba3f",
+      "url": "https://www.notion.so/352bacd27dee81638a1fecac9d209aeb",
+      "block_count": 41,
+      "child_page_count": 0,
+      "has_content": true,
+      "icon": {
+        "type": "emoji",
+        "value": "⚙️"
+      },
+      "depth": 5
+    },
+    {
+      "id": "352bacd2-7dee-819d-8e2a-ed904a49fc9a",
+      "title": "usePaymentList / usePaymentPlan",
+      "parent_id": "352bacd2-7dee-81df-842c-fc569528ba3f",
+      "url": "https://www.notion.so/352bacd27dee819d8e2aed904a49fc9a",
+      "block_count": 60,
+      "child_page_count": 0,
+      "has_content": true,
+      "icon": {
+        "type": "emoji",
+        "value": "⚙️"
+      },
+      "depth": 5
+    },
+    {
+      "id": "352bacd2-7dee-81ac-9f2a-dada46b41687",
+      "title": "Redis Caching Layer",
+      "parent_id": "352bacd2-7dee-81df-842c-fc569528ba3f",
+      "url": "https://www.notion.so/352bacd27dee81ac9f2adada46b41687",
+      "block_count": 85,
+      "child_page_count": 0,
+      "has_content": true,
+      "icon": {
+        "type": "emoji",
+        "value": "⚙️"
+      },
+      "depth": 5
+    },
+    {
+      "id": "352bacd2-7dee-81de-9e00-c77e750462f5",
+      "title": "utils.types.ts — Core Type Definitions",
+      "parent_id": "352bacd2-7dee-81df-842c-fc569528ba3f",
+      "url": "https://www.notion.so/352bacd27dee81de9e00c77e750462f5",
+      "block_count": 35,
+      "child_page_count": 0,
+      "has_content": true,
+      "icon": {
+        "type": "emoji",
+        "value": "⚙️"
+      },
+      "depth": 5
+    },
+    {
+      "id": "352bacd2-7dee-8188-b2e4-cc60e9e962ff",
+      "title": "useJobData — Job Details, Source Preview, and Metadata Hook",
+      "parent_id": "352bacd2-7dee-81df-842c-fc569528ba3f",
+      "url": "https://www.notion.so/352bacd27dee8188b2e4cc60e9e962ff",
+      "block_count": 37,
+      "child_page_count": 0,
+      "has_content": true,
+      "icon": {
+        "type": "emoji",
+        "value": "⚙️"
+      },
+      "depth": 5
+    },
+    {
+      "id": "352bacd2-7dee-81e9-ac05-cb21b95d70c5",
+      "title": "Data-patterns",
+      "parent_id": "352bacd2-7dee-8194-bea4-f49a33e63c0c",
+      "url": "https://www.notion.so/352bacd27dee81e9ac05cb21b95d70c5",
+      "block_count": 16,
+      "child_page_count": 2,
+      "has_content": true,
+      "icon": null,
+      "depth": 3
+    },
+    {
+      "id": "352bacd2-7dee-812f-8707-e2f6d84e3d85",
+      "title": "System — Storage (AWS S3)",
+      "parent_id": "352bacd2-7dee-81e9-ac05-cb21b95d70c5",
+      "url": "https://www.notion.so/352bacd27dee812f8707e2f6d84e3d85",
+      "block_count": 25,
+      "child_page_count": 0,
+      "has_content": true,
+      "icon": {
+        "type": "emoji",
+        "value": "🪣"
+      },
+      "depth": 4
+    },
+    {
+      "id": "352bacd2-7dee-81fa-a264-f9a5c9c1c89f",
+      "title": "Use-query-sync",
+      "parent_id": "352bacd2-7dee-81e9-ac05-cb21b95d70c5",
+      "url": "https://www.notion.so/352bacd27dee81faa264f9a5c9c1c89f",
+      "block_count": 7,
+      "child_page_count": 2,
+      "has_content": true,
+      "icon": null,
+      "depth": 4
+    },
+    {
+      "id": "352bacd2-7dee-81b1-baeb-c7291cd599c0",
+      "title": "useQSync — Implementation TODO & Running Log",
+      "parent_id": "352bacd2-7dee-81fa-a264-f9a5c9c1c89f",
+      "url": "https://www.notion.so/352bacd27dee81b1baebc7291cd599c0",
+      "block_count": 127,
+      "child_page_count": 0,
+      "has_content": true,
+      "icon": {
+        "type": "emoji",
+        "value": "✅"
+      },
+      "depth": 5
+    },
+    {
+      "id": "352bacd2-7dee-8143-9609-d0ffa73d671d",
+      "title": "`useQSync` — Plan",
+      "parent_id": "352bacd2-7dee-81fa-a264-f9a5c9c1c89f",
+      "url": "https://www.notion.so/352bacd27dee81439609d0ffa73d671d",
+      "block_count": 562,
+      "child_page_count": 0,
+      "has_content": true,
+      "icon": {
+        "type": "emoji",
+        "value": "🧠"
+      },
+      "depth": 5
+    },
+    {
+      "id": "352bacd2-7dee-81f0-9257-ea0d9c76ab06",
+      "title": "Services",
+      "parent_id": "352bacd2-7dee-8194-bea4-f49a33e63c0c",
+      "url": "https://www.notion.so/352bacd27dee81f09257ea0d9c76ab06",
+      "block_count": 6,
+      "child_page_count": 1,
+      "has_content": true,
+      "icon": null,
+      "depth": 3
+    },
+    {
+      "id": "352bacd2-7dee-81da-b20c-db2b4c47aae9",
+      "title": "Cron-tick",
+      "parent_id": "352bacd2-7dee-81f0-9257-ea0d9c76ab06",
+      "url": "https://www.notion.so/352bacd27dee81dab20cdb2b4c47aae9",
+      "block_count": 9,
+      "child_page_count": 4,
+      "has_content": true,
+      "icon": null,
+      "depth": 4
+    },
+    {
+      "id": "352bacd2-7dee-81a3-b515-e0229f60a58f",
+      "title": "Cron Tick — Render Setup",
+      "parent_id": "352bacd2-7dee-81da-b20c-db2b4c47aae9",
+      "url": "https://www.notion.so/352bacd27dee81a3b515e0229f60a58f",
+      "block_count": 82,
+      "child_page_count": 0,
+      "has_content": true,
+      "icon": {
+        "type": "emoji",
+        "value": "🚀"
+      },
+      "depth": 5
+    },
+    {
+      "id": "352bacd2-7dee-816c-ae80-eab089fc7ca0",
+      "title": "Cron Tick — V1 Implementation Plan",
+      "parent_id": "352bacd2-7dee-81da-b20c-db2b4c47aae9",
+      "url": "https://www.notion.so/352bacd27dee816cae80eab089fc7ca0",
+      "block_count": 243,
+      "child_page_count": 0,
+      "has_content": true,
+      "icon": {
+        "type": "emoji",
+        "value": "🛠️"
+      },
+      "depth": 5
+    },
+    {
+      "id": "352bacd2-7dee-81a9-8a3c-d6900d3b5aef",
+      "title": "BTS/Frontend — Services / Cron Tick",
+      "parent_id": "352bacd2-7dee-81da-b20c-db2b4c47aae9",
+      "url": "https://www.notion.so/352bacd27dee81a98a3cd6900d3b5aef",
+      "block_count": 37,
+      "child_page_count": 0,
+      "has_content": true,
+      "icon": {
+        "type": "emoji",
+        "value": "⏱️"
+      },
+      "depth": 5
+    },
+    {
+      "id": "352bacd2-7dee-8172-adc7-c45342dea1c7",
+      "title": "Cron Tick — V1 Plan",
+      "parent_id": "352bacd2-7dee-81da-b20c-db2b4c47aae9",
+      "url": "https://www.notion.so/352bacd27dee8172adc7c45342dea1c7",
+      "block_count": 159,
+      "child_page_count": 0,
+      "has_content": true,
+      "icon": {
+        "type": "emoji",
+        "value": "📐"
+      },
+      "depth": 5
+    },
+    {
+      "id": "352bacd2-7dee-8106-bb09-dfca79fe3ebc",
+      "title": "Backend",
+      "parent_id": "352bacd2-7dee-81e2-8673-e9dc081b041f",
+      "url": "https://www.notion.so/352bacd27dee8106bb09dfca79fe3ebc",
+      "block_count": 31,
+      "child_page_count": 7,
+      "has_content": true,
+      "icon": {
+        "type": "emoji",
+        "value": "🐍"
+      },
+      "depth": 2
+    },
+    {
+      "id": "352bacd2-7dee-81ba-beba-cde8fa61bf75",
+      "title": "DB Models — Central Index",
+      "parent_id": "352bacd2-7dee-8106-bb09-dfca79fe3ebc",
+      "url": "https://www.notion.so/352bacd27dee81babebacde8fa61bf75",
+      "block_count": 43,
+      "child_page_count": 0,
+      "has_content": true,
+      "icon": {
+        "type": "emoji",
+        "value": "🗃️"
+      },
+      "depth": 3
+    },
+    {
+      "id": "352bacd2-7dee-81b7-826c-c727e700be0d",
+      "title": "Cron Jobs — Catalogue",
+      "parent_id": "352bacd2-7dee-8106-bb09-dfca79fe3ebc",
+      "url": "https://www.notion.so/352bacd27dee81b7826cc727e700be0d",
+      "block_count": 24,
+      "child_page_count": 0,
+      "has_content": true,
+      "icon": {
+        "type": "emoji",
+        "value": "⏰"
+      },
+      "depth": 3
+    },
+    {
+      "id": "352bacd2-7dee-8150-b09b-fc82501640fa",
+      "title": "Ai-agents",
+      "parent_id": "352bacd2-7dee-8106-bb09-dfca79fe3ebc",
+      "url": "https://www.notion.so/352bacd27dee8150b09bfc82501640fa",
+      "block_count": 30,
+      "child_page_count": 10,
+      "has_content": true,
+      "icon": {
+        "type": "emoji",
+        "value": "🤖"
+      },
+      "depth": 3
+    },
+    {
+      "id": "352bacd2-7dee-817d-8da7-d42d4d9ab7d4",
+      "title": "BTS/Backend — AI Agents / Image-Gen + Color-Remap",
+      "parent_id": "352bacd2-7dee-8150-b09b-fc82501640fa",
+      "url": "https://www.notion.so/352bacd27dee817d8da7d42d4d9ab7d4",
+      "block_count": 52,
+      "child_page_count": 0,
+      "has_content": true,
+      "icon": {
+        "type": "emoji",
+        "value": "🎨"
+      },
+      "depth": 4
+    },
+    {
+      "id": "352bacd2-7dee-814d-b21e-cb9a3b77e25d",
+      "title": "BTS/Backend — AI Agents / EnhancementAgentV2",
+      "parent_id": "352bacd2-7dee-8150-b09b-fc82501640fa",
+      "url": "https://www.notion.so/352bacd27dee814db21ecb9a3b77e25d",
+      "block_count": 92,
+      "child_page_count": 0,
+      "has_content": true,
+      "icon": {
+        "type": "emoji",
+        "value": "✨"
+      },
+      "depth": 4
+    },
+    {
+      "id": "352bacd2-7dee-81cb-81a7-cff5527ddcea",
+      "title": "Agents — Image Generation and Recolor",
+      "parent_id": "352bacd2-7dee-8150-b09b-fc82501640fa",
+      "url": "https://www.notion.so/352bacd27dee81cb81a7cff5527ddcea",
+      "block_count": 45,
+      "child_page_count": 0,
+      "has_content": true,
+      "icon": {
+        "type": "emoji",
+        "value": "🖼️"
+      },
+      "depth": 4
+    },
+    {
+      "id": "352bacd2-7dee-8104-a6e7-ef106c1fb8fa",
+      "title": "BTS/Backend — AI Agents / PriceLookupAgent",
+      "parent_id": "352bacd2-7dee-8150-b09b-fc82501640fa",
+      "url": "https://www.notion.so/352bacd27dee8104a6e7ef106c1fb8fa",
+      "block_count": 66,
+      "child_page_count": 0,
+      "has_content": true,
+      "icon": {
+        "type": "emoji",
+        "value": "💰"
+      },
+      "depth": 4
+    },
+    {
+      "id": "352bacd2-7dee-817b-a60e-d08f47a7b654",
+      "title": "BTS/Backend — AI Agents / TPInterchangeAgent + InterchangeValidatorAgent",
+      "parent_id": "352bacd2-7dee-8150-b09b-fc82501640fa",
+      "url": "https://www.notion.so/352bacd27dee817ba60ed08f47a7b654",
+      "block_count": 89,
+      "child_page_count": 0,
+      "has_content": true,
+      "icon": {
+        "type": "emoji",
+        "value": "🔄"
+      },
+      "depth": 4
+    },
+    {
+      "id": "352bacd2-7dee-8185-905c-d8af49cb9774",
+      "title": "BTS/Backend — AI Agents / FitmentExtractorAgent",
+      "parent_id": "352bacd2-7dee-8150-b09b-fc82501640fa",
+      "url": "https://www.notion.so/352bacd27dee8185905cd8af49cb9774",
+      "block_count": 74,
+      "child_page_count": 0,
+      "has_content": true,
+      "icon": {
+        "type": "emoji",
+        "value": "🚗"
+      },
+      "depth": 4
+    },
+    {
+      "id": "352bacd2-7dee-8156-8077-c1fdfed1faae",
+      "title": "BTS/Backend — AI Agents / PartTypeMatcherAgent",
+      "parent_id": "352bacd2-7dee-8150-b09b-fc82501640fa",
+      "url": "https://www.notion.so/352bacd27dee81568077c1fdfed1faae",
+      "block_count": 73,
+      "child_page_count": 0,
+      "has_content": true,
+      "icon": {
+        "type": "emoji",
+        "value": "🔍"
+      },
+      "depth": 4
+    },
+    {
+      "id": "352bacd2-7dee-8101-8247-fdd60964965d",
+      "title": "BTS/Backend — AI Agents / Scraper LLM Extraction",
+      "parent_id": "352bacd2-7dee-8150-b09b-fc82501640fa",
+      "url": "https://www.notion.so/352bacd27dee81018247fdd60964965d",
+      "block_count": 87,
+      "child_page_count": 0,
+      "has_content": true,
+      "icon": {
+        "type": "emoji",
+        "value": "🕸️"
+      },
+      "depth": 4
+    },
+    {
+      "id": "352bacd2-7dee-8172-986c-f4c6326dcce1",
+      "title": "BTS/Backend — AI Agents / VCDB Matcher",
+      "parent_id": "352bacd2-7dee-8150-b09b-fc82501640fa",
+      "url": "https://www.notion.so/352bacd27dee8172986cf4c6326dcce1",
+      "block_count": 72,
+      "child_page_count": 0,
+      "has_content": true,
+      "icon": {
+        "type": "emoji",
+        "value": "🚙"
+      },
+      "depth": 4
+    },
+    {
+      "id": "352bacd2-7dee-8168-be4c-ff06e1e765c6",
+      "title": "Improvements",
+      "parent_id": "352bacd2-7dee-8150-b09b-fc82501640fa",
+      "url": "https://www.notion.so/352bacd27dee8168be4cff06e1e765c6",
+      "block_count": 6,
+      "child_page_count": 1,
+      "has_content": true,
+      "icon": null,
+      "depth": 4
+    },
+    {
+      "id": "352bacd2-7dee-811e-a42a-cd36e481ae39",
+      "title": "Enhancement-agent-v3",
+      "parent_id": "352bacd2-7dee-8168-be4c-ff06e1e765c6",
+      "url": "https://www.notion.so/352bacd27dee811ea42acd36e481ae39",
+      "block_count": 157,
+      "child_page_count": 3,
+      "has_content": true,
+      "icon": {
+        "type": "emoji",
+        "value": "🚧"
+      },
+      "depth": 5
+    },
+    {
+      "id": "352bacd2-7dee-81cc-be00-ca54f25fb33d",
+      "title": "Enhancement Agent V2 — reference Q&A Report",
+      "parent_id": "352bacd2-7dee-811e-a42a-cd36e481ae39",
+      "url": "https://www.notion.so/352bacd27dee81ccbe00ca54f25fb33d",
+      "block_count": 92,
+      "child_page_count": 0,
+      "has_content": true,
+      "icon": {
+        "type": "emoji",
+        "value": "📋"
+      },
+      "depth": 6
+    },
+    {
+      "id": "352bacd2-7dee-8143-b123-d4f462f5a172",
+      "title": "Enhancement Agent — A/B Testing Dashboard",
+      "parent_id": "352bacd2-7dee-811e-a42a-cd36e481ae39",
+      "url": "https://www.notion.so/352bacd27dee8143b123d4f462f5a172",
+      "block_count": 93,
+      "child_page_count": 0,
+      "has_content": true,
+      "icon": {
+        "type": "emoji",
+        "value": "📊"
+      },
+      "depth": 6
+    },
+    {
+      "id": "352bacd2-7dee-818b-9d9b-fdef7e041e60",
+      "title": "Enhancement Agent V2 — QA Appendix: Feedback and Improvement Audit",
+      "parent_id": "352bacd2-7dee-811e-a42a-cd36e481ae39",
+      "url": "https://www.notion.so/352bacd27dee818b9d9bfdef7e041e60",
+      "block_count": 136,
+      "child_page_count": 0,
+      "has_content": true,
+      "icon": {
+        "type": "emoji",
+        "value": "📎"
+      },
+      "depth": 6
+    },
+    {
+      "id": "352bacd2-7dee-81f0-9124-c8cf88d9875b",
+      "title": "Pipelines",
+      "parent_id": "352bacd2-7dee-8106-bb09-dfca79fe3ebc",
+      "url": "https://www.notion.so/352bacd27dee81f09124c8cf88d9875b",
+      "block_count": 60,
+      "child_page_count": 10,
+      "has_content": true,
+      "icon": {
+        "type": "emoji",
+        "value": "🔗"
+      },
+      "depth": 3
+    },
+    {
+      "id": "352bacd2-7dee-811b-a04d-c8815ed4ac2e",
+      "title": "BTS/Backend — Pipelines / `enhancement_search_agent_v2`",
+      "parent_id": "352bacd2-7dee-81f0-9124-c8cf88d9875b",
+      "url": "https://www.notion.so/352bacd27dee811ba04dc8815ed4ac2e",
+      "block_count": 80,
+      "child_page_count": 0,
+      "has_content": true,
+      "icon": {
+        "type": "emoji",
+        "value": "✨"
+      },
+      "depth": 4
+    },
+    {
+      "id": "352bacd2-7dee-81a8-a664-e1d8751f60ec",
+      "title": "BTS/Backend — Pipelines / `llm2_provider` + post-processors",
+      "parent_id": "352bacd2-7dee-81f0-9124-c8cf88d9875b",
+      "url": "https://www.notion.so/352bacd27dee81a8a664e1d8751f60ec",
+      "block_count": 70,
+      "child_page_count": 0,
+      "has_content": true,
+      "icon": {
+        "type": "emoji",
+        "value": "🧠"
+      },
+      "depth": 4
+    },
+    {
+      "id": "352bacd2-7dee-8157-87d6-c463bc29a53d",
+      "title": "BTS/Backend — Pipelines / `image_generation`",
+      "parent_id": "352bacd2-7dee-81f0-9124-c8cf88d9875b",
+      "url": "https://www.notion.so/352bacd27dee815787d6c463bc29a53d",
+      "block_count": 49,
+      "child_page_count": 0,
+      "has_content": true,
+      "icon": {
+        "type": "emoji",
+        "value": "🎨"
+      },
+      "depth": 4
+    },
+    {
+      "id": "352bacd2-7dee-811f-9724-c4ae71526c31",
+      "title": "BTS/Backend — Pipelines / `color_remap`",
+      "parent_id": "352bacd2-7dee-81f0-9124-c8cf88d9875b",
+      "url": "https://www.notion.so/352bacd27dee811f9724c4ae71526c31",
+      "block_count": 51,
+      "child_page_count": 0,
+      "has_content": true,
+      "icon": {
+        "type": "emoji",
+        "value": "🎨"
+      },
+      "depth": 4
+    },
+    {
+      "id": "352bacd2-7dee-81cf-ba09-ded3d5b556bb",
+      "title": "BTS/Backend — Pipelines / `llm_smart_extract`",
+      "parent_id": "352bacd2-7dee-81f0-9124-c8cf88d9875b",
+      "url": "https://www.notion.so/352bacd27dee81cfba09ded3d5b556bb",
+      "block_count": 88,
+      "child_page_count": 0,
+      "has_content": true,
+      "icon": {
+        "type": "emoji",
+        "value": "🕸️"
+      },
+      "depth": 4
+    },
+    {
+      "id": "352bacd2-7dee-81b5-8a1c-f634ecb1ba8d",
+      "title": "BTS/Backend — Pipelines / `validation_agent`",
+      "parent_id": "352bacd2-7dee-81f0-9124-c8cf88d9875b",
+      "url": "https://www.notion.so/352bacd27dee81b58a1cf634ecb1ba8d",
+      "block_count": 61,
+      "child_page_count": 0,
+      "has_content": true,
+      "icon": {
+        "type": "emoji",
+        "value": "✅"
+      },
+      "depth": 4
+    },
+    {
+      "id": "352bacd2-7dee-810c-a03c-d8cb2434712b",
+      "title": "BTS/Backend — Pipelines / Data primitives",
+      "parent_id": "352bacd2-7dee-81f0-9124-c8cf88d9875b",
+      "url": "https://www.notion.so/352bacd27dee810ca03cd8cb2434712b",
+      "block_count": 61,
+      "child_page_count": 0,
+      "has_content": true,
+      "icon": {
+        "type": "emoji",
+        "value": "🧰"
+      },
+      "depth": 4
+    },
+    {
+      "id": "352bacd2-7dee-8111-81da-eb351f794aa8",
+      "title": "BTS/Backend — Pipelines / `vcdb_matcher`",
+      "parent_id": "352bacd2-7dee-81f0-9124-c8cf88d9875b",
+      "url": "https://www.notion.so/352bacd27dee811181daeb351f794aa8",
+      "block_count": 52,
+      "child_page_count": 0,
+      "has_content": true,
+      "icon": {
+        "type": "emoji",
+        "value": "🚗"
+      },
+      "depth": 4
+    },
+    {
+      "id": "352bacd2-7dee-8195-abcb-e1f2340392a4",
+      "title": "BTS/Backend — Pipelines / `context_get` + `context_set`",
+      "parent_id": "352bacd2-7dee-81f0-9124-c8cf88d9875b",
+      "url": "https://www.notion.so/352bacd27dee8195abcbe1f2340392a4",
+      "block_count": 54,
+      "child_page_count": 0,
+      "has_content": true,
+      "icon": {
+        "type": "emoji",
+        "value": "📦"
+      },
+      "depth": 4
+    },
+    {
+      "id": "352bacd2-7dee-8162-a1b7-c248ddc919a1",
+      "title": "BTS/Backend — Pipelines / `pipeline_runner`",
+      "parent_id": "352bacd2-7dee-81f0-9124-c8cf88d9875b",
+      "url": "https://www.notion.so/352bacd27dee8162a1b7c248ddc919a1",
+      "block_count": 45,
+      "child_page_count": 0,
+      "has_content": true,
+      "icon": {
+        "type": "emoji",
+        "value": "🔁"
+      },
+      "depth": 4
+    },
+    {
+      "id": "352bacd2-7dee-815b-94e5-cdc679000721",
+      "title": "Data-patterns",
+      "parent_id": "352bacd2-7dee-8106-bb09-dfca79fe3ebc",
+      "url": "https://www.notion.so/352bacd27dee815b94e5cdc679000721",
+      "block_count": 69,
+      "child_page_count": 7,
+      "has_content": true,
+      "icon": {
+        "type": "emoji",
+        "value": "🗂️"
+      },
+      "depth": 3
+    },
+    {
+      "id": "352bacd2-7dee-8116-bd23-f895dcfd634c",
+      "title": "BTS/Backend — Data Patterns / Config & Boot",
+      "parent_id": "352bacd2-7dee-815b-94e5-cdc679000721",
+      "url": "https://www.notion.so/352bacd27dee8116bd23f895dcfd634c",
+      "block_count": 77,
+      "child_page_count": 0,
+      "has_content": true,
+      "icon": {
+        "type": "emoji",
+        "value": "🚀"
+      },
+      "depth": 4
+    },
+    {
+      "id": "352bacd2-7dee-81f6-ad8d-d5587452e82c",
+      "title": "BTS/Backend — Data Patterns / Meta-Utils",
+      "parent_id": "352bacd2-7dee-815b-94e5-cdc679000721",
+      "url": "https://www.notion.so/352bacd27dee81f6ad8dd5587452e82c",
+      "block_count": 71,
+      "child_page_count": 0,
+      "has_content": true,
+      "icon": {
+        "type": "emoji",
+        "value": "🧰"
+      },
+      "depth": 4
+    },
+    {
+      "id": "352bacd2-7dee-8120-ab13-de399220f8a2",
+      "title": "BTS/Backend — Data Patterns / Job Output Flow",
+      "parent_id": "352bacd2-7dee-815b-94e5-cdc679000721",
+      "url": "https://www.notion.so/352bacd27dee8120ab13de399220f8a2",
+      "block_count": 64,
+      "child_page_count": 0,
+      "has_content": true,
+      "icon": {
+        "type": "emoji",
+        "value": "📤"
+      },
+      "depth": 4
+    },
+    {
+      "id": "352bacd2-7dee-818e-8484-fd767607f8f9",
+      "title": "BTS/Backend — Data Patterns / Cache Backends",
+      "parent_id": "352bacd2-7dee-815b-94e5-cdc679000721",
+      "url": "https://www.notion.so/352bacd27dee818e8484fd767607f8f9",
+      "block_count": 76,
+      "child_page_count": 0,
+      "has_content": true,
+      "icon": {
+        "type": "emoji",
+        "value": "💾"
+      },
+      "depth": 4
+    },
+    {
+      "id": "352bacd2-7dee-811c-89ab-feef220fe950",
+      "title": "BTS/Backend — Data Patterns / Redis Surface",
+      "parent_id": "352bacd2-7dee-815b-94e5-cdc679000721",
+      "url": "https://www.notion.so/352bacd27dee811c89abfeef220fe950",
+      "block_count": 65,
+      "child_page_count": 0,
+      "has_content": true,
+      "icon": {
+        "type": "emoji",
+        "value": "🧬"
+      },
+      "depth": 4
+    },
+    {
+      "id": "352bacd2-7dee-81a5-b0a6-edc8f6e07555",
+      "title": "BTS/Backend — Data Patterns / Mongo sync vs async",
+      "parent_id": "352bacd2-7dee-815b-94e5-cdc679000721",
+      "url": "https://www.notion.so/352bacd27dee81a5b0a6edc8f6e07555",
+      "block_count": 60,
+      "child_page_count": 0,
+      "has_content": true,
+      "icon": {
+        "type": "emoji",
+        "value": "🍃"
+      },
+      "depth": 4
+    },
+    {
+      "id": "352bacd2-7dee-81e9-9b20-f5bd9d15e052",
+      "title": "BTS/Backend — Data Patterns / Pipeline Seeding",
+      "parent_id": "352bacd2-7dee-815b-94e5-cdc679000721",
+      "url": "https://www.notion.so/352bacd27dee81e99b20f5bd9d15e052",
+      "block_count": 54,
+      "child_page_count": 0,
+      "has_content": true,
+      "icon": {
+        "type": "emoji",
+        "value": "🌱"
+      },
+      "depth": 4
+    },
+    {
+      "id": "352bacd2-7dee-81e5-be65-e544a398a4d7",
+      "title": "Api",
+      "parent_id": "352bacd2-7dee-8106-bb09-dfca79fe3ebc",
+      "url": "https://www.notion.so/352bacd27dee81e5be65e544a398a4d7",
+      "block_count": 61,
+      "child_page_count": 15,
+      "has_content": true,
+      "icon": {
+        "type": "emoji",
+        "value": "🔌"
+      },
+      "depth": 3
+    },
+    {
+      "id": "352bacd2-7dee-8193-a7a1-f3ba697061ba",
+      "title": "BTS/Backend — API / Notifications",
+      "parent_id": "352bacd2-7dee-81e5-be65-e544a398a4d7",
+      "url": "https://www.notion.so/352bacd27dee8193a7a1f3ba697061ba",
+      "block_count": 39,
+      "child_page_count": 0,
+      "has_content": true,
+      "icon": {
+        "type": "emoji",
+        "value": "🔔"
+      },
+      "depth": 4
+    },
+    {
+      "id": "352bacd2-7dee-81c4-8183-cf02175c19ed",
+      "title": "BTS/Backend — API / Image Enhancement",
+      "parent_id": "352bacd2-7dee-81e5-be65-e544a398a4d7",
+      "url": "https://www.notion.so/352bacd27dee81c48183cf02175c19ed",
+      "block_count": 45,
+      "child_page_count": 0,
+      "has_content": true,
+      "icon": {
+        "type": "emoji",
+        "value": "🖼️"
+      },
+      "depth": 4
+    },
+    {
+      "id": "352bacd2-7dee-816b-8c4b-e1568fcf0386",
+      "title": "BTS/Backend — API / Jobs + Runs",
+      "parent_id": "352bacd2-7dee-81e5-be65-e544a398a4d7",
+      "url": "https://www.notion.so/352bacd27dee816b8c4be1568fcf0386",
+      "block_count": 68,
+      "child_page_count": 0,
+      "has_content": true,
+      "icon": {
+        "type": "emoji",
+        "value": "🧩"
+      },
+      "depth": 4
+    },
+    {
+      "id": "352bacd2-7dee-8176-9bf5-e64e772a937c",
+      "title": "BTS/Backend — API / Workers + Info",
+      "parent_id": "352bacd2-7dee-81e5-be65-e544a398a4d7",
+      "url": "https://www.notion.so/352bacd27dee81769bf5e64e772a937c",
+      "block_count": 31,
+      "child_page_count": 0,
+      "has_content": true,
+      "icon": {
+        "type": "emoji",
+        "value": "👷"
+      },
+      "depth": 4
+    },
+    {
+      "id": "352bacd2-7dee-8184-8aa1-f411c4f0c58c",
+      "title": "BTS/Backend — API / Pipelines",
+      "parent_id": "352bacd2-7dee-81e5-be65-e544a398a4d7",
+      "url": "https://www.notion.so/352bacd27dee81848aa1f411c4f0c58c",
+      "block_count": 36,
+      "child_page_count": 0,
+      "has_content": true,
+      "icon": {
+        "type": "emoji",
+        "value": "🔗"
+      },
+      "depth": 4
+    },
+    {
+      "id": "352bacd2-7dee-81e9-8d91-ecaee33f0fcf",
+      "title": "BTS/Backend — API / Job Configs",
+      "parent_id": "352bacd2-7dee-81e5-be65-e544a398a4d7",
+      "url": "https://www.notion.so/352bacd27dee81e98d91ecaee33f0fcf",
+      "block_count": 38,
+      "child_page_count": 0,
+      "has_content": true,
+      "icon": {
+        "type": "emoji",
+        "value": "⚙️"
+      },
+      "depth": 4
+    },
+    {
+      "id": "352bacd2-7dee-816b-b992-e25a5e74c69e",
+      "title": "BTS/Backend — API / Admin & Internal Routes",
+      "parent_id": "352bacd2-7dee-81e5-be65-e544a398a4d7",
+      "url": "https://www.notion.so/352bacd27dee816bb992e25a5e74c69e",
+      "block_count": 52,
+      "child_page_count": 0,
+      "has_content": true,
+      "icon": {
+        "type": "emoji",
+        "value": "🔧"
+      },
+      "depth": 4
+    },
+    {
+      "id": "352bacd2-7dee-815f-b753-d33a7b25fbf5",
+      "title": "BTS/Backend — API / Tasks",
+      "parent_id": "352bacd2-7dee-81e5-be65-e544a398a4d7",
+      "url": "https://www.notion.so/352bacd27dee815fb753d33a7b25fbf5",
+      "block_count": 31,
+      "child_page_count": 0,
+      "has_content": true,
+      "icon": {
+        "type": "emoji",
+        "value": "⚡"
+      },
+      "depth": 4
+    },
+    {
+      "id": "352bacd2-7dee-81f2-876b-cb3a9e6236bf",
+      "title": "BTS/Backend — API / Internal Dashboard",
+      "parent_id": "352bacd2-7dee-81e5-be65-e544a398a4d7",
+      "url": "https://www.notion.so/352bacd27dee81f2876bcb3a9e6236bf",
+      "block_count": 69,
+      "child_page_count": 0,
+      "has_content": true,
+      "icon": {
+        "type": "emoji",
+        "value": "📊"
+      },
+      "depth": 4
+    },
+    {
+      "id": "352bacd2-7dee-8139-8d12-f90a4924fe54",
+      "title": "BTS/Backend — API / Auth",
+      "parent_id": "352bacd2-7dee-81e5-be65-e544a398a4d7",
+      "url": "https://www.notion.so/352bacd27dee81398d12f90a4924fe54",
+      "block_count": 54,
+      "child_page_count": 0,
+      "has_content": true,
+      "icon": {
+        "type": "emoji",
+        "value": "🔐"
+      },
+      "depth": 4
+    },
+    {
+      "id": "352bacd2-7dee-8119-ae1e-f0d867d18f0e",
+      "title": "BTS/Backend — API / Scraper",
+      "parent_id": "352bacd2-7dee-81e5-be65-e544a398a4d7",
+      "url": "https://www.notion.so/352bacd27dee8119ae1ef0d867d18f0e",
+      "block_count": 68,
+      "child_page_count": 0,
+      "has_content": true,
+      "icon": {
+        "type": "emoji",
+        "value": "🌐"
+      },
+      "depth": 4
+    },
+    {
+      "id": "352bacd2-7dee-8180-a7e2-db715593bd6f",
+      "title": "BTS/Backend — API / Files",
+      "parent_id": "352bacd2-7dee-81e5-be65-e544a398a4d7",
+      "url": "https://www.notion.so/352bacd27dee8180a7e2db715593bd6f",
+      "block_count": 53,
+      "child_page_count": 0,
+      "has_content": true,
+      "icon": {
+        "type": "emoji",
+        "value": "📁"
+      },
+      "depth": 4
+    },
+    {
+      "id": "352bacd2-7dee-819c-8a1b-c17088826ff7",
+      "title": "BTS/Backend — API / Metrics",
+      "parent_id": "352bacd2-7dee-81e5-be65-e544a398a4d7",
+      "url": "https://www.notion.so/352bacd27dee819c8a1bc17088826ff7",
+      "block_count": 43,
+      "child_page_count": 0,
+      "has_content": true,
+      "icon": {
+        "type": "emoji",
+        "value": "📊"
+      },
+      "depth": 4
+    },
+    {
+      "id": "352bacd2-7dee-816e-8c50-d7d5e9238856",
+      "title": "BTS/Backend — API / Util (root, health, dashboard, swagger, error handlers)",
+      "parent_id": "352bacd2-7dee-81e5-be65-e544a398a4d7",
+      "url": "https://www.notion.so/352bacd27dee816e8c50d7d5e9238856",
+      "block_count": 60,
+      "child_page_count": 0,
+      "has_content": true,
+      "icon": {
+        "type": "emoji",
+        "value": "🛠️"
+      },
+      "depth": 4
+    },
+    {
+      "id": "352bacd2-7dee-81d8-870b-f702a08e067e",
+      "title": "BTS/Backend — API / Agents + Agent Studio",
+      "parent_id": "352bacd2-7dee-81e5-be65-e544a398a4d7",
+      "url": "https://www.notion.so/352bacd27dee81d8870bf702a08e067e",
+      "block_count": 37,
+      "child_page_count": 0,
+      "has_content": true,
+      "icon": {
+        "type": "emoji",
+        "value": "🤖"
+      },
+      "depth": 4
+    },
+    {
+      "id": "352bacd2-7dee-81c1-ba94-e8c6f8d99043",
+      "title": "Services",
+      "parent_id": "352bacd2-7dee-8106-bb09-dfca79fe3ebc",
+      "url": "https://www.notion.so/352bacd27dee81c1ba94e8c6f8d99043",
+      "block_count": 30,
+      "child_page_count": 2,
+      "has_content": true,
+      "icon": {
+        "type": "emoji",
+        "value": "🔌"
+      },
+      "depth": 3
+    },
+    {
+      "id": "352bacd2-7dee-8152-8a3e-e2c08c5f9114",
+      "title": "BTS/Backend — Services / Credit Worker",
+      "parent_id": "352bacd2-7dee-81c1-ba94-e8c6f8d99043",
+      "url": "https://www.notion.so/352bacd27dee81528a3ee2c08c5f9114",
+      "block_count": 57,
+      "child_page_count": 0,
+      "has_content": true,
+      "icon": {
+        "type": "emoji",
+        "value": "💳"
+      },
+      "depth": 4
+    },
+    {
+      "id": "352bacd2-7dee-81b0-bbb6-ec19cf488006",
+      "title": "Scraper Service — Extraction Runtime",
+      "parent_id": "352bacd2-7dee-81c1-ba94-e8c6f8d99043",
+      "url": "https://www.notion.so/352bacd27dee81b0bbb6ec19cf488006",
+      "block_count": 22,
+      "child_page_count": 0,
+      "has_content": true,
+      "icon": {
+        "type": "emoji",
+        "value": "🌐"
+      },
+      "depth": 4
+    },
+    {
+      "id": "352bacd2-7dee-8108-aabc-ef3b5999fcb3",
+      "title": "Runbooks",
+      "parent_id": "34abacd27dee80f3be8fe230c7d1ff9d",
+      "url": "https://www.notion.so/352bacd27dee8108aabcef3b5999fcb3",
+      "block_count": 16,
+      "child_page_count": 2,
+      "has_content": true,
+      "icon": {
+        "type": "emoji",
+        "value": "📕"
+      },
+      "depth": 1
+    },
+    {
+      "id": "352bacd2-7dee-8146-8b84-da7e47b03fb2",
+      "title": "Customer Support Runbook",
+      "parent_id": "352bacd2-7dee-8108-aabc-ef3b5999fcb3",
+      "url": "https://www.notion.so/352bacd27dee81468b84da7e47b03fb2",
+      "block_count": 92,
+      "child_page_count": 0,
+      "has_content": true,
+      "icon": {
+        "type": "emoji",
+        "value": "🛟"
+      },
+      "depth": 2
+    },
+    {
+      "id": "352bacd2-7dee-812b-a05e-cd447c7dee3e",
+      "title": "Scraper Slack Workflow Runbook",
+      "parent_id": "352bacd2-7dee-8108-aabc-ef3b5999fcb3",
+      "url": "https://www.notion.so/352bacd27dee812ba05ecd447c7dee3e",
+      "block_count": 79,
+      "child_page_count": 0,
+      "has_content": true,
+      "icon": {
+        "type": "emoji",
+        "value": "🌐"
+      },
+      "depth": 2
+    },
+    {
+      "id": "352bacd2-7dee-81da-8c47-f052226023a3",
+      "title": "Workflows",
+      "parent_id": "34abacd27dee80f3be8fe230c7d1ff9d",
+      "url": "https://www.notion.so/352bacd27dee81da8c47f052226023a3",
+      "block_count": 32,
+      "child_page_count": 5,
+      "has_content": true,
+      "icon": {
+        "type": "emoji",
+        "value": "🔄"
+      },
+      "depth": 1
+    },
+    {
+      "id": "352bacd2-7dee-813a-9c18-d7b08474e3e9",
+      "title": "Schema Migration Walkthrough (Drizzle + Postgres)",
+      "parent_id": "352bacd2-7dee-81da-8c47-f052226023a3",
+      "url": "https://www.notion.so/352bacd27dee813a9c18d7b08474e3e9",
+      "block_count": 36,
+      "child_page_count": 0,
+      "has_content": true,
+      "icon": {
+        "type": "emoji",
+        "value": "🔄"
+      },
+      "depth": 2
+    },
+    {
+      "id": "352bacd2-7dee-8107-9a70-dd0233accbab",
+      "title": "RCA — gh-pages restructure (April 2026)",
+      "parent_id": "352bacd2-7dee-81da-8c47-f052226023a3",
+      "url": "https://www.notion.so/352bacd27dee81079a70dd0233accbab",
+      "block_count": 150,
+      "child_page_count": 0,
+      "has_content": true,
+      "icon": {
+        "type": "emoji",
+        "value": "🔥"
+      },
+      "depth": 2
+    },
+    {
+      "id": "352bacd2-7dee-811d-89b6-cf6f6a0e0e6d",
+      "title": "PR Review Checklist",
+      "parent_id": "352bacd2-7dee-81da-8c47-f052226023a3",
+      "url": "https://www.notion.so/352bacd27dee811d89b6cf6f6a0e0e6d",
+      "block_count": 31,
+      "child_page_count": 0,
+      "has_content": true,
+      "icon": {
+        "type": "emoji",
+        "value": "🔄"
+      },
+      "depth": 2
+    },
+    {
+      "id": "352bacd2-7dee-81c8-b92d-f100e18b0273",
+      "title": "GitHub Pages Restructure — Manual Setup Steps",
+      "parent_id": "352bacd2-7dee-81da-8c47-f052226023a3",
+      "url": "https://www.notion.so/352bacd27dee81c8b92df100e18b0273",
+      "block_count": 47,
+      "child_page_count": 0,
+      "has_content": true,
+      "icon": {
+        "type": "emoji",
+        "value": "🔄"
+      },
+      "depth": 2
+    },
+    {
+      "id": "352bacd2-7dee-810d-b4a4-e717d2316904",
+      "title": "Scraper Request Triage",
+      "parent_id": "352bacd2-7dee-81da-8c47-f052226023a3",
+      "url": "https://www.notion.so/352bacd27dee810db4a4e717d2316904",
+      "block_count": 33,
+      "child_page_count": 0,
+      "has_content": true,
+      "icon": {
+        "type": "emoji",
+        "value": "🔄"
+      },
+      "depth": 2
+    },
+    {
+      "id": "352bacd2-7dee-81aa-a79e-c7b80ec8479c",
+      "title": "Product",
+      "parent_id": "34abacd27dee80f3be8fe230c7d1ff9d",
+      "url": "https://www.notion.so/352bacd27dee81aaa79ec7b80ec8479c",
+      "block_count": 16,
+      "child_page_count": 8,
+      "has_content": true,
+      "icon": {
+        "type": "emoji",
+        "value": "🏪"
+      },
+      "depth": 1
+    },
+    {
+      "id": "352bacd2-7dee-81dc-a727-c419741213a3",
+      "title": "Versable — Product Documentation",
+      "parent_id": "352bacd2-7dee-81aa-a79e-c7b80ec8479c",
+      "url": "https://www.notion.so/352bacd27dee81dca727c419741213a3",
+      "block_count": 73,
+      "child_page_count": 0,
+      "has_content": true,
+      "icon": null,
+      "depth": 2
+    },
+    {
+      "id": "352bacd2-7dee-8133-8aba-d9ea52d61ed6",
+      "title": "App",
+      "parent_id": "352bacd2-7dee-81aa-a79e-c7b80ec8479c",
+      "url": "https://www.notion.so/352bacd27dee81338abad9ea52d61ed6",
+      "block_count": 36,
+      "child_page_count": 4,
+      "has_content": true,
+      "icon": {
+        "type": "emoji",
+        "value": "🧩"
+      },
+      "depth": 2
+    },
+    {
+      "id": "352bacd2-7dee-816a-b5a6-e814ec9013c7",
+      "title": "App — Pipeline",
+      "parent_id": "352bacd2-7dee-8133-8aba-d9ea52d61ed6",
+      "url": "https://www.notion.so/352bacd27dee816ab5a6e814ec9013c7",
+      "block_count": 42,
+      "child_page_count": 0,
+      "has_content": true,
+      "icon": {
+        "type": "emoji",
+        "value": "🔗"
+      },
+      "depth": 3
+    },
+    {
+      "id": "352bacd2-7dee-8150-9222-f0624c4337ce",
+      "title": "App — Payment",
+      "parent_id": "352bacd2-7dee-8133-8aba-d9ea52d61ed6",
+      "url": "https://www.notion.so/352bacd27dee81509222f0624c4337ce",
+      "block_count": 47,
+      "child_page_count": 0,
+      "has_content": true,
+      "icon": {
+        "type": "emoji",
+        "value": "💳"
+      },
+      "depth": 3
+    },
+    {
+      "id": "352bacd2-7dee-8114-a7ea-e976a2db6c61",
+      "title": "App — Job Configuration",
+      "parent_id": "352bacd2-7dee-8133-8aba-d9ea52d61ed6",
+      "url": "https://www.notion.so/352bacd27dee8114a7eae976a2db6c61",
+      "block_count": 43,
+      "child_page_count": 0,
+      "has_content": true,
+      "icon": {
+        "type": "emoji",
+        "value": "⚙️"
+      },
+      "depth": 3
+    },
+    {
+      "id": "352bacd2-7dee-8177-b0d1-d1294510321a",
+      "title": "App — Auth Flow",
+      "parent_id": "352bacd2-7dee-8133-8aba-d9ea52d61ed6",
+      "url": "https://www.notion.so/352bacd27dee8177b0d1d1294510321a",
+      "block_count": 41,
+      "child_page_count": 0,
+      "has_content": true,
+      "icon": {
+        "type": "emoji",
+        "value": "🔐"
+      },
+      "depth": 3
+    },
+    {
+      "id": "352bacd2-7dee-810e-902e-da3b0235897b",
+      "title": "Other",
+      "parent_id": "352bacd2-7dee-81aa-a79e-c7b80ec8479c",
+      "url": "https://www.notion.so/352bacd27dee810e902eda3b0235897b",
+      "block_count": 36,
+      "child_page_count": 5,
+      "has_content": true,
+      "icon": {
+        "type": "emoji",
+        "value": "🗂️"
+      },
+      "depth": 2
+    },
+    {
+      "id": "352bacd2-7dee-81a0-b16d-f0d8751aa1af",
+      "title": "Other — UI Widgets (product reference)",
+      "parent_id": "352bacd2-7dee-810e-902e-da3b0235897b",
+      "url": "https://www.notion.so/352bacd27dee81a0b16df0d8751aa1af",
+      "block_count": 34,
+      "child_page_count": 0,
+      "has_content": true,
+      "icon": {
+        "type": "emoji",
+        "value": "🎨"
+      },
+      "depth": 3
+    },
+    {
+      "id": "352bacd2-7dee-81ba-8555-d22750683ee4",
+      "title": "Other — Notifications (cross-channel)",
+      "parent_id": "352bacd2-7dee-810e-902e-da3b0235897b",
+      "url": "https://www.notion.so/352bacd27dee81ba8555d22750683ee4",
+      "block_count": 51,
+      "child_page_count": 0,
+      "has_content": true,
+      "icon": {
+        "type": "emoji",
+        "value": "🔔"
+      },
+      "depth": 3
+    },
+    {
+      "id": "352bacd2-7dee-817e-8957-e52080d42849",
+      "title": "Other — Team / User Provisioning",
+      "parent_id": "352bacd2-7dee-810e-902e-da3b0235897b",
+      "url": "https://www.notion.so/352bacd27dee817e8957e52080d42849",
+      "block_count": 41,
+      "child_page_count": 0,
+      "has_content": true,
+      "icon": {
+        "type": "emoji",
+        "value": "👥"
+      },
+      "depth": 3
+    },
+    {
+      "id": "352bacd2-7dee-81b4-b0f2-db6930449eec",
+      "title": "Other — Logging (customer-visible surface)",
+      "parent_id": "352bacd2-7dee-810e-902e-da3b0235897b",
+      "url": "https://www.notion.so/352bacd27dee81b4b0f2db6930449eec",
+      "block_count": 39,
+      "child_page_count": 0,
+      "has_content": true,
+      "icon": {
+        "type": "emoji",
+        "value": "📜"
+      },
+      "depth": 3
+    },
+    {
+      "id": "352bacd2-7dee-812a-a6be-f421780e77a0",
+      "title": "Other — Error Handling (boundary + Sentry)",
+      "parent_id": "352bacd2-7dee-810e-902e-da3b0235897b",
+      "url": "https://www.notion.so/352bacd27dee812aa6bef421780e77a0",
+      "block_count": 40,
+      "child_page_count": 0,
+      "has_content": true,
+      "icon": {
+        "type": "emoji",
+        "value": "🛟"
+      },
+      "depth": 3
+    },
+    {
+      "id": "352bacd2-7dee-8145-8ec1-c17ef1439e1a",
+      "title": "Admin",
+      "parent_id": "352bacd2-7dee-81aa-a79e-c7b80ec8479c",
+      "url": "https://www.notion.so/352bacd27dee81458ec1c17ef1439e1a",
+      "block_count": 29,
+      "child_page_count": 9,
+      "has_content": true,
+      "icon": {
+        "type": "emoji",
+        "value": "🛡️"
+      },
+      "depth": 2
+    },
+    {
+      "id": "352bacd2-7dee-8121-8d76-dbd0b730b5f0",
+      "title": "Admin — Debug Tools",
+      "parent_id": "352bacd2-7dee-8145-8ec1-c17ef1439e1a",
+      "url": "https://www.notion.so/352bacd27dee81218d76dbd0b730b5f0",
+      "block_count": 181,
+      "child_page_count": 0,
+      "has_content": true,
+      "icon": {
+        "type": "emoji",
+        "value": "🛠️"
+      },
+      "depth": 3
+    },
+    {
+      "id": "352bacd2-7dee-81ea-90bb-f64ffd912bb1",
+      "title": "Admin — File Archive",
+      "parent_id": "352bacd2-7dee-8145-8ec1-c17ef1439e1a",
+      "url": "https://www.notion.so/352bacd27dee81ea90bbf64ffd912bb1",
+      "block_count": 134,
+      "child_page_count": 0,
+      "has_content": true,
+      "icon": {
+        "type": "emoji",
+        "value": "🗄️"
+      },
+      "depth": 3
+    },
+    {
+      "id": "352bacd2-7dee-81d2-b655-f2846d562bf0",
+      "title": "Admin — Job Configs",
+      "parent_id": "352bacd2-7dee-8145-8ec1-c17ef1439e1a",
+      "url": "https://www.notion.so/352bacd27dee81d2b655f2846d562bf0",
+      "block_count": 163,
+      "child_page_count": 0,
+      "has_content": true,
+      "icon": {
+        "type": "emoji",
+        "value": "🧰"
+      },
+      "depth": 3
+    },
+    {
+      "id": "352bacd2-7dee-819f-9820-e4103bfba433",
+      "title": "Admin — Users Management",
+      "parent_id": "352bacd2-7dee-8145-8ec1-c17ef1439e1a",
+      "url": "https://www.notion.so/352bacd27dee819f9820e4103bfba433",
+      "block_count": 166,
+      "child_page_count": 0,
+      "has_content": true,
+      "icon": {
+        "type": "emoji",
+        "value": "👤"
+      },
+      "depth": 3
+    },
+    {
+      "id": "352bacd2-7dee-8120-aefd-e6e4b57a2199",
+      "title": "Admin — Scraper Requests",
+      "parent_id": "352bacd2-7dee-8145-8ec1-c17ef1439e1a",
+      "url": "https://www.notion.so/352bacd27dee8120aefde6e4b57a2199",
+      "block_count": 163,
+      "child_page_count": 0,
+      "has_content": true,
+      "icon": {
+        "type": "emoji",
+        "value": "📥"
+      },
+      "depth": 3
+    },
+    {
+      "id": "352bacd2-7dee-817c-a0fa-e1f3965b0e11",
+      "title": "Admin — Payment Plans",
+      "parent_id": "352bacd2-7dee-8145-8ec1-c17ef1439e1a",
+      "url": "https://www.notion.so/352bacd27dee817ca0fae1f3965b0e11",
+      "block_count": 156,
+      "child_page_count": 0,
+      "has_content": true,
+      "icon": {
+        "type": "emoji",
+        "value": "💵"
+      },
+      "depth": 3
+    },
+    {
+      "id": "352bacd2-7dee-816c-9dc2-fc628bfc611e",
+      "title": "Admin Parts List Tab — Final Documentation",
+      "parent_id": "352bacd2-7dee-8145-8ec1-c17ef1439e1a",
+      "url": "https://www.notion.so/352bacd27dee816c9dc2fc628bfc611e",
+      "block_count": 245,
+      "child_page_count": 0,
+      "has_content": true,
+      "icon": {
+        "type": "emoji",
+        "value": "📋"
+      },
+      "depth": 3
+    },
+    {
+      "id": "352bacd2-7dee-81c3-8b73-d43b5bc88bef",
+      "title": "Admin — Teams Overview",
+      "parent_id": "352bacd2-7dee-8145-8ec1-c17ef1439e1a",
+      "url": "https://www.notion.so/352bacd27dee81c38b73d43b5bc88bef",
+      "block_count": 161,
+      "child_page_count": 0,
+      "has_content": true,
+      "icon": {
+        "type": "emoji",
+        "value": "🏢"
+      },
+      "depth": 3
+    },
+    {
+      "id": "352bacd2-7dee-81c6-bd1f-d20bcb9cc3c1",
+      "title": "Scraper Success Modal — Final Documentation",
+      "parent_id": "352bacd2-7dee-8145-8ec1-c17ef1439e1a",
+      "url": "https://www.notion.so/352bacd27dee81c6bd1fd20bcb9cc3c1",
+      "block_count": 274,
+      "child_page_count": 0,
+      "has_content": true,
+      "icon": {
+        "type": "emoji",
+        "value": "🌐"
+      },
+      "depth": 3
+    },
+    {
+      "id": "352bacd2-7dee-8150-aa7f-c599cfa24854",
+      "title": "Modals",
+      "parent_id": "352bacd2-7dee-81aa-a79e-c7b80ec8479c",
+      "url": "https://www.notion.so/352bacd27dee8150aa7fc599cfa24854",
+      "block_count": 19,
+      "child_page_count": 5,
+      "has_content": true,
+      "icon": {
+        "type": "emoji",
+        "value": "🪟"
+      },
+      "depth": 2
+    },
+    {
+      "id": "352bacd2-7dee-815d-8e9f-f6ca67505e1d",
+      "title": "Modal — Preview Input File",
+      "parent_id": "352bacd2-7dee-8150-aa7f-c599cfa24854",
+      "url": "https://www.notion.so/352bacd27dee815d8e9ff6ca67505e1d",
+      "block_count": 29,
+      "child_page_count": 0,
+      "has_content": true,
+      "icon": {
+        "type": "emoji",
+        "value": "👁️"
+      },
+      "depth": 3
+    },
+    {
+      "id": "352bacd2-7dee-81db-ba26-c266ba0f0928",
+      "title": "Modal — Preview Job Output",
+      "parent_id": "352bacd2-7dee-8150-aa7f-c599cfa24854",
+      "url": "https://www.notion.so/352bacd27dee81dbba26c266ba0f0928",
+      "block_count": 29,
+      "child_page_count": 0,
+      "has_content": true,
+      "icon": {
+        "type": "emoji",
+        "value": "👁️"
+      },
+      "depth": 3
+    },
+    {
+      "id": "352bacd2-7dee-81a9-833b-e0a45c657d9c",
+      "title": "Modal — View Job Data (raw JSON inspector)",
+      "parent_id": "352bacd2-7dee-8150-aa7f-c599cfa24854",
+      "url": "https://www.notion.so/352bacd27dee81a9833be0a45c657d9c",
+      "block_count": 29,
+      "child_page_count": 0,
+      "has_content": true,
+      "icon": {
+        "type": "emoji",
+        "value": "🔍"
+      },
+      "depth": 3
+    },
+    {
+      "id": "352bacd2-7dee-8153-a9fb-e8099c19a9aa",
+      "title": "Modal — Confirm (generic)",
+      "parent_id": "352bacd2-7dee-8150-aa7f-c599cfa24854",
+      "url": "https://www.notion.so/352bacd27dee8153a9fbe8099c19a9aa",
+      "block_count": 30,
+      "child_page_count": 0,
+      "has_content": true,
+      "icon": {
+        "type": "emoji",
+        "value": "❓"
+      },
+      "depth": 3
+    },
+    {
+      "id": "352bacd2-7dee-81d2-8110-cbfcb4017634",
+      "title": "Modal — Edit Job Metadata",
+      "parent_id": "352bacd2-7dee-8150-aa7f-c599cfa24854",
+      "url": "https://www.notion.so/352bacd27dee81d28110cbfcb4017634",
+      "block_count": 33,
+      "child_page_count": 0,
+      "has_content": true,
+      "icon": {
+        "type": "emoji",
+        "value": "📝"
+      },
+      "depth": 3
+    },
+    {
+      "id": "352bacd2-7dee-817a-a96f-fafc2f8e49c0",
+      "title": "User",
+      "parent_id": "352bacd2-7dee-81aa-a79e-c7b80ec8479c",
+      "url": "https://www.notion.so/352bacd27dee817aa96ffafc2f8e49c0",
+      "block_count": 19,
+      "child_page_count": 6,
+      "has_content": true,
+      "icon": {
+        "type": "emoji",
+        "value": "👤"
+      },
+      "depth": 2
+    },
+    {
+      "id": "352bacd2-7dee-8129-a9c7-dcbdba3dc538",
+      "title": "User — Files Browser",
+      "parent_id": "352bacd2-7dee-817a-a96f-fafc2f8e49c0",
+      "url": "https://www.notion.so/352bacd27dee8129a9c7dcbdba3dc538",
+      "block_count": 205,
+      "child_page_count": 0,
+      "has_content": true,
+      "icon": {
+        "type": "emoji",
+        "value": "📁"
+      },
+      "depth": 3
+    },
+    {
+      "id": "352bacd2-7dee-81a1-b7d9-cc7a0a1d3c3e",
+      "title": "User — Help & Docs",
+      "parent_id": "352bacd2-7dee-817a-a96f-fafc2f8e49c0",
+      "url": "https://www.notion.so/352bacd27dee81a1b7d9cc7a0a1d3c3e",
+      "block_count": 198,
+      "child_page_count": 0,
+      "has_content": true,
+      "icon": {
+        "type": "emoji",
+        "value": "❓"
+      },
+      "depth": 3
+    },
+    {
+      "id": "352bacd2-7dee-8104-a210-fd3d4d62b192",
+      "title": "User — Buy Credits",
+      "parent_id": "352bacd2-7dee-817a-a96f-fafc2f8e49c0",
+      "url": "https://www.notion.so/352bacd27dee8104a210fd3d4d62b192",
+      "block_count": 257,
+      "child_page_count": 0,
+      "has_content": true,
+      "icon": {
+        "type": "emoji",
+        "value": "💳"
+      },
+      "depth": 3
+    },
+    {
+      "id": "352bacd2-7dee-811c-998f-d8d9cff9d893",
+      "title": "User — Signup, Login, and Password Reset",
+      "parent_id": "352bacd2-7dee-817a-a96f-fafc2f8e49c0",
+      "url": "https://www.notion.so/352bacd27dee811c998fd8d9cff9d893",
+      "block_count": 249,
+      "child_page_count": 0,
+      "has_content": true,
+      "icon": {
+        "type": "emoji",
+        "value": "🚪"
+      },
+      "depth": 3
+    },
+    {
+      "id": "352bacd2-7dee-8122-90a7-ef46299565c7",
+      "title": "User — Account Settings",
+      "parent_id": "352bacd2-7dee-817a-a96f-fafc2f8e49c0",
+      "url": "https://www.notion.so/352bacd27dee812290a7ef46299565c7",
+      "block_count": 221,
+      "child_page_count": 0,
+      "has_content": true,
+      "icon": {
+        "type": "emoji",
+        "value": "👤"
+      },
+      "depth": 3
+    },
+    {
+      "id": "352bacd2-7dee-81e6-9e64-e112c8498cbc",
+      "title": "User — Templates",
+      "parent_id": "352bacd2-7dee-817a-a96f-fafc2f8e49c0",
+      "url": "https://www.notion.so/352bacd27dee81e69e64e112c8498cbc",
+      "block_count": 374,
+      "child_page_count": 0,
+      "has_content": true,
+      "icon": {
+        "type": "emoji",
+        "value": "📝"
+      },
+      "depth": 3
+    },
+    {
+      "id": "352bacd2-7dee-81f9-ac12-fc689daaadf6",
+      "title": "System",
+      "parent_id": "352bacd2-7dee-81aa-a79e-c7b80ec8479c",
+      "url": "https://www.notion.so/352bacd27dee81f9ac12fc689daaadf6",
+      "block_count": 40,
+      "child_page_count": 15,
+      "has_content": true,
+      "icon": {
+        "type": "emoji",
+        "value": "🏛️"
+      },
+      "depth": 2
+    },
+    {
+      "id": "352bacd2-7dee-8109-b406-e7628a58913a",
+      "title": "System — Storage (product intro)",
+      "parent_id": "352bacd2-7dee-81f9-ac12-fc689daaadf6",
+      "url": "https://www.notion.so/352bacd27dee8109b406e7628a58913a",
+      "block_count": 43,
+      "child_page_count": 0,
+      "has_content": true,
+      "icon": {
+        "type": "emoji",
+        "value": "🪣"
+      },
+      "depth": 3
+    },
+    {
+      "id": "352bacd2-7dee-8132-b736-d807fb42bf1d",
+      "title": "System — User / Org / Access Model",
+      "parent_id": "352bacd2-7dee-81f9-ac12-fc689daaadf6",
+      "url": "https://www.notion.so/352bacd27dee8132b736d807fb42bf1d",
+      "block_count": 218,
+      "child_page_count": 0,
+      "has_content": true,
+      "icon": {
+        "type": "emoji",
+        "value": "🧭"
+      },
+      "depth": 3
+    },
+    {
+      "id": "352bacd2-7dee-81eb-9b59-c3d4d3ceb2cd",
+      "title": "ui-component-library",
+      "parent_id": "352bacd2-7dee-81f9-ac12-fc689daaadf6",
+      "url": "https://www.notion.so/352bacd27dee81eb9b59c3d4d3ceb2cd",
+      "block_count": 158,
+      "child_page_count": 0,
+      "has_content": true,
+      "icon": {
+        "type": "emoji",
+        "value": "🎨"
+      },
+      "depth": 3
+    },
+    {
+      "id": "352bacd2-7dee-81d9-95bf-f258ec6a5ed1",
+      "title": "System — Job Configuration Flow",
+      "parent_id": "352bacd2-7dee-81f9-ac12-fc689daaadf6",
+      "url": "https://www.notion.so/352bacd27dee81d995bff258ec6a5ed1",
+      "block_count": 233,
+      "child_page_count": 0,
+      "has_content": true,
+      "icon": {
+        "type": "emoji",
+        "value": "🔧"
+      },
+      "depth": 3
+    },
+    {
+      "id": "352bacd2-7dee-814a-8d68-fa325897f294",
+      "title": "System — Credits Architecture",
+      "parent_id": "352bacd2-7dee-81f9-ac12-fc689daaadf6",
+      "url": "https://www.notion.so/352bacd27dee814a8d68fa325897f294",
+      "block_count": 191,
+      "child_page_count": 0,
+      "has_content": true,
+      "icon": {
+        "type": "emoji",
+        "value": "🪙"
+      },
+      "depth": 3
+    },
+    {
+      "id": "352bacd2-7dee-81f6-8231-e355ee433a40",
+      "title": "System — Stripe Payments",
+      "parent_id": "352bacd2-7dee-81f9-ac12-fc689daaadf6",
+      "url": "https://www.notion.so/352bacd27dee81f68231e355ee433a40",
+      "block_count": 260,
+      "child_page_count": 0,
+      "has_content": true,
+      "icon": {
+        "type": "emoji",
+        "value": "💳"
+      },
+      "depth": 3
+    },
+    {
+      "id": "352bacd2-7dee-8192-969c-e7d8243b21bb",
+      "title": "System — Data Fetching + Client Storage",
+      "parent_id": "352bacd2-7dee-81f9-ac12-fc689daaadf6",
+      "url": "https://www.notion.so/352bacd27dee8192969ce7d8243b21bb",
+      "block_count": 201,
+      "child_page_count": 0,
+      "has_content": true,
+      "icon": {
+        "type": "emoji",
+        "value": "📡"
+      },
+      "depth": 3
+    },
+    {
+      "id": "352bacd2-7dee-8123-baa4-da7c006aba8c",
+      "title": "System — Auth & Permissions",
+      "parent_id": "352bacd2-7dee-81f9-ac12-fc689daaadf6",
+      "url": "https://www.notion.so/352bacd27dee8123baa4da7c006aba8c",
+      "block_count": 206,
+      "child_page_count": 0,
+      "has_content": true,
+      "icon": {
+        "type": "emoji",
+        "value": "🔐"
+      },
+      "depth": 3
+    },
+    {
+      "id": "352bacd2-7dee-81a0-bd62-d20dce117c3c",
+      "title": "System — Notifications & Email",
+      "parent_id": "352bacd2-7dee-81f9-ac12-fc689daaadf6",
+      "url": "https://www.notion.so/352bacd27dee81a0bd62d20dce117c3c",
+      "block_count": 203,
+      "child_page_count": 0,
+      "has_content": true,
+      "icon": {
+        "type": "emoji",
+        "value": "📧"
+      },
+      "depth": 3
+    },
+    {
+      "id": "352bacd2-7dee-81bb-8c43-e809b3358dd3",
+      "title": "System — Centralized Logging V1",
+      "parent_id": "352bacd2-7dee-81f9-ac12-fc689daaadf6",
+      "url": "https://www.notion.so/352bacd27dee81bb8c43e809b3358dd3",
+      "block_count": 87,
+      "child_page_count": 0,
+      "has_content": true,
+      "icon": {
+        "type": "emoji",
+        "value": "📜"
+      },
+      "depth": 3
+    },
+    {
+      "id": "352bacd2-7dee-819a-a0de-cd13ed9dd35f",
+      "title": "System — Architecture Overview",
+      "parent_id": "352bacd2-7dee-81f9-ac12-fc689daaadf6",
+      "url": "https://www.notion.so/352bacd27dee819aa0decd13ed9dd35f",
+      "block_count": 149,
+      "child_page_count": 0,
+      "has_content": true,
+      "icon": {
+        "type": "emoji",
+        "value": "🏛️"
+      },
+      "depth": 3
+    },
+    {
+      "id": "352bacd2-7dee-8112-8015-de691a5a35d5",
+      "title": "System — Deployment & Services",
+      "parent_id": "352bacd2-7dee-81f9-ac12-fc689daaadf6",
+      "url": "https://www.notion.so/352bacd27dee81128015de691a5a35d5",
+      "block_count": 206,
+      "child_page_count": 0,
+      "has_content": true,
+      "icon": {
+        "type": "emoji",
+        "value": "🚀"
+      },
+      "depth": 3
+    },
+    {
+      "id": "352bacd2-7dee-81c1-a8ad-c630e497c5f3",
+      "title": "System — Database Stack",
+      "parent_id": "352bacd2-7dee-81f9-ac12-fc689daaadf6",
+      "url": "https://www.notion.so/352bacd27dee81c1a8adc630e497c5f3",
+      "block_count": 195,
+      "child_page_count": 0,
+      "has_content": true,
+      "icon": {
+        "type": "emoji",
+        "value": "🗃️"
+      },
+      "depth": 3
+    },
+    {
+      "id": "352bacd2-7dee-81f4-aceb-e7a5382ff155",
+      "title": "System — Credits & Ledger",
+      "parent_id": "352bacd2-7dee-81f9-ac12-fc689daaadf6",
+      "url": "https://www.notion.so/352bacd27dee81f4acebe7a5382ff155",
+      "block_count": 179,
+      "child_page_count": 0,
+      "has_content": true,
+      "icon": {
+        "type": "emoji",
+        "value": "📒"
+      },
+      "depth": 3
+    },
+    {
+      "id": "352bacd2-7dee-81f0-a41a-fd7fa9889635",
+      "title": "System — Widget System v2",
+      "parent_id": "352bacd2-7dee-81f9-ac12-fc689daaadf6",
+      "url": "https://www.notion.so/352bacd27dee81f0a41afd7fa9889635",
+      "block_count": 152,
+      "child_page_count": 0,
+      "has_content": true,
+      "icon": {
+        "type": "emoji",
+        "value": "🧩"
+      },
+      "depth": 3
+    },
+    {
+      "id": "352bacd2-7dee-81a4-a53d-e063b3094432",
+      "title": "Jobs",
+      "parent_id": "352bacd2-7dee-81aa-a79e-c7b80ec8479c",
+      "url": "https://www.notion.so/352bacd27dee81a4a53de063b3094432",
+      "block_count": 25,
+      "child_page_count": 8,
+      "has_content": true,
+      "icon": {
+        "type": "emoji",
+        "value": "🧰"
+      },
+      "depth": 2
+    },
+    {
+      "id": "352bacd2-7dee-81c2-a622-cbd490a9bb6b",
+      "title": "Jobs — Deprecated Modules (Interchange, Matcher, Attributes)",
+      "parent_id": "352bacd2-7dee-81a4-a53d-e063b3094432",
+      "url": "https://www.notion.so/352bacd27dee81c2a622cbd490a9bb6b",
+      "block_count": 84,
+      "child_page_count": 0,
+      "has_content": true,
+      "icon": {
+        "type": "emoji",
+        "value": "📦"
+      },
+      "depth": 3
+    },
+    {
+      "id": "352bacd2-7dee-819e-a4dc-e1f6b5d7814f",
+      "title": "Jobs — Overview",
+      "parent_id": "352bacd2-7dee-81a4-a53d-e063b3094432",
+      "url": "https://www.notion.so/352bacd27dee819ea4dce1f6b5d7814f",
+      "block_count": 129,
+      "child_page_count": 0,
+      "has_content": true,
+      "icon": {
+        "type": "emoji",
+        "value": "📋"
+      },
+      "depth": 3
+    },
+    {
+      "id": "352bacd2-7dee-81d8-b764-e73eff2d9101",
+      "title": "Jobs — Create Enhancement",
+      "parent_id": "352bacd2-7dee-81a4-a53d-e063b3094432",
+      "url": "https://www.notion.so/352bacd27dee81d8b764e73eff2d9101",
+      "block_count": 185,
+      "child_page_count": 0,
+      "has_content": true,
+      "icon": {
+        "type": "emoji",
+        "value": "✨"
+      },
+      "depth": 3
+    },
+    {
+      "id": "352bacd2-7dee-811c-b5bf-c286ec05aab9",
+      "title": "Jobs — Create Upload",
+      "parent_id": "352bacd2-7dee-81a4-a53d-e063b3094432",
+      "url": "https://www.notion.so/352bacd27dee811cb5bfc286ec05aab9",
+      "block_count": 288,
+      "child_page_count": 0,
+      "has_content": true,
+      "icon": {
+        "type": "emoji",
+        "value": "⬆️"
+      },
+      "depth": 3
+    },
+    {
+      "id": "352bacd2-7dee-8164-b8dc-c9b717d67678",
+      "title": "Jobs dashboard — data-history",
+      "parent_id": "352bacd2-7dee-81a4-a53d-e063b3094432",
+      "url": "https://www.notion.so/352bacd27dee8164b8dcc9b717d67678",
+      "block_count": 146,
+      "child_page_count": 0,
+      "has_content": true,
+      "icon": {
+        "type": "emoji",
+        "value": "📜"
+      },
+      "depth": 3
+    },
+    {
+      "id": "352bacd2-7dee-81c4-b07f-ef8fc4b570ab",
+      "title": "Jobs — Create Data Extraction",
+      "parent_id": "352bacd2-7dee-81a4-a53d-e063b3094432",
+      "url": "https://www.notion.so/352bacd27dee81c4b07fef8fc4b570ab",
+      "block_count": 182,
+      "child_page_count": 0,
+      "has_content": true,
+      "icon": {
+        "type": "emoji",
+        "value": "🌐"
+      },
+      "depth": 3
+    },
+    {
+      "id": "352bacd2-7dee-8193-bc65-f10731f513c6",
+      "title": "Jobs — Create Image Generation",
+      "parent_id": "352bacd2-7dee-81a4-a53d-e063b3094432",
+      "url": "https://www.notion.so/352bacd27dee8193bc65f10731f513c6",
+      "block_count": 140,
+      "child_page_count": 0,
+      "has_content": true,
+      "icon": {
+        "type": "emoji",
+        "value": "🖼️"
+      },
+      "depth": 3
+    },
+    {
+      "id": "352bacd2-7dee-8174-b1d7-e955f959d976",
+      "title": "Jobs — Create Validation",
+      "parent_id": "352bacd2-7dee-81a4-a53d-e063b3094432",
+      "url": "https://www.notion.so/352bacd27dee8174b1d7e955f959d976",
+      "block_count": 71,
+      "child_page_count": 0,
+      "has_content": true,
+      "icon": {
+        "type": "emoji",
+        "value": "✅"
+      },
+      "depth": 3
+    },
+    {
+      "id": "352bacd2-7dee-81f5-8047-c8926f2dc783",
+      "title": "Decisions",
+      "parent_id": "34abacd27dee80f3be8fe230c7d1ff9d",
+      "url": "https://www.notion.so/352bacd27dee81f58047c8926f2dc783",
+      "block_count": 27,
+      "child_page_count": 6,
+      "has_content": true,
+      "icon": {
+        "type": "emoji",
+        "value": "🧭"
+      },
+      "depth": 1
+    },
+    {
+      "id": "352bacd2-7dee-8188-be0e-cf720b1a3cce",
+      "title": "ADR-004 — TanStack Query NOT persisted (in-memory cache only)",
+      "parent_id": "352bacd2-7dee-81f5-8047-c8926f2dc783",
+      "url": "https://www.notion.so/352bacd27dee8188be0ecf720b1a3cce",
+      "block_count": 27,
+      "child_page_count": 0,
+      "has_content": true,
+      "icon": {
+        "type": "emoji",
+        "value": "🧭"
+      },
+      "depth": 2
+    },
+    {
+      "id": "352bacd2-7dee-81bf-b6e2-f09ecb0440b9",
+      "title": "ADR-006 — Component-level Suspense (over Next.js route-level `loading.tsx`)",
+      "parent_id": "352bacd2-7dee-81f5-8047-c8926f2dc783",
+      "url": "https://www.notion.so/352bacd27dee81bfb6e2f09ecb0440b9",
+      "block_count": 24,
+      "child_page_count": 0,
+      "has_content": true,
+      "icon": {
+        "type": "emoji",
+        "value": "🧭"
+      },
+      "depth": 2
+    },
+    {
+      "id": "352bacd2-7dee-8181-9d2e-f01271702b11",
+      "title": "ADR-003 — `force-dynamic` on root layout",
+      "parent_id": "352bacd2-7dee-81f5-8047-c8926f2dc783",
+      "url": "https://www.notion.so/352bacd27dee81819d2ef01271702b11",
+      "block_count": 24,
+      "child_page_count": 0,
+      "has_content": true,
+      "icon": {
+        "type": "emoji",
+        "value": "🧭"
+      },
+      "depth": 2
+    },
+    {
+      "id": "352bacd2-7dee-81c1-9c91-f7a63e8416b7",
+      "title": "ADR-001 — Local-Storage Provider for S3-equivalent reads/writes in dev",
+      "parent_id": "352bacd2-7dee-81f5-8047-c8926f2dc783",
+      "url": "https://www.notion.so/352bacd27dee81c19c91f7a63e8416b7",
+      "block_count": 28,
+      "child_page_count": 0,
+      "has_content": true,
+      "icon": {
+        "type": "emoji",
+        "value": "🧭"
+      },
+      "depth": 2
+    },
+    {
+      "id": "352bacd2-7dee-8115-805b-ed405857e0bd",
+      "title": "ADR-005 — React Compiler enabled (`babel-plugin-react-compiler`)",
+      "parent_id": "352bacd2-7dee-81f5-8047-c8926f2dc783",
+      "url": "https://www.notion.so/352bacd27dee8115805bed405857e0bd",
+      "block_count": 24,
+      "child_page_count": 0,
+      "has_content": true,
+      "icon": {
+        "type": "emoji",
+        "value": "🧭"
+      },
+      "depth": 2
+    },
+    {
+      "id": "352bacd2-7dee-818c-ac19-f82f6b2735f4",
+      "title": "ADR-002 — Decoupled Credit Tables (3-store split)",
+      "parent_id": "352bacd2-7dee-81f5-8047-c8926f2dc783",
+      "url": "https://www.notion.so/352bacd27dee818cac19f82f6b2735f4",
+      "block_count": 34,
+      "child_page_count": 0,
+      "has_content": true,
+      "icon": {
+        "type": "emoji",
+        "value": "🧭"
+      },
+      "depth": 2
+    },
+    {
+      "id": "352bacd2-7dee-8178-85a3-fd86aff1d972",
+      "title": "Testing",
+      "parent_id": "34abacd27dee80f3be8fe230c7d1ff9d",
+      "url": "https://www.notion.so/352bacd27dee817885a3fd86aff1d972",
+      "block_count": 18,
+      "child_page_count": 5,
+      "has_content": true,
+      "icon": {
+        "type": "emoji",
+        "value": "🧪"
+      },
+      "depth": 1
+    },
+    {
+      "id": "352bacd2-7dee-81ab-bed7-c116acd5afef",
+      "title": "E2E Test Suite — Detailed Implementation Plan",
+      "parent_id": "352bacd2-7dee-8178-85a3-fd86aff1d972",
+      "url": "https://www.notion.so/352bacd27dee81abbed7c116acd5afef",
+      "block_count": 241,
+      "child_page_count": 0,
+      "has_content": true,
+      "icon": {
+        "type": "emoji",
+        "value": "🔬"
+      },
+      "depth": 2
+    },
+    {
+      "id": "352bacd2-7dee-8157-b2e4-e71a21a3d6c4",
+      "title": "E2E Test Suite — Full Flow Architecture",
+      "parent_id": "352bacd2-7dee-8178-85a3-fd86aff1d972",
+      "url": "https://www.notion.so/352bacd27dee8157b2e4e71a21a3d6c4",
+      "block_count": 192,
+      "child_page_count": 0,
+      "has_content": true,
+      "icon": {
+        "type": "emoji",
+        "value": "🏛️"
+      },
+      "depth": 2
+    },
+    {
+      "id": "352bacd2-7dee-81d6-ab3d-d64d197c649c",
+      "title": "E2E Test Suite Improvement Plan",
+      "parent_id": "352bacd2-7dee-8178-85a3-fd86aff1d972",
+      "url": "https://www.notion.so/352bacd27dee81d6ab3dd64d197c649c",
+      "block_count": 160,
+      "child_page_count": 0,
+      "has_content": true,
+      "icon": {
+        "type": "emoji",
+        "value": "🗺️"
+      },
+      "depth": 2
+    },
+    {
+      "id": "352bacd2-7dee-81fd-bf3a-d71a8997cb23",
+      "title": "E2E — How It Works",
+      "parent_id": "352bacd2-7dee-8178-85a3-fd86aff1d972",
+      "url": "https://www.notion.so/352bacd27dee81fdbf3ad71a8997cb23",
+      "block_count": 75,
+      "child_page_count": 0,
+      "has_content": true,
+      "icon": {
+        "type": "emoji",
+        "value": "🔬"
+      },
+      "depth": 2
+    },
+    {
+      "id": "352bacd2-7dee-81a6-9a09-ed8b68186080",
+      "title": "E2E — Get Started",
+      "parent_id": "352bacd2-7dee-8178-85a3-fd86aff1d972",
+      "url": "https://www.notion.so/352bacd27dee81a69a09ed8b68186080",
+      "block_count": 71,
+      "child_page_count": 0,
+      "has_content": true,
+      "icon": {
+        "type": "emoji",
+        "value": "🏁"
+      },
+      "depth": 2
+    },
+    {
+      "id": "352bacd2-7dee-81c4-b598-f1de37eaec86",
+      "title": "Cross-repo",
+      "parent_id": "34abacd27dee80f3be8fe230c7d1ff9d",
+      "url": "https://www.notion.so/352bacd27dee81c4b598f1de37eaec86",
+      "block_count": 25,
+      "child_page_count": 3,
+      "has_content": true,
+      "icon": {
+        "type": "emoji",
+        "value": "🔗"
+      },
+      "depth": 1
+    },
+    {
+      "id": "352bacd2-7dee-815c-9d22-fdad4feeebe1",
+      "title": "Where Things Live — FE↔BE Routing Map",
+      "parent_id": "352bacd2-7dee-81c4-b598-f1de37eaec86",
+      "url": "https://www.notion.so/352bacd27dee815c9d22fdad4feeebe1",
+      "block_count": 19,
+      "child_page_count": 0,
+      "has_content": true,
+      "icon": {
+        "type": "emoji",
+        "value": "🔗"
+      },
+      "depth": 2
+    },
+    {
+      "id": "352bacd2-7dee-81a0-bffb-dad2b0b48f68",
+      "title": "API Contract — FE↔BE Source of Truth",
+      "parent_id": "352bacd2-7dee-81c4-b598-f1de37eaec86",
+      "url": "https://www.notion.so/352bacd27dee81a0bffbdad2b0b48f68",
+      "block_count": 32,
+      "child_page_count": 0,
+      "has_content": true,
+      "icon": {
+        "type": "emoji",
+        "value": "🔗"
+      },
+      "depth": 2
+    },
+    {
+      "id": "352bacd2-7dee-81ba-ab3d-ef611a3829b9",
+      "title": "Cross-Repo Deploy Ordering",
+      "parent_id": "352bacd2-7dee-81c4-b598-f1de37eaec86",
+      "url": "https://www.notion.so/352bacd27dee81baab3def611a3829b9",
+      "block_count": 40,
+      "child_page_count": 0,
+      "has_content": true,
+      "icon": {
+        "type": "emoji",
+        "value": "🔗"
+      },
+      "depth": 2
+    },
+    {
+      "id": "352bacd2-7dee-81b7-aba1-cddec67fcddc",
+      "title": "Conventions",
+      "parent_id": "34abacd27dee80f3be8fe230c7d1ff9d",
+      "url": "https://www.notion.so/352bacd27dee81b7aba1cddec67fcddc",
+      "block_count": 53,
+      "child_page_count": 13,
+      "has_content": true,
+      "icon": {
+        "type": "emoji",
+        "value": "📐"
+      },
+      "depth": 1
+    },
+    {
+      "id": "352bacd2-7dee-813e-9344-ea0fdab4101a",
+      "title": "`legacy-peer-deps=true` for npm",
+      "parent_id": "352bacd2-7dee-81b7-aba1-cddec67fcddc",
+      "url": "https://www.notion.so/352bacd27dee813e9344ea0fdab4101a",
+      "block_count": 20,
+      "child_page_count": 0,
+      "has_content": true,
+      "icon": {
+        "type": "emoji",
+        "value": "📐"
+      },
+      "depth": 2
+    },
+    {
+      "id": "352bacd2-7dee-8159-81e2-f5580caec7f9",
+      "title": "Early returns over top-level ternaries in components",
+      "parent_id": "352bacd2-7dee-81b7-aba1-cddec67fcddc",
+      "url": "https://www.notion.so/352bacd27dee815981e2f5580caec7f9",
+      "block_count": 21,
+      "child_page_count": 0,
+      "has_content": true,
+      "icon": {
+        "type": "emoji",
+        "value": "📐"
+      },
+      "depth": 2
+    },
+    {
+      "id": "352bacd2-7dee-81f2-a073-c8289f5793ee",
+      "title": "kebab-case for files and folders",
+      "parent_id": "352bacd2-7dee-81b7-aba1-cddec67fcddc",
+      "url": "https://www.notion.so/352bacd27dee81f2a073c8289f5793ee",
+      "block_count": 26,
+      "child_page_count": 0,
+      "has_content": true,
+      "icon": {
+        "type": "emoji",
+        "value": "📐"
+      },
+      "depth": 2
+    },
+    {
+      "id": "352bacd2-7dee-8192-b3a8-fadf51e0b98c",
+      "title": "E2E test-suite version bumps",
+      "parent_id": "352bacd2-7dee-81b7-aba1-cddec67fcddc",
+      "url": "https://www.notion.so/352bacd27dee8192b3a8fadf51e0b98c",
+      "block_count": 22,
+      "child_page_count": 0,
+      "has_content": true,
+      "icon": {
+        "type": "emoji",
+        "value": "📐"
+      },
+      "depth": 2
+    },
+    {
+      "id": "352bacd2-7dee-81e6-8d6f-d30f5275b3a8",
+      "title": "Don't add manual `useMemo` / `useCallback` — React Compiler handles it",
+      "parent_id": "352bacd2-7dee-81b7-aba1-cddec67fcddc",
+      "url": "https://www.notion.so/352bacd27dee81e68d6fd30f5275b3a8",
+      "block_count": 24,
+      "child_page_count": 0,
+      "has_content": true,
+      "icon": {
+        "type": "emoji",
+        "value": "📐"
+      },
+      "depth": 2
+    },
+    {
+      "id": "352bacd2-7dee-8128-934f-dd8d63127f3c",
+      "title": "Loading skeletons use `_loading.tsx` (underscore prefix)",
+      "parent_id": "352bacd2-7dee-81b7-aba1-cddec67fcddc",
+      "url": "https://www.notion.so/352bacd27dee8128934fdd8d63127f3c",
+      "block_count": 21,
+      "child_page_count": 0,
+      "has_content": true,
+      "icon": {
+        "type": "emoji",
+        "value": "📐"
+      },
+      "depth": 2
+    },
+    {
+      "id": "352bacd2-7dee-8129-8251-d7e482f907b3",
+      "title": "`force-dynamic` on root layout",
+      "parent_id": "352bacd2-7dee-81b7-aba1-cddec67fcddc",
+      "url": "https://www.notion.so/352bacd27dee81298251d7e482f907b3",
+      "block_count": 21,
+      "child_page_count": 0,
+      "has_content": true,
+      "icon": {
+        "type": "emoji",
+        "value": "📐"
+      },
+      "depth": 2
+    },
+    {
+      "id": "352bacd2-7dee-81a7-b6c7-f11f71d49e67",
+      "title": "Use `console.info` / `console.warn` / `console.error` — not `console.log`",
+      "parent_id": "352bacd2-7dee-81b7-aba1-cddec67fcddc",
+      "url": "https://www.notion.so/352bacd27dee81a7b6c7f11f71d49e67",
+      "block_count": 21,
+      "child_page_count": 0,
+      "has_content": true,
+      "icon": {
+        "type": "emoji",
+        "value": "📐"
+      },
+      "depth": 2
+    },
+    {
+      "id": "352bacd2-7dee-8174-8bc2-eab611cab37e",
+      "title": "No new packages without checking existing dependencies",
+      "parent_id": "352bacd2-7dee-81b7-aba1-cddec67fcddc",
+      "url": "https://www.notion.so/352bacd27dee81748bc2eab611cab37e",
+      "block_count": 22,
+      "child_page_count": 0,
+      "has_content": true,
+      "icon": {
+        "type": "emoji",
+        "value": "📐"
+      },
+      "depth": 2
+    },
+    {
+      "id": "352bacd2-7dee-81c3-9343-f29e07310ce9",
+      "title": "Comment style — `[claude@<timestamp>]` for agent-authored comments",
+      "parent_id": "352bacd2-7dee-81b7-aba1-cddec67fcddc",
+      "url": "https://www.notion.so/352bacd27dee81c39343f29e07310ce9",
+      "block_count": 23,
+      "child_page_count": 0,
+      "has_content": true,
+      "icon": {
+        "type": "emoji",
+        "value": "📐"
+      },
+      "depth": 2
+    },
+    {
+      "id": "352bacd2-7dee-8141-9f6c-d96ba0bd8c7e",
+      "title": "No nested ternaries in JSX — extract to `useMemo` + `switch`",
+      "parent_id": "352bacd2-7dee-81b7-aba1-cddec67fcddc",
+      "url": "https://www.notion.so/352bacd27dee81419f6cd96ba0bd8c7e",
+      "block_count": 21,
+      "child_page_count": 0,
+      "has_content": true,
+      "icon": {
+        "type": "emoji",
+        "value": "📐"
+      },
+      "depth": 2
+    },
+    {
+      "id": "352bacd2-7dee-814e-9da5-c4d38209447b",
+      "title": "Deprecation Handling — How the Frontend Reads Backend Deprecation Signals",
+      "parent_id": "352bacd2-7dee-81b7-aba1-cddec67fcddc",
+      "url": "https://www.notion.so/352bacd27dee814e9da5c4d38209447b",
+      "block_count": 29,
+      "child_page_count": 0,
+      "has_content": true,
+      "icon": {
+        "type": "emoji",
+        "value": "📐"
+      },
+      "depth": 2
+    },
+    {
+      "id": "352bacd2-7dee-8139-8817-c8c287e8bd12",
+      "title": "Always invalidate TanStack Query keys explicitly after mutations",
+      "parent_id": "352bacd2-7dee-81b7-aba1-cddec67fcddc",
+      "url": "https://www.notion.so/352bacd27dee81398817c8c287e8bd12",
+      "block_count": 22,
+      "child_page_count": 0,
+      "has_content": true,
+      "icon": {
+        "type": "emoji",
+        "value": "📐"
+      },
+      "depth": 2
+    }
+  ],
+  "stats": {
+    "total_pages": 296,
+    "total_api_calls": 670,
+    "elapsed_ms": 593120,
+    "icons_fetched": true
+  }
+}
