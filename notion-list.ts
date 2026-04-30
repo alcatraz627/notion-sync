@@ -37,6 +37,40 @@ const ROOT_ID = (RAW_ROOT.match(/([0-9a-f]{32})$/i)?.[1] ?? RAW_ROOT).replace(/-
 const notion = new Client({ auth: NOTION_TOKEN });
 const sleep = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
 
+// Retry transient Notion failures (5xx, network errors, rate-limit 429).
+// Cloudflare often returns 502 mid-walk under load. Without retry, a single
+// blip kills the whole fetch. Backoff: 2s, 4s, 8s, 16s, 32s. Honours
+// Retry-After header on 429/503 if present.
+async function withRetry<T>(label: string, fn: () => Promise<T>, maxAttempts = 5): Promise<T> {
+  let lastErr: any;
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    try {
+      return await fn();
+    } catch (err: any) {
+      lastErr = err;
+      const status = err?.status;
+      const retriable =
+        status === 429 ||
+        status === 408 ||
+        (status >= 500 && status < 600) ||
+        err?.code === "ECONNRESET" ||
+        err?.code === "ETIMEDOUT" ||
+        err?.code === "notionhq_client_request_timeout" ||
+        (err?.code === "notionhq_client_response_error" && status >= 500);
+      if (!retriable || attempt === maxAttempts) throw err;
+      const retryAfterHeader = err?.headers?.["retry-after"];
+      const retryAfterMs = retryAfterHeader ? parseInt(retryAfterHeader, 10) * 1000 : 0;
+      const backoffMs = Math.min(32000, 2000 * Math.pow(2, attempt - 1));
+      const waitMs = Math.max(retryAfterMs, backoffMs);
+      process.stdout.write(
+        `\r${" ".repeat(120)}\r${dim(`  [${label}] transient ${status ?? err.code} — retry ${attempt}/${maxAttempts - 1} in ${Math.round(waitMs / 1000)}s`)}\n`,
+      );
+      await sleep(waitMs);
+    }
+  }
+  throw lastErr;
+}
+
 // ── Cache shape ───────────────────────────────────────────────────────────────
 
 interface CachedPage {
@@ -89,11 +123,13 @@ async function listChildren(blockId: string): Promise<{ blocks: any[]; apiCalls:
   let cursor: string | undefined;
   let apiCalls = 0;
   do {
-    const res: any = await notion.blocks.children.list({
-      block_id: blockId,
-      page_size: 100,
-      ...(cursor ? { start_cursor: cursor } : {}),
-    });
+    const res: any = await withRetry("list", () =>
+      notion.blocks.children.list({
+        block_id: blockId,
+        page_size: 100,
+        ...(cursor ? { start_cursor: cursor } : {}),
+      }),
+    );
     apiCalls++;
     blocks.push(...res.results);
     cursor = res.has_more ? res.next_cursor : undefined;
@@ -102,14 +138,41 @@ async function listChildren(blockId: string): Promise<{ blocks: any[]; apiCalls:
   return { blocks, apiCalls };
 }
 
+// Module-level handles for crash-safe partial save (the SIGINT/uncaught-exception
+// handlers below dump these to disk so the user doesn't lose 88 pages of work
+// to a Cloudflare 502 on the 89th page).
+let walkProgress: { pages: CachedPage[]; apiCalls: number; start: number; fetchIcons: boolean } | null = null;
+function savePartial(reason: string): void {
+  if (!walkProgress || walkProgress.pages.length === 0) return;
+  const cache: Cache = {
+    fetched_at: new Date().toISOString(),
+    root_id: ROOT_ID,
+    pages: walkProgress.pages,
+    stats: {
+      total_pages: walkProgress.pages.length,
+      total_api_calls: walkProgress.apiCalls,
+      elapsed_ms: Date.now() - walkProgress.start,
+      icons_fetched: walkProgress.fetchIcons,
+    },
+  };
+  // Mark partial in a sidecar field so `show` can warn
+  (cache as any).partial = true;
+  (cache as any).partial_reason = reason;
+  saveCache(cache);
+  console.error(yellow(`\n⚠ Partial cache saved (${cache.pages.length} pages, ${reason}) → ${path.relative(process.cwd(), CACHE_PATH)}`));
+}
+process.on("SIGINT", () => { savePartial("SIGINT"); process.exit(130); });
+process.on("uncaughtException", (e) => { savePartial(`uncaught: ${e?.message?.slice(0,60) ?? "err"}`); process.exit(1); });
+
 async function walk(opts: { fetchIcons: boolean }): Promise<Cache> {
   const start = Date.now();
   const pages: CachedPage[] = [];
   let apiCalls = 0;
+  walkProgress = { pages, apiCalls: 0, start, fetchIcons: opts.fetchIcons };
 
   // Root page metadata
-  const rootMeta: any = await notion.pages.retrieve({ page_id: ROOT_ID });
-  apiCalls++;
+  const rootMeta: any = await withRetry("root", () => notion.pages.retrieve({ page_id: ROOT_ID }));
+  apiCalls++; walkProgress.apiCalls = apiCalls;
   await sleep(RATE_LIMIT_MS);
   const rootTitle = extractTitle(rootMeta) ?? "(root)";
   const rootIcon = opts.fetchIcons ? extractIcon(rootMeta) : null;
@@ -120,7 +183,7 @@ async function walk(opts: { fetchIcons: boolean }): Promise<Cache> {
     process.stdout.write(`\r  fetching depth ${depth}: ${title.slice(0, 60).padEnd(60)} (${pages.length} pages so far)`);
 
     const { blocks, apiCalls: ac } = await listChildren(pageId);
-    apiCalls += ac;
+    apiCalls += ac; walkProgress!.apiCalls = apiCalls;
     const childPages = blocks.filter((b) => b.type === "child_page");
 
     pages.push({
@@ -140,12 +203,12 @@ async function walk(opts: { fetchIcons: boolean }): Promise<Cache> {
       let childIcon: CachedPage["icon"] = null;
       if (opts.fetchIcons) {
         try {
-          const meta: any = await notion.pages.retrieve({ page_id: cp.id });
-          apiCalls++;
+          const meta: any = await withRetry("icon", () => notion.pages.retrieve({ page_id: cp.id }), 3);
+          apiCalls++; walkProgress!.apiCalls = apiCalls;
           childIcon = extractIcon(meta);
           await sleep(RATE_LIMIT_MS);
         } catch {
-          // ignore icon fetch failures
+          // ignore icon fetch failures even after retries
         }
       }
       await visit(cp.id, pageId, depth + 1, childTitle, childIcon);
@@ -197,6 +260,9 @@ function renderTree(cache: Cache, opts: { maxDepth?: number; emptyOnly?: boolean
   console.log(`${dim("Fetched:")}  ${fetched_at}  ${dim(`(${fetchedAgo})`)}`);
   console.log(`${dim("Pages:")}    ${stats.total_pages}`);
   console.log(`${dim("API:")}      ${stats.total_api_calls} calls in ${(stats.elapsed_ms / 1000).toFixed(1)}s${stats.icons_fetched ? "" : dim(" (no icons)")}`);
+  if ((cache as any).partial) {
+    console.log(yellow(`⚠ PARTIAL CACHE  — ${(cache as any).partial_reason ?? "unknown reason"}. Re-run \`bash list.sh fetch\` for a complete tree.`));
+  }
   console.log(dim("─".repeat(72)));
   console.log("");
 
@@ -359,9 +425,18 @@ function saveCache(cache: Cache): void {
   if (cmd === "fetch" || (cmd === "auto" && !loadCache())) {
     console.log(bold(`\nFetching Notion tree from root ${ROOT_ID}…`));
     if (!fetchIcons) console.log(dim("  (--no-icons: skipping per-page metadata fetch)"));
-    const cache = await walk({ fetchIcons });
-    saveCache(cache);
-    console.log(green(`✓ Cached ${cache.pages.length} pages → ${path.relative(process.cwd(), CACHE_PATH)}`));
+    try {
+      const cache = await walk({ fetchIcons });
+      saveCache(cache);
+      console.log(green(`✓ Cached ${cache.pages.length} pages → ${path.relative(process.cwd(), CACHE_PATH)}`));
+    } catch (err: any) {
+      // walk() crashed even after withRetry exhausted attempts. Save what we
+      // collected so the user doesn't lose minutes of fetching.
+      savePartial(`fetch failed: ${err?.status ?? err?.code ?? "err"}`);
+      console.error(red(`\n✗ Fetch aborted after exhausting retries: ${err?.message?.slice(0, 120)}`));
+      console.error(dim(`  Run \`bash list.sh fetch\` again to retry from scratch (no resume yet — partial cache is for inspection only).`));
+      process.exit(1);
+    }
     if (cmd === "fetch") return;
   }
 
