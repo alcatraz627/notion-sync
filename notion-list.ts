@@ -373,6 +373,28 @@ function saveCache(cache: Cache): void {
 
   if (cmd === "diff") {
     runDiff(cache);
+  } else if (cmd === "empty-paths") {
+    // Print local paths whose remote page exists but has 0 blocks. One per line.
+    // Use directly via shell substitution:
+    //   bash sync.sh --only $(bash list.sh empty-paths)
+    const local = scanLocalDocs();
+    const empties = cache.pages.filter((p) => p.parent_id !== null && p.block_count === 0);
+    const matched: string[] = [];
+    const unmatched: string[] = [];
+    for (const p of empties) {
+      const localPath = local.pathByTitle.get(p.title);
+      if (localPath) matched.push(localPath);
+      else unmatched.push(p.title);
+    }
+    if (unmatched.length > 0) {
+      console.error(dim(`# ${unmatched.length} empty remote pages had no matching local title (skipped):`));
+      for (const t of unmatched) console.error(dim(`#   ${t}  (likely a section page; title differs from _index.md heading)`));
+    }
+    if (matched.length === 0) {
+      console.error(dim("# (no empty pages with matching local docs — nothing to retry)"));
+      process.exit(2); // non-zero so command substitution into --only doesn't run sync with no args
+    }
+    for (const p of matched) console.log(p);
   } else {
     renderTree(cache, { maxDepth, emptyOnly });
   }
