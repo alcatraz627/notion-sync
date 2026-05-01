@@ -42,6 +42,7 @@ import { createInterface } from "readline/promises";
 import * as fs from "fs";
 import * as path from "path";
 import { ImageUploader, swapImageBlocks } from "./image-uploader";
+import { convertPageLinksToMentions, buildPageIdSet } from "./mention-converter";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -277,6 +278,13 @@ const GITHUB_BLOB_BASE = GITHUB_REPO
 // Required for private repos (raw.githubusercontent.com URLs 404 to Notion).
 const UPLOAD_IMAGES = process.env.NOTION_UPLOAD_IMAGES === "1";
 const IMAGE_CACHE_PATH = path.join(__dirname, ".notion-image-cache.json");
+
+// When true, after Phase 2 writes a page's content via updateMarkdown, walk
+// its blocks and convert internal-page hyperlinks (markdown `[text](notion-url)`)
+// into native page mentions — inline pills with hover/peek + auto-updating
+// titles, instead of the default "open in new tab" behaviour. Default ON since
+// it strictly improves the reading experience for synced docs.
+const USE_MENTIONS = process.env.NOTION_USE_MENTIONS !== "0";
 
 // Per-doc "View source on GitHub" URL base. Each Notion page's breadcrumb
 // gets a link to `${GITHUB_DOC_SOURCE_URL_BASE}/${relPath}`. Defaults to
@@ -1499,6 +1507,7 @@ async function writeFileContent(
   discovery: PageDiscovery,
   pageIdMap: Map<string, string>,
   counter: { n: number; total: number },
+  ourPageIds?: Set<string>, // pre-built set of our page IDs for mention-conversion (lazy by caller)
 ): Promise<SyncResult> {
   const t0 = Date.now();
   const doc = getDoc(relPath);
@@ -1618,6 +1627,25 @@ async function writeFileContent(
         }
       } catch (err: any) {
         console.error(`     ${clr.warn(`${sym.warn} block swap failed: ${(err.message as string).slice(0, 80)}`)}`);
+      }
+    }
+
+    // Post-process: convert internal-page hyperlinks to native page mentions
+    // so they render as inline pills with hover-preview / side-peek navigation
+    // instead of opening in a new browser tab. Idempotent — safe on re-syncs.
+    if (USE_MENTIONS && ourPageIds && ourPageIds.size > 0) {
+      try {
+        const r = await convertPageLinksToMentions({
+          notion,
+          pageId: discovery.id,
+          ourPageIds,
+          rateLimitMs: currentRateLimitMs,
+        });
+        if (VERBOSE && r.links_converted > 0) {
+          console.log(`     🔗  ${clr.dim(`converted ${r.links_converted} link${r.links_converted === 1 ? "" : "s"} → mention${r.links_converted === 1 ? "" : "s"} (${r.blocks_updated} block update${r.blocks_updated === 1 ? "" : "s"})`)}`);
+        }
+      } catch (err: any) {
+        console.error(`     ${clr.warn(`${sym.warn} mention conversion failed: ${(err.message as string).slice(0, 80)}`)}`);
       }
     }
 
@@ -1948,6 +1976,9 @@ async function main(): Promise<void> {
   const counter = { n: 0, total };
   const recentStatuses: SyncStatus[] = [];
   let aborted = false;
+  // Set of all page IDs we synced — used by mention-converter to identify
+  // which markdown links can become native mentions vs. stay as external links.
+  const ourPageIds = USE_MENTIONS ? buildPageIdSet(pageIdMap) : new Set<string>();
 
   const phase2Start = Date.now();
   for (const relPath of allToSync) {
@@ -1968,7 +1999,7 @@ async function main(): Promise<void> {
     }
 
     if (!VERBOSE && IS_TTY) renderProgress(counter.n, total, relPath);
-    const r = await writeFileContent(relPath, discovery, pageIdMap, counter);
+    const r = await writeFileContent(relPath, discovery, pageIdMap, counter, ourPageIds);
     results.push(r);
     recentStatuses.push(r.status);
     if (recentStatuses.length > ABORT_WINDOW) recentStatuses.shift();
@@ -2005,7 +2036,7 @@ async function main(): Promise<void> {
         if (!discovery) continue;
         for (let attempt = 1; attempt <= 3; attempt++) {
           console.log(`  ↻ ${r.path} — attempt ${attempt}/3  ${clr.dim(`(rate-limit ${currentRateLimitMs}ms)`)}`);
-          const retryResult = await writeFileContent(r.path, discovery, pageIdMap, { n: counter.n, total: counter.total });
+          const retryResult = await writeFileContent(r.path, discovery, pageIdMap, { n: counter.n, total: counter.total }, ourPageIds);
           if (retryResult.status !== "error") {
             results[idx] = retryResult;
             console.log(`    ${clr.ok(sym.ok)} recovered (${retryResult.status})`);

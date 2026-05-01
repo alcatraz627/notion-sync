@@ -9,6 +9,7 @@
 #   bash list.sh show --empty-only   # only show pages with zero content blocks
 #   bash list.sh show --max-depth 2  # collapse beyond depth 2
 #   bash list.sh diff                # compare cache vs local docs
+#   bash list.sh fix-mentions        # retroactive: convert internal links → native page mentions on every cached page
 
 set -e
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"

@@ -13,6 +13,7 @@
 import { Client } from "@notionhq/client";
 import * as fs from "fs";
 import * as path from "path";
+import { convertPageLinksToMentions } from "./mention-converter";
 
 // ── Env loading (bun --env-file would work but we mimic sync.sh's behaviour) ──
 const envContent = fs.readFileSync(path.join(__dirname, ".env"), "utf8");
@@ -446,7 +447,40 @@ function saveCache(cache: Cache): void {
     process.exit(1);
   }
 
-  if (cmd === "diff") {
+  if (cmd === "fix-mentions") {
+    // Retroactive pass — convert internal hyperlinks to native page mentions
+    // on every page already in the cache. Safe to re-run (idempotent).
+    const ourPageIds = new Set(cache.pages.map((p) => p.id.replace(/-/g, "").toLowerCase()));
+    console.log(bold(`\nFixing mentions on ${cache.pages.length} pages…`));
+    let totalConverted = 0;
+    let totalUpdated = 0;
+    let pagesProcessed = 0;
+    let pagesWithChanges = 0;
+    for (const p of cache.pages) {
+      pagesProcessed++;
+      process.stdout.write(`\r  [${pagesProcessed}/${cache.pages.length}] ${p.title.slice(0, 60).padEnd(60)}`);
+      try {
+        const r = await convertPageLinksToMentions({
+          notion,
+          pageId: p.id,
+          ourPageIds,
+          rateLimitMs: RATE_LIMIT_MS,
+        });
+        if (r.links_converted > 0) {
+          totalConverted += r.links_converted;
+          totalUpdated += r.blocks_updated;
+          pagesWithChanges++;
+          process.stdout.write(`\r${" ".repeat(120)}\r`);
+          console.log(`  ${green("✓")} ${p.title}  ${dim(`(${r.links_converted} link${r.links_converted === 1 ? "" : "s"} → mention${r.links_converted === 1 ? "" : "s"})`)}`);
+        }
+      } catch (err: any) {
+        process.stdout.write(`\r${" ".repeat(120)}\r`);
+        console.error(`  ${red("✗")} ${p.title}: ${(err.message as string).slice(0, 80)}`);
+      }
+    }
+    process.stdout.write(`\r${" ".repeat(120)}\r`);
+    console.log(`\n${green("Done.")} Converted ${bold(String(totalConverted))} link${totalConverted === 1 ? "" : "s"} → mention${totalConverted === 1 ? "" : "s"} across ${pagesWithChanges} page${pagesWithChanges === 1 ? "" : "s"} (${totalUpdated} block update${totalUpdated === 1 ? "" : "s"}).`);
+  } else if (cmd === "diff") {
     runDiff(cache);
   } else if (cmd === "empty-paths") {
     // Print local paths whose remote page exists but has 0 blocks. One per line.
