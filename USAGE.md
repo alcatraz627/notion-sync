@@ -63,6 +63,20 @@ bash list.sh fix-mentions
 bash sync.sh --no-wizard --only $(bash list.sh empty-paths)
 ```
 
+### After upgrading notion-sync (especially the v1.1 link-text fix)
+
+The v1.1 release fixed a Notion auto-detect bug where `[foo.md](url)` link text would hijack the URL into `http://foo.md/`. To apply the fix to already-synced pages, you need a full re-sync (the link rewrite happens at sync time, not retroactively):
+
+```bash
+# 1. Full re-sync — all pages get the new title-substituted links
+bash sync.sh
+
+# 2. Convert text-with-link → mention pills page-wide
+bash list.sh fix-mentions
+```
+
+After this, every previously-broken `http://*.md/` link is replaced with a proper Notion URL whose anchor text is the linked doc's title — and then upgraded to a native mention pill.
+
 ### After a Notion API outage / failed run
 
 The script auto-retries transient failures up to 3 times each at the end of the run. If items are still failing:
@@ -495,6 +509,7 @@ for p in d.get('pages',[])[:5]:
 | `empty-paths` | Print local paths for empty remote pages (for shell substitution) |
 | `fix-mentions` | Walk every cached page, convert internal links → mentions |
 | `recent-errors` | Surface failed paths from recent `runs.jsonl` entries (default last 5; `--limit N` to widen) |
+| `sitemap` | Push a `🗺️ Sitemap` page summarizing every cached page; mention pills as leaves. Honours `NOTION_SITEMAP_PAGE_ID` if set, else auto-creates under root. |
 
 ### `.env` essentials
 
