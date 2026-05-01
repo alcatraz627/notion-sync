@@ -1156,7 +1156,14 @@ function scanTree(absDir: string, relPrefix: string): DocTree {
         ? `${relPrefix}/${entry.name}`
         : entry.name;
       const sub = scanTree(path.join(absDir, entry.name), childPrefix);
-      if (sub.files.length > 0 || sub.subdirs.size > 0)
+      // Keep the dir if it has any syncable content OR a local _index.md.
+      // Without the _index.md check, folders that contain ONLY an _index.md
+      // get silently dropped here (since EXCLUDE_PATTERNS filters _index.md
+      // out of `sub.files`), so discoverTree never sees them and the section
+      // page never gets created — this is what stranded `boring-technical-stuff/
+      // observability/`, `flows/`, etc. on past full syncs.
+      const hasIndex = fs.existsSync(path.join(absDir, entry.name, "_index.md"));
+      if (sub.files.length > 0 || sub.subdirs.size > 0 || hasIndex)
         tree.subdirs.set(entry.name, sub);
     }
   }
