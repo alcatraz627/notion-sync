@@ -410,13 +410,45 @@ function runSuspicionChecks(content: string): SuspicionMatch[] {
 const sleep = (ms: number): Promise<void> =>
   new Promise((r) => setTimeout(r, ms));
 
+// Adaptive linear backoff for the API rate limiter.
+// Floor:   RATE_LIMIT_MS (default 350ms, ~2.85 req/s — safely under Notion's 3/s cap)
+// Ceiling: RATE_LIMIT_MS * 3 (~1050ms, ~0.95 req/s — drops well below the cap)
+// Step:    one third of the floor→ceiling span. Up on every failure, down after
+//          3 consecutive successes. Linear (not exponential) so transient blips
+//          don't slingshot the rate to the ceiling for a sustained run.
+const RATE_LIMIT_FLOOR_MS = RATE_LIMIT_MS;
+const RATE_LIMIT_CEILING_MS = RATE_LIMIT_MS * 3;
+const RATE_LIMIT_STEP_MS = Math.round((RATE_LIMIT_CEILING_MS - RATE_LIMIT_FLOOR_MS) / 3);
+let currentRateLimitMs = RATE_LIMIT_FLOOR_MS;
+let consecutiveSuccesses = 0;
+
+function reportApiSuccess(): void {
+  consecutiveSuccesses++;
+  if (consecutiveSuccesses >= 3 && currentRateLimitMs > RATE_LIMIT_FLOOR_MS) {
+    currentRateLimitMs = Math.max(RATE_LIMIT_FLOOR_MS, currentRateLimitMs - RATE_LIMIT_STEP_MS);
+    consecutiveSuccesses = 0;
+  }
+}
+function reportApiFailure(): void {
+  consecutiveSuccesses = 0;
+  if (currentRateLimitMs < RATE_LIMIT_CEILING_MS) {
+    currentRateLimitMs = Math.min(RATE_LIMIT_CEILING_MS, currentRateLimitMs + RATE_LIMIT_STEP_MS);
+  }
+}
+
 async function apiCall<T>(fn: () => Promise<T>, label = "api"): Promise<T> {
   const t0 = Date.now();
-  const result = await fn();
-  const fn_ms = Date.now() - t0;
-  await sleep(RATE_LIMIT_MS);
-  runMetrics.apiCalls.push({ op: label, fn_ms, total_ms: fn_ms + RATE_LIMIT_MS });
-  return result;
+  try {
+    const result = await fn();
+    const fn_ms = Date.now() - t0;
+    await sleep(currentRateLimitMs);
+    runMetrics.apiCalls.push({ op: label, fn_ms, total_ms: fn_ms + currentRateLimitMs });
+    reportApiSuccess();
+    return result;
+  } catch (err) {
+    reportApiFailure();
+    throw err;
+  }
 }
 
 function shouldExclude(filename: string): boolean {
@@ -1547,7 +1579,7 @@ async function writeFileContent(
   }
 
   const doWrite = async (): Promise<void> => {
-    await sleep(RATE_LIMIT_MS);
+    await sleep(currentRateLimitMs);
     await updatePageMeta(discovery.id, icon, cover);
     await apiCall(() =>
       (notion.pages as any).updateMarkdown({
@@ -1566,7 +1598,7 @@ async function writeFileContent(
     // repos) to type=file_upload referencing our just-uploaded files.
     if (imageUploader && urlToUploadId.size > 0) {
       try {
-        const swapped = await swapImageBlocks(notion, discovery.id, urlToUploadId, RATE_LIMIT_MS);
+        const swapped = await swapImageBlocks(notion, discovery.id, urlToUploadId, currentRateLimitMs);
         if (VERBOSE && swapped > 0) {
           console.log(`     ${sym.img}  ${clr.dim(`swapped ${swapped} image block${swapped === 1 ? "" : "s"} to file_upload`)}`);
         }
@@ -1801,78 +1833,98 @@ async function main(): Promise<void> {
   // Phase 1.5 — write section page content. Runs after full discovery so all
   // child page IDs are in pageIdMap (links resolve to Notion URLs). Uses a
   // non-destructive block-level write that preserves child_page subpage blocks.
+  // Helper: write one section's content. Returns { ok, error?, title }. The main
+  // loop calls this and pushes a SectionResult; a later retry pass calls it
+  // again for any failures (max 3 attempts each).
+  const writeOneSection = async (item: SectionWriteItem): Promise<{ ok: boolean; error?: string; title: string }> => {
+    const { relDir, dirName, sectionPageId, folderIndex, subTree } = item;
+    const indexRelPath = relDir ? `${relDir}/_index.md` : "_index.md";
+    if (folderIndex) {
+      try {
+        const banner = SHOW_META ? buildMetaBanner(folderIndex.meta) : "";
+        const rewritten = rewriteLinks(
+          rewriteImages(banner + folderIndex.body, indexRelPath),
+          indexRelPath,
+          pageIdMap,
+        );
+        const indexSyncedAt = fmtTimestamp(new Date());
+        const rewrittenWithFooter = `${rewritten}\n\n---\n\n*Synced: ${indexSyncedAt}*\n`;
+        await updatePageMeta(sectionPageId, folderIndex.icon, folderIndex.cover);
+        await writeSectionContent(sectionPageId, rewrittenWithFooter);
+        return { ok: true, title: folderIndex.title };
+      } catch (err: any) {
+        return { ok: false, error: (err.message as string).slice(0, 200), title: folderIndex.title };
+      }
+    } else {
+      try {
+        const autoContent = buildAutoIndex(dirName, subTree, pageIdMap, relDir);
+        const autoSyncedAt = fmtTimestamp(new Date());
+        const autoContentWithFooter = `${autoContent}\n---\n\n*Synced: ${autoSyncedAt}*\n`;
+        await writeSectionContent(sectionPageId, autoContentWithFooter);
+        return { ok: true, title: item.sectionTitle };
+      } catch (err: any) {
+        return { ok: false, error: (err.message as string).slice(0, 200), title: item.sectionTitle };
+      }
+    }
+  };
+
   if (!DRY_RUN && sectionWriteQueue.length > 0) {
     console.log(`${clr.phase("Phase 1.5:")} writing section pages (${sectionWriteQueue.length})...`);
     let sectionN = 0;
-    for (const { relDir, dirName, sectionTitle, sectionPageId, folderIndex, subTree } of sectionWriteQueue) {
+    for (const item of sectionWriteQueue) {
       sectionN++;
-      const indexRelPath = relDir ? `${relDir}/_index.md` : "_index.md";
+      const { relDir, sectionTitle, sectionPageId, folderIndex } = item;
       if (!VERBOSE && IS_TTY) setPulseLabel(relDir || "(root)", sectionN, sectionWriteQueue.length);
-      if (folderIndex) {
-        try {
-          const banner = SHOW_META ? buildMetaBanner(folderIndex.meta) : "";
-          const rewritten = rewriteLinks(
-            rewriteImages(banner + folderIndex.body, indexRelPath),
-            indexRelPath,
-            pageIdMap,
-          );
-          const indexSyncedAt = fmtTimestamp(new Date());
-          const rewrittenWithFooter = `${rewritten}\n\n---\n\n*Synced: ${indexSyncedAt}*\n`;
-          await updatePageMeta(sectionPageId, folderIndex.icon, folderIndex.cover);
-          await writeSectionContent(sectionPageId, rewrittenWithFooter);
-          vlog(`  ${clr.dim(`${sym.ok} _index.md written`)}  ${clr.dim(`(${folderIndex.title})`)}`);
-          sectionResults.push({
-            rel_dir: relDir,
-            title: folderIndex.title,
-            page_id: sectionPageId,
-            notion_url: notionUrl(sectionPageId),
-            had_index_md: true,
-            content_written: true,
-          });
-        } catch (err: any) {
-          console.error(`  ${clr.warn(`${sym.warn} _index.md write failed (${relDir}): ${(err.message as string).slice(0, 80)}`)}`);
-          sectionResults.push({
-            rel_dir: relDir,
-            title: sectionTitle,
-            page_id: sectionPageId,
-            notion_url: notionUrl(sectionPageId),
-            had_index_md: true,
-            content_written: false,
-            error: (err.message as string).slice(0, 200),
-          });
-        }
+      const result = await writeOneSection(item);
+      if (result.ok) {
+        const tag = folderIndex ? "_index.md" : "auto-index";
+        vlog(`  ${clr.dim(`${sym.ok} ${tag} written`)}  ${clr.dim(`(${result.title})`)}`);
       } else {
-        try {
-          const autoContent = buildAutoIndex(dirName, subTree, pageIdMap, relDir);
-          const autoSyncedAt = fmtTimestamp(new Date());
-          const autoContentWithFooter = `${autoContent}\n---\n\n*Synced: ${autoSyncedAt}*\n`;
-          await writeSectionContent(sectionPageId, autoContentWithFooter);
-          const childCount = collectFiles(subTree).filter(shouldSync).length;
-          vlog(`  ${clr.dim(`${sym.ok} auto-index written`)}  ${clr.dim(`(${childCount} docs)`)}`);
-          sectionResults.push({
-            rel_dir: relDir,
-            title: sectionTitle,
-            page_id: sectionPageId,
-            notion_url: notionUrl(sectionPageId),
-            had_index_md: false,
-            content_written: true,
-          });
-        } catch (err: any) {
-          console.error(`  ${clr.warn(`${sym.warn} auto-index write failed (${relDir}): ${(err.message as string).slice(0, 80)}`)}`);
-          sectionResults.push({
-            rel_dir: relDir,
-            title: sectionTitle,
-            page_id: sectionPageId,
-            notion_url: notionUrl(sectionPageId),
-            had_index_md: false,
-            content_written: false,
-            error: (err.message as string).slice(0, 200),
-          });
-        }
+        const tag = folderIndex ? "_index.md" : "auto-index";
+        console.error(`  ${clr.warn(`${sym.warn} ${tag} write failed (${relDir}): ${(result.error || "").slice(0, 80)}`)}`);
       }
+      sectionResults.push({
+        rel_dir: relDir,
+        title: result.title || sectionTitle,
+        page_id: sectionPageId,
+        notion_url: notionUrl(sectionPageId),
+        had_index_md: !!folderIndex,
+        content_written: result.ok,
+        ...(result.ok ? {} : { error: result.error }),
+      });
     }
     if (!VERBOSE && IS_TTY) clearProgress();
     console.log(`  ${clr.ok(sym.ok)} ${sectionWriteQueue.length} section pages written\n`);
+
+    // Phase 1.5 retry pass — up to 3 extra attempts per failed section.
+    // Adaptive backoff (in apiCall) will already have widened the rate-limit
+    // window from the failure that triggered the retry, giving each attempt
+    // a calmer cadence. After 3 attempts a section stays marked failed and
+    // the user can re-run with `--only <section>` to try again later.
+    const failed = sectionResults
+      .map((r, idx) => ({ r, idx }))
+      .filter(({ r }) => r.content_written === false);
+    if (failed.length > 0) {
+      console.log(`${clr.phase("Phase 1.5 retry:")} ${failed.length} failed section${failed.length === 1 ? "" : "s"} (up to 3 attempts each)...`);
+      for (const { r, idx } of failed) {
+        const item = sectionWriteQueue.find((x) => x.sectionPageId === r.page_id);
+        if (!item) continue;
+        for (let attempt = 1; attempt <= 3; attempt++) {
+          console.log(`  ↻ ${r.rel_dir} — attempt ${attempt}/3  ${clr.dim(`(rate-limit ${currentRateLimitMs}ms)`)}`);
+          const retryResult = await writeOneSection(item);
+          if (retryResult.ok) {
+            sectionResults[idx] = { ...sectionResults[idx], content_written: true, error: undefined };
+            console.log(`    ${clr.ok(sym.ok)} recovered`);
+            break;
+          }
+          sectionResults[idx] = { ...sectionResults[idx], error: retryResult.error };
+          console.log(`    ${clr.warn(sym.warn)} still failing: ${(retryResult.error || "").slice(0, 80)}`);
+          if (attempt === 3) {
+            console.log(`    ${clr.err(sym.err)} giving up — re-run with --only ${r.rel_dir} later`);
+          }
+        }
+      }
+    }
   }
 
   // Phase 2 — write content with cross-file Notion links resolved
@@ -1922,6 +1974,38 @@ async function main(): Promise<void> {
     }
   }
   if (!VERBOSE && IS_TTY) clearProgress();
+
+  // Phase 2 retry pass — up to 3 extra attempts per failed file. Skips items
+  // that errored in Phase 1 discovery (no Notion page to retry against) and
+  // items hit by the abort policy (likely systemic — retrying won't help).
+  // Uses the adaptive backoff which will already have widened the rate-limit
+  // window from the original failures.
+  if (!aborted && !DRY_RUN) {
+    const retryable = results
+      .map((r, idx) => ({ r, idx }))
+      .filter(({ r }) => r.status === "error" && r.error !== "Page discovery failed in phase 1");
+    if (retryable.length > 0) {
+      console.log(`\n${clr.phase("Phase 2 retry:")} ${retryable.length} failed file${retryable.length === 1 ? "" : "s"} (up to 3 attempts each)...`);
+      for (const { r, idx } of retryable) {
+        const discovery = discoveryMap.get(r.path);
+        if (!discovery) continue;
+        for (let attempt = 1; attempt <= 3; attempt++) {
+          console.log(`  ↻ ${r.path} — attempt ${attempt}/3  ${clr.dim(`(rate-limit ${currentRateLimitMs}ms)`)}`);
+          const retryResult = await writeFileContent(r.path, discovery, pageIdMap, { n: counter.n, total: counter.total });
+          if (retryResult.status !== "error") {
+            results[idx] = retryResult;
+            console.log(`    ${clr.ok(sym.ok)} recovered (${retryResult.status})`);
+            break;
+          }
+          results[idx] = retryResult;
+          console.log(`    ${clr.warn(sym.warn)} still failing: ${(retryResult.error || "").slice(0, 80)}`);
+          if (attempt === 3) {
+            console.log(`    ${clr.err(sym.err)} giving up — re-run with --only ${path.basename(r.path, ".md")} later`);
+          }
+        }
+      }
+    }
+  }
   const phase2Ms = Date.now() - phase2Start;
 
   // Summary
