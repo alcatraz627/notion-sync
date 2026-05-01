@@ -63,6 +63,51 @@ bash sync.sh --only auth-flow e2e-get-started
 
 See [SETUP.md](SETUP.md) for one-time Notion integration setup, and [USAGE.md](USAGE.md) for a task-oriented guide covering every scenario (selective sync, image upload, mentions, diff, retry, performance tuning, etc.).
 
+## Commands
+
+Two scripts cover everything. Each row links to the relevant USAGE section.
+
+### `sync.sh` — push local docs → Notion
+
+| Command | What it does | Details |
+|---|---|---|
+| `bash sync.sh` | Interactive wizard (pick mode, filter, options) | [§1 Daily sync](USAGE.md#1-daily-sync-workflow) |
+| `bash sync.sh --no-wizard` | Use saved defaults from last run | [§1](USAGE.md#1-daily-sync-workflow) |
+| `bash sync.sh --dry-run` | Preview without writing | [§3 Dry-run](USAGE.md#3-dry-run-preview) |
+| `bash sync.sh --only X Y …` | Sync only matching sections / files | [§2 Selective sync](USAGE.md#2-selective-sync) |
+| `bash sync.sh --verbose` | Per-file output instead of progress bar | [§11 Performance tuning](USAGE.md#11-performance-tuning) |
+| `bash sync.sh --fix-mentions` | Skip sync; convert internal links → page mentions | [§8 Mentions](USAGE.md#8-internal-links--page-mentions) |
+| `bash sync.sh -h` | Inline help | — |
+
+### `list.sh` — read remote, diff, batch-fix
+
+| Command | What it does | Details |
+|---|---|---|
+| `bash list.sh` | Render cached remote tree (auto-fetches if no cache) | [§4 Verifying remote](USAGE.md#4-verifying-remote-state) |
+| `bash list.sh fetch` | Refresh cache from Notion (~6 min for ~300 pages) | [§4](USAGE.md#4-verifying-remote-state) |
+| `bash list.sh fetch --no-icons` | Faster fetch, skip per-page icon retrieval | [§4](USAGE.md#4-verifying-remote-state) |
+| `bash list.sh show --max-depth N` | Collapse tree beyond depth N | [§4](USAGE.md#4-verifying-remote-state) |
+| `bash list.sh show --empty-only` | Only pages with 0 content blocks | [§4](USAGE.md#4-verifying-remote-state) |
+| `bash list.sh diff` | Title-based comparison vs local docs | [§5 Comparing](USAGE.md#5-comparing-local-vs-remote) |
+| `bash list.sh empty-paths` | Print local paths whose remote page is empty | [§5](USAGE.md#5-comparing-local-vs-remote) |
+| `bash list.sh fix-mentions` | Standalone: rewrite links → mentions on every cached page | [§8 Mentions](USAGE.md#8-internal-links--page-mentions) |
+
+### Common workflows
+
+```bash
+# First sync after a long time
+bash list.sh fetch                                # snapshot remote
+bun compare-apr-30-1/compare.ts                   # path-based diff vs local
+bash sync.sh                                      # full sync (wizard)
+bash list.sh fix-mentions                         # convert legacy links
+
+# Daily one-file change
+bash sync.sh --no-wizard --only create-scraper
+
+# Mop up empty remote pages
+bash sync.sh --no-wizard --only $(bash list.sh empty-paths)
+```
+
 ## What it does
 
 Mirrors a local docs folder to Notion as nested pages, maintaining the full folder hierarchy:
@@ -148,22 +193,28 @@ Mapped folders bypass the default root and root their subtree directly under the
 
 ## Environment variables
 
-| Variable              | Required | Default            | Description                                                  |
-| --------------------- | -------- | ------------------ | ------------------------------------------------------------ |
-| `NOTION_TOKEN`        | yes      | —                  | Integration secret (`secret_...` or `ntn_...`)               |
-| `NOTION_ROOT_PAGE_ID` | yes      | —                  | ID or URL slug of the root Notion page                       |
-| `DOCS_DIR`            | yes      | `./docs`           | Absolute path to the local docs folder to sync               |
-| `GITHUB_REPO`         | no       | —                  | `owner/repo` — used for link fallbacks + image URLs          |
-| `GITHUB_BRANCH`       | no       | `development`      | Branch for GitHub URLs                                       |
-| `GITHUB_DOCS_ROOT`    | no       | `frontend/docs`    | Repo-relative path matching `DOCS_DIR`, for image URL building |
-| `GITHUB_DOCS_PATH`    | no       | `frontend/docs`    | Repo-relative path for markdown link fallbacks               |
-| `NOTION_LINK_MODE`    | no       | `notion`           | `notion` \| `github` \| `strip` — how `.md` links are rewritten |
-| `NOTION_PAGE_ICON`    | no       | —                  | Default emoji for leaf pages without `icon:` frontmatter     |
-| `NOTION_FOLDER_ICON`  | no       | —                  | Default emoji for section pages without `_index.md`          |
-| `NOTION_FULL_WIDTH`   | no       | on                 | Set `0` to disable full-width layout on all pages            |
-| `NOTION_SHOW_META`    | no       | on                 | Set `0` to suppress the frontmatter banner on each page      |
-| `NOTION_SYNC_MAP`     | no       | —                  | Path to JSON file mapping top-level folders to Notion roots  |
-| `DRY_RUN`             | no       | —                  | Set `1` to preview without writing                           |
+| Variable                     | Required | Default            | Description                                                       |
+| ---------------------------- | -------- | ------------------ | ----------------------------------------------------------------- |
+| `NOTION_TOKEN`               | yes      | —                  | Integration secret (`secret_...` or `ntn_...`)                    |
+| `NOTION_ROOT_PAGE_ID`        | yes      | —                  | ID or URL slug of the root Notion page                            |
+| `DOCS_DIR`                   | yes      | `./docs`           | Absolute path to the local docs folder to sync                    |
+| `GITHUB_REPO`                | no       | —                  | `owner/repo` — used for link fallbacks + image URLs               |
+| `GITHUB_BRANCH`              | no       | `development`      | Branch for GitHub URLs                                            |
+| `GITHUB_DOCS_ROOT`           | no       | `frontend/docs`    | Repo-relative path matching `DOCS_DIR`, for image URL building    |
+| `GITHUB_DOCS_PATH`           | no       | `frontend/docs`    | Repo-relative path for markdown link fallbacks                    |
+| `GITHUB_DOC_SOURCE_URL_BASE` | no       | computed           | Override for the per-doc "View source on GitHub" breadcrumb link  |
+| `NOTION_LINK_MODE`           | no       | `notion`           | `notion` \| `github` \| `strip` — how `.md` links are rewritten   |
+| `NOTION_PAGE_ICON`           | no       | —                  | Default emoji for leaf pages without `icon:` frontmatter          |
+| `NOTION_FOLDER_ICON`         | no       | —                  | Default emoji for section pages without `_index.md`               |
+| `NOTION_SHOW_META`           | no       | on                 | Set `0` to suppress the frontmatter banner on each page           |
+| `NOTION_UPLOAD_IMAGES`       | no       | off                | `1` to upload images to Notion's CDN — required for private repos |
+| `NOTION_USE_MENTIONS`        | no       | on                 | `0` to disable internal-link → page-mention conversion            |
+| `NOTION_SYNC_MAP`            | no       | —                  | Path to JSON file mapping top-level folders to Notion roots       |
+| `ABORT_POLICY`               | no       | `disabled`         | `disabled` \| `1` \| `2` \| `3` \| `5` \| `10` (consecutive errors) |
+| `DRY_RUN`                    | no       | —                  | Set `1` to preview without writing                                |
+| `VERBOSE`                    | no       | —                  | Set `1` for per-file output instead of progress bar               |
+
+> `NOTION_FULL_WIDTH` is intentionally unused — `is_full_width` is not settable via Notion's public REST API. Toggle it manually in Notion UI.
 
 ## Link and image rewriting
 
@@ -175,14 +226,18 @@ Mapped folders bypass the default root and root their subtree directly under the
 | `github`           | Always rewrites to GitHub viewer URL                            |
 | `strip`            | Removes the link, leaves plain text                             |
 
-**Images:** Relative image paths (`./images/foo.png`) are rewritten to `raw.githubusercontent.com` URLs using `GITHUB_REPO`, `GITHUB_BRANCH`, and `GITHUB_DOCS_ROOT`. Already-absolute URLs pass through unchanged.
+After Phase 2 writes a page's content, internal `.md` links pointing at our synced pages are converted to **native Notion page mentions** — inline pills with hover-preview, side-peek navigation, and auto-updating titles. Disable via `NOTION_USE_MENTIONS=0`. See [USAGE §8](USAGE.md#8-internal-links--page-mentions) for the tradeoff (mentions display the linked page's current title, not the original anchor text).
+
+**Images:** Relative image paths (`./images/foo.png`) are rewritten to `raw.githubusercontent.com` URLs using `GITHUB_REPO`, `GITHUB_BRANCH`, and `GITHUB_DOCS_ROOT`. For **private repos**, those URLs return 404 to Notion — set `NOTION_UPLOAD_IMAGES=1` to upload each image to Notion's CDN and swap the image block from `external` → `file_upload` after the markdown write. Uploads are sha256-cached in `.notion-image-cache.json` so re-runs and renames don't re-upload. See [USAGE §7](USAGE.md#7-image-uploads-for-private-repos).
 
 ## Failure handling
 
-- **Per-file failures** are skipped — the run continues to the next file.
-- **Systemic abort** — if 5+ failures occur within a rolling window of 10 items, the run aborts (likely token revocation, network failure, or persistent WAF block).
-- **Retry command** — printed at end of run for any failed files: `bash sync.sh --only file1 file2`
-- **Suspicion rules** — on any push failure, the file content is checked against WAF + size rules to explain probable causes.
+- **Per-item failures** are collected during the main loop, then a **retry pass** (up to 3 attempts each) runs at the end of Phase 1.5 and Phase 2 — handles transient 502s and timeouts.
+- **Adaptive linear backoff** — rate limit widens on every API failure (350ms → 1050ms over 3 steps), narrows after 3 consecutive successes. Linear, not exponential, so a single blip doesn't slingshot the rate for the rest of the run.
+- **Systemic abort** — configurable via `ABORT_POLICY` (1, 2, 3, 5, 10 consecutive failures). Disabled by default — collect every error, finish the run.
+- **Retry command** — printed at the end of run for any items still failing after 3 attempts: `bash sync.sh --only file1 file2`.
+- **Suspicion rules** — on any push failure, file content is checked against WAF + size rules. Findings appear in the per-file error log and `runs.jsonl` `error_summary[].suspicions`.
+- **Crash-safe partial cache** — `list.sh fetch` saves a partial cache on SIGINT or unhandled error so 88 pages of progress aren't lost to a single 502.
 
 ## Run logs
 
