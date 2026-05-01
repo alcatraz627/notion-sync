@@ -36,17 +36,24 @@ const RICH_TEXT_BLOCK_TYPES = [
   "template",
 ] as const;
 
-// Match a Notion page URL and capture the 32-hex ID (with or without dashes).
-// Examples that match:
-//   https://www.notion.so/352bacd27dee81838d20c5bdac2527cf
-//   https://www.notion.so/Docs-Structure-352bacd27dee81838d20c5bdac2527cf
-//   https://notion.so/abc123ef4567890abcdef0123456789a
-const NOTION_PAGE_URL_RE = /https?:\/\/(?:www\.)?notion\.so\/(?:[^/?#]*-)?([0-9a-f]{32})/i;
+// Match a Notion page URL and capture the 32-hex ID. Notion's markdown API
+// canonicalizes our `https://www.notion.so/<id>` markdown links into
+// `https://app.notion.com/p/<id>` when stored — so we must match BOTH forms,
+// otherwise fix-mentions and the post-sync mention pass become no-ops.
+//
+// Forms covered:
+//   https://www.notion.so/352bacd27dee81838d20c5bdac2527cf      (we write this)
+//   https://www.notion.so/Docs-Structure-352bacd27dee81838d...  (with title slug)
+//   https://app.notion.com/p/352bacd27dee81838d20c5bdac2527cf   (Notion stores this)
+//   https://notion.so/abc...                                    (no www)
+//   ID with dashes (UUID format) — strip them before matching the 32-hex
+const NOTION_PAGE_URL_RE = /https?:\/\/(?:www\.|app\.)?notion\.(?:so|com)\/(?:p\/)?(?:[^/?#]*-)?([0-9a-f]{8}-?[0-9a-f]{4}-?[0-9a-f]{4}-?[0-9a-f]{4}-?[0-9a-f]{12}|[0-9a-f]{32})/i;
 
 function extractNotionPageId(url: string | null | undefined): string | null {
   if (!url) return null;
   const m = url.match(NOTION_PAGE_URL_RE);
-  return m ? m[1].toLowerCase() : null;
+  if (!m) return null;
+  return m[1].replace(/-/g, "").toLowerCase();
 }
 
 const cleanId = (id: string) => id.replace(/-/g, "").toLowerCase();
