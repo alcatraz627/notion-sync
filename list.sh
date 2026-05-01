@@ -13,6 +13,7 @@
 #   bash list.sh recent-errors       # surface failed paths from recent runs.jsonl entries (default last 5 runs)
 #   bash list.sh sitemap             # push 🗺️ Sitemap page summarizing every cached page (mention pills as leaves)
 #   bash list.sh tag-index           # push 🏷️ Tags page aggregating frontmatter + body tags across all docs
+#   bash list.sh index-db            # push/refresh 📇 Doc Index sidecar Notion database (filterable / sortable view of every doc)
 
 set -e
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -62,7 +63,7 @@ ELAPSED=$((END_TS - START_TS))
 # Notify only for long-running subcommands (fetch, fix-mentions). show/diff
 # usually finish in under 1s — a notification banner is more annoying than
 # helpful at that pace.
-if [ "$SUBCMD" = "fetch" ] || [ "$SUBCMD" = "fix-mentions" ] || [ "$SUBCMD" = "sitemap" ] || [ "$SUBCMD" = "tag-index" ]; then
+if [ "$SUBCMD" = "fetch" ] || [ "$SUBCMD" = "fix-mentions" ] || [ "$SUBCMD" = "sitemap" ] || [ "$SUBCMD" = "tag-index" ] || [ "$SUBCMD" = "index-db" ]; then
   if [ "$EXIT_CODE" -eq 0 ]; then
     _notify "notion-list ✓" "$SUBCMD complete" "${ELAPSED}s"
   else

@@ -16,6 +16,7 @@ import * as path from "path";
 import { convertPageLinksToMentions } from "./mention-converter";
 import { generateSitemap } from "./sitemap";
 import { generateTagIndex } from "./tag-index";
+import { generateIndexDb } from "./index-db";
 
 // ── Env loading (bun --env-file would work but we mimic sync.sh's behaviour) ──
 const envContent = fs.readFileSync(path.join(__dirname, ".env"), "utf8");
@@ -601,6 +602,29 @@ function saveCache(cache: Cache): void {
       process.exit(2); // non-zero so command substitution into --only doesn't run sync with no args
     }
     for (const p of matched) console.log(p);
+  } else if (cmd === "index-db") {
+    // Push/refresh the 📇 Doc Index sidecar database. Walks DOCS_DIR
+    // for every leaf doc, upserts one row per doc keyed by Path. Source
+    // page mention populated by title match against the cache.
+    const docsDir = process.env.DOCS_DIR;
+    if (!docsDir) {
+      console.error(red("DOCS_DIR env var not set — required for index-db"));
+      process.exit(1);
+    }
+    const databaseId = process.env.NOTION_INDEX_DB_ID || undefined;
+    try {
+      const result = await generateIndexDb({
+        notion, cache, docsDir, databaseId, rateLimitMs: RATE_LIMIT_MS,
+        log: (msg) => console.log(msg),
+      });
+      console.log(
+        `\n${green("Done.")} Index DB ${result.database_was_created ? "created" : "updated"} — ${bold(String(result.total_docs))} docs · ${result.rows_created} created · ${result.rows_updated} updated · ${result.rows_orphaned} orphaned${result.unmatched_to_page > 0 ? ` · ${result.unmatched_to_page} unmatched` : ""}.`,
+      );
+      console.log(dim(`  Database: https://www.notion.so/${result.database_id.replace(/-/g, "")}`));
+    } catch (err: any) {
+      console.error(red(`\n✗ Index DB generation failed: ${err.message}`));
+      process.exit(1);
+    }
   } else if (cmd === "tag-index") {
     // Walk DOCS_DIR for frontmatter / body tags, aggregate by tag, push
     // a 🏷️ Tags page. Auto-creates if missing; honours
