@@ -150,6 +150,17 @@ grep '"run_id":"20260429-143022"' runs.jsonl | python3 -m json.tool
 | `sections[*].content_written` | False = section page content write failed |
 | `config` | Full snapshot of all settings active during the run |
 | `timing` | `phase1_ms` = discovery, `phase2_ms` = content writes |
+| `image_stats` | `{uploads, cache_hits, total_in_cache}` — only set when `NOTION_UPLOAD_IMAGES=1`. Cache-hit ratio tracks dedup efficiency. |
+| `partial` | True = run was killed mid-flight (SIGINT/SIGTERM/uncaught). `partial_reason` records the cause. Stats reflect progress at termination. |
+
+### Quick failure scan across recent runs
+
+```bash
+bash list.sh recent-errors            # last 5 runs, only prints details for those with errors or partial: true
+bash list.sh recent-errors --limit 50 # wider window, e.g. when investigating a regression
+```
+
+Output prints `run_id`, error count, suspicion tags per failed path, and a copy-paste `bash sync.sh --only ...` retry command. Does not require a Notion cache — purely local-log.
 
 ### Suspicion rules (built into the script)
 

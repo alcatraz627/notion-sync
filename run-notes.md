@@ -18,6 +18,16 @@ Claude should:
 
 <!-- entries below, newest first -->
 
+## 2026-05-01 — audit logging hardening (no run, infrastructure note)
+
+Three improvements landed in this session — relevant for future RCA-style runs:
+
+1. **Partial run logs on Ctrl-C / SIGTERM / uncaught exception.** A new `partialSnapshot` module variable in `index.ts` captures progress at every checkpoint. `SIGINT`/`SIGTERM`/`uncaughtException` handlers flush a `partial: true` entry to `runs.jsonl` with `partial_reason` set to the cause. So killing a sync mid-flight no longer loses the trail — `bash list.sh recent-errors` will surface what got done and which file was being processed when the kill landed. New `RunLogEntry` fields: `partial`, `partial_reason`.
+2. **Image upload stats persisted.** `image_stats: {uploads, cache_hits, total_in_cache}` is now written to every `runs.jsonl` entry when `NOTION_UPLOAD_IMAGES=1`. Previously only printed to terminal — now you can chart cache-hit ratio over time without scraping log lines.
+3. **`bash list.sh recent-errors` subcommand.** Reads `runs.jsonl`, prints the last N runs (default 5), drills into any with `errors > 0` or `partial: true`, shows suspicion tags per failed path and a copy-paste `bash sync.sh --only ...` retry command. Pure local-log — no Notion API calls. Use `--limit 50` to widen the window when investigating a regression.
+
+**Pattern to watch:** when an old run shows up in `recent-errors` with `partial: true` and no clear reason, check `partial_reason`. If it says `SIGINT`, the user killed it; if `uncaughtException: ...`, an unhandled error escaped the main `try/catch` — likely worth a bug report.
+
 ## 2026-05-01 — clean state milestone — 0 missing / 0 extras / 0 thin
 
 After completing the bring-up sequence + retroactive mention conversion, the path-based comparator returns:

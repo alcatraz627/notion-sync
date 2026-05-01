@@ -348,6 +348,17 @@ grep '"errors":[1-9]' runs.jsonl | wc -l
 | `error_summary` | `[{path, error, suspicions}]` — quickest failure overview |
 | `pages` | Per-file results: status, elapsed, content_chars |
 | `sections` | Phase 1.5 results: `{rel_dir, content_written, error?}` |
+| `image_stats` | `{uploads, cache_hits, total_in_cache}` when `NOTION_UPLOAD_IMAGES=1` |
+| `partial` | `true` if killed mid-flight (Ctrl-C, SIGTERM, uncaught exception). `partial_reason` records the cause. |
+
+### Quick failure scan
+
+```bash
+bash list.sh recent-errors            # last 5 runs — only details for failed/partial
+bash list.sh recent-errors --limit 50 # widen window, e.g. when investigating a regression
+```
+
+Prints `run_id`, error count, suspicion tags, and a copy-paste `bash sync.sh --only ...` retry command per failed run. Pure local-log read — no Notion API calls.
 
 ### Long-term notes
 
@@ -483,6 +494,7 @@ for p in d.get('pages',[])[:5]:
 | `diff` | Title-based comparison vs local docs |
 | `empty-paths` | Print local paths for empty remote pages (for shell substitution) |
 | `fix-mentions` | Walk every cached page, convert internal links → mentions |
+| `recent-errors` | Surface failed paths from recent `runs.jsonl` entries (default last 5; `--limit N` to widen) |
 
 ### `.env` essentials
 

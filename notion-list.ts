@@ -471,6 +471,49 @@ function saveCache(cache: Cache): void {
   const maxDepthArg = args[args.indexOf("--max-depth") + 1];
   const maxDepth = args.includes("--max-depth") ? parseInt(maxDepthArg, 10) : undefined;
 
+  if (cmd === "recent-errors") {
+    // Surface failed paths from recent runs.jsonl entries. No Notion fetch
+    // required — purely local-log inspection. Default: scan last 5 runs,
+    // print any with errors > 0 (or partial: true), give a copy-paste retry.
+    const limitArg = args[args.indexOf("--limit") + 1];
+    const limit = args.includes("--limit") ? parseInt(limitArg, 10) : 5;
+    const logPath = path.join(process.cwd(), "runs.jsonl");
+    if (!fs.existsSync(logPath)) {
+      console.error(red(`runs.jsonl not found at ${logPath}`));
+      process.exit(1);
+    }
+    const lines = fs.readFileSync(logPath, "utf8").trim().split("\n").filter(Boolean);
+    const recent = lines.slice(-limit);
+    let anyErrors = false;
+    for (const line of recent) {
+      let entry: any;
+      try { entry = JSON.parse(line); } catch { continue; }
+      const errCount = entry.stats?.errors ?? 0;
+      const isPartial = entry.partial === true;
+      if (errCount === 0 && !isPartial) {
+        console.log(`${dim(entry.run_id)}  ${green("✓")} ${entry.stats?.total ?? 0} files, no errors${isPartial ? " (partial)" : ""}`);
+        continue;
+      }
+      anyErrors = true;
+      const tag = isPartial ? red("partial") : red(`${errCount} error${errCount === 1 ? "" : "s"}`);
+      const reason = entry.partial_reason ? dim(` [${entry.partial_reason}]`) : "";
+      console.log(`\n${bold(entry.run_id)}  ${tag}${reason}  ${dim(entry.ts)}`);
+      const errs = entry.error_summary ?? [];
+      for (const e of errs.slice(0, 10)) {
+        const susp = e.suspicions?.length ? dim(` [${e.suspicions.join(", ")}]`) : "";
+        console.log(`  ${red("✗")} ${e.path}${susp}`);
+        if (e.error) console.log(`     ${dim(e.error.slice(0, 120))}`);
+      }
+      if (errs.length > 10) console.log(dim(`  … +${errs.length - 10} more`));
+      if (errs.length > 0) {
+        const retryArgs = errs.map((e: any) => path.basename(e.path, ".md")).join(" ");
+        console.log(`\n  ${dim("Retry:")} bash sync.sh --only ${retryArgs}`);
+      }
+    }
+    if (!anyErrors) console.log(dim(`\n(no errors in last ${recent.length} run${recent.length === 1 ? "" : "s"})`));
+    return;
+  }
+
   if (cmd === "fetch" || (cmd === "auto" && !loadCache())) {
     console.log(bold(`\nFetching Notion tree from root ${ROOT_ID}…`));
     if (!fetchIcons) console.log(dim("  (--no-icons: skipping per-page metadata fetch)"));

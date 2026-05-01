@@ -10,6 +10,7 @@
 #   bash list.sh show --max-depth 2  # collapse beyond depth 2
 #   bash list.sh diff                # compare cache vs local docs
 #   bash list.sh fix-mentions        # retroactive: convert internal links → native page mentions on every cached page
+#   bash list.sh recent-errors       # surface failed paths from recent runs.jsonl entries (default last 5 runs)
 
 set -e
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"

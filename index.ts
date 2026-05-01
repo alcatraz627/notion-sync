@@ -190,10 +190,40 @@ interface RunLogEntry {
     sections_written: number;
     aborted: boolean;
   };
+  // Image upload pipeline stats. Only populated when NOTION_UPLOAD_IMAGES=1.
+  // Written by index.ts at run-end from imageUploader.getStats(). Helpful for
+  // tracking cache hit rate and orphan accumulation over time.
+  image_stats?: {
+    uploads: number;
+    cache_hits: number;
+    total_in_cache: number;
+  } | null;
+  // True if the run was killed mid-flight (SIGINT / uncaughtException) and
+  // this entry was written by the partial-save handler. Stats reflect what
+  // had completed at the moment of termination, not a finished run.
+  partial?: boolean;
+  partial_reason?: string;
   pages: SyncResult[];
   sections: SectionResult[];
   error_summary: { path: string; error: string; suspicions: string[] }[] | null;
 }
+
+// Live snapshot of run progress, updated by main() at checkpoints. The SIGINT
+// / uncaughtException handlers read this to write a `partial: true` entry to
+// runs.jsonl when the process dies mid-flight. Set to null once a normal
+// run completes so late signals don't double-write.
+interface PartialSnapshot {
+  runStartDate: Date;
+  runStart: string;
+  filter: string[] | null;
+  configBuilder: () => RunConfig;
+  results: SyncResult[];
+  sectionResults: SectionResult[];
+  phase1Ms: number;
+  phase2Start: number | null; // null until Phase 2 begins
+  aborted: { value: boolean };
+}
+let partialSnapshot: PartialSnapshot | null = null;
 
 // ── ANSI colors ───────────────────────────────────────────────────────────────
 
@@ -1804,9 +1834,82 @@ function buildAndWriteMetrics(
 
 // ── Main ──────────────────────────────────────────────────────────────────────
 
+function writePartialRunLog(reason: string): void {
+  if (!partialSnapshot) return;
+  const snap = partialSnapshot;
+  partialSnapshot = null; // disarm — never write twice
+  try {
+    const phase2Ms = snap.phase2Start ? Date.now() - snap.phase2Start : 0;
+    const created = snap.results.filter((r) => r.status === "created");
+    const updated = snap.results.filter((r) => r.status === "updated");
+    const dryRun = snap.results.filter((r) => r.status === "dry_run");
+    const errors = snap.results.filter((r) => r.status === "error");
+    const partialEntry: RunLogEntry = {
+      run_id: makeRunId(snap.runStartDate),
+      version: SCRIPT_VERSION,
+      ts: snap.runStart,
+      dry_run: DRY_RUN,
+      filter: snap.filter,
+      config: snap.configBuilder(),
+      timing: {
+        phase1_ms: snap.phase1Ms,
+        phase2_ms: phase2Ms,
+        total_ms: snap.phase1Ms + phase2Ms,
+      },
+      stats: {
+        total: snap.results.length,
+        created: created.length,
+        updated: updated.length,
+        dry_run: dryRun.length,
+        errors: errors.length,
+        sections_written: snap.sectionResults.filter((s) => s.content_written).length,
+        aborted: snap.aborted.value,
+      },
+      pages: snap.results,
+      sections: snap.sectionResults,
+      error_summary:
+        errors.length > 0
+          ? errors.map((e) => ({
+              path: e.path,
+              error: e.error ?? "",
+              suspicions: (e.suspicions ?? []).map((s) => s.name),
+            }))
+          : null,
+      image_stats: imageUploader ? imageUploader.getStats() : null,
+      partial: true,
+      partial_reason: reason,
+    };
+    appendRunLog(partialEntry);
+    console.error(
+      clr.warn(`\n${sym.warn} Partial run logged (${reason}) — ${snap.results.length} files processed before exit.`),
+    );
+  } catch (err) {
+    console.error(clr.err(`Failed to write partial run log: ${(err as Error).message}`));
+  }
+}
+
 async function main(): Promise<void> {
   const runStartDate = new Date();
   const runStart = runStartDate.toISOString();
+
+  // Arm partial-save handlers. The snapshot is mutated by main() at
+  // checkpoints (post Phase 1, during Phase 2 loop). On SIGINT or an
+  // uncaught exception, writePartialRunLog flushes whatever progress
+  // exists so kill mid-sync still leaves a diagnosable trail.
+  process.on("SIGINT", () => {
+    writePartialRunLog("SIGINT");
+    process.exit(130);
+  });
+  process.on("SIGTERM", () => {
+    writePartialRunLog("SIGTERM");
+    process.exit(143);
+  });
+  process.on("uncaughtException", (err) => {
+    writePartialRunLog(`uncaughtException: ${err.message.slice(0, 200)}`);
+    console.error(clr.err(`\n${sym.err} Uncaught: ${err.message}`));
+    if (err.stack) console.error(clr.dim(err.stack));
+    process.exit(1);
+  });
 
   console.log(
     `\n${clr.header(`Notion Docs Sync${DRY_RUN ? " [DRY RUN]" : ""}`)}`,
@@ -1871,6 +1974,38 @@ async function main(): Promise<void> {
   const phase1Ms = Date.now() - phase1Start;
   if (!VERBOSE && IS_TTY) clearProgress();
   console.log(`  ${clr.ok(sym.ok)} ${discoveryMap.size} pages mapped\n`);
+
+  // Arm the partial-save snapshot. After this point, SIGINT will flush a
+  // `partial: true` runs.jsonl entry with whatever progress has accumulated.
+  const abortedRef = { value: false };
+  const partialResults: SyncResult[] = [];
+  partialSnapshot = {
+    runStartDate,
+    runStart,
+    filter: onlyPaths.length > 0 ? onlyPaths : null,
+    configBuilder: () => ({
+      root_page_id: rootPageId,
+      root_notion_url: notionUrl(rootPageId),
+      docs_dir: DOCS_DIR,
+      link_mode: LINK_MODE,
+      github_repo: GITHUB_REPO,
+      github_branch: GITHUB_BRANCH,
+      github_docs_root: GITHUB_DOCS_ROOT,
+      github_docs_path: GITHUB_DOCS_PATH,
+      show_meta: SHOW_META,
+      folder_icon: FOLDER_ICON,
+      default_page_icon: DEFAULT_ICON,
+      sync_map_file: SYNC_MAP_FILE,
+      rate_limit_ms: RATE_LIMIT_MS,
+      abort_window: ABORT_WINDOW,
+      abort_errors: ABORT_ERRORS,
+    }),
+    results: partialResults,
+    sectionResults,
+    phase1Ms,
+    phase2Start: null,
+    aborted: abortedRef,
+  };
 
   // Phase 1.5 — write section page content. Runs after full discovery so all
   // child page IDs are in pageIdMap (links resolve to Notion URLs). Uses a
@@ -1971,16 +2106,17 @@ async function main(): Promise<void> {
 
   // Phase 2 — write content with cross-file Notion links resolved
   console.log(`${clr.phase("Phase 2:")} writing content...`);
-  const results: SyncResult[] = [];
+  // Reuse partialResults so the SIGINT handler sees pushes in-place.
+  const results: SyncResult[] = partialResults;
   const total = allToSync.length;
   const counter = { n: 0, total };
   const recentStatuses: SyncStatus[] = [];
-  let aborted = false;
   // Set of all page IDs we synced — used by mention-converter to identify
   // which markdown links can become native mentions vs. stay as external links.
   const ourPageIds = USE_MENTIONS ? buildPageIdSet(pageIdMap) : new Set<string>();
 
   const phase2Start = Date.now();
+  partialSnapshot.phase2Start = phase2Start;
   for (const relPath of allToSync) {
     counter.n++;
     const discovery = discoveryMap.get(relPath);
@@ -2013,7 +2149,7 @@ async function main(): Promise<void> {
             `\n${sym.err} Aborting — ${recentErrors} failures in last ${recentStatuses.length} items. Likely a systemic issue (token, network, WAF block).`,
           ),
         );
-        aborted = true;
+        abortedRef.value = true;
         break;
       }
     }
@@ -2025,6 +2161,7 @@ async function main(): Promise<void> {
   // items hit by the abort policy (likely systemic — retrying won't help).
   // Uses the adaptive backoff which will already have widened the rate-limit
   // window from the original failures.
+  const aborted = abortedRef.value;
   if (!aborted && !DRY_RUN) {
     const retryable = results
       .map((r, idx) => ({ r, idx }))
@@ -2165,8 +2302,12 @@ async function main(): Promise<void> {
             suspicions: (e.suspicions ?? []).map((s) => s.name),
           }))
         : null,
+    image_stats: imageUploader ? imageUploader.getStats() : null,
   };
 
+  // Run completed — disarm the partial-save handler so a late shutdown signal
+  // doesn't overwrite the full log entry we're about to write.
+  partialSnapshot = null;
   appendRunLog(logEntry);
   console.log(
     clr.dim(`\nRun logged → ${path.relative(process.cwd(), LOG_FILE)}`),
