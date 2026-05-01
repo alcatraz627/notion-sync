@@ -24,4 +24,47 @@ if [ ! -d node_modules ]; then
   bun install --silent
 fi
 
-bun notion-list.ts "$@"
+# OS-aware notification helper (mirrors sync.sh). macOS uses osascript banner;
+# always also prints to terminal.
+_notify() {
+  local title="$1" message="$2" subtitle="${3:-}"
+  if [ "$(uname -s)" = "Darwin" ] && command -v osascript &>/dev/null; then
+    local title_esc message_esc subtitle_esc
+    title_esc=$(printf '%s' "$title" | sed 's/"/\\"/g')
+    message_esc=$(printf '%s' "$message" | sed 's/"/\\"/g')
+    subtitle_esc=$(printf '%s' "$subtitle" | sed 's/"/\\"/g')
+    if [ -n "$subtitle" ]; then
+      osascript -e "display notification \"$message_esc\" with title \"$title_esc\" subtitle \"$subtitle_esc\"" 2>/dev/null || true
+    else
+      osascript -e "display notification \"$message_esc\" with title \"$title_esc\"" 2>/dev/null || true
+    fi
+  fi
+  if command -v gum &>/dev/null; then
+    gum style --foreground 212 "🔔  $title — $message${subtitle:+  ($subtitle)}"
+  else
+    echo "🔔  $title — $message${subtitle:+  ($subtitle)}"
+  fi
+}
+
+# Parse subcommand for the post-run notification message
+SUBCMD="${1:-show}"
+[[ "$SUBCMD" == --* ]] && SUBCMD="show"
+
+START_TS=$(date +%s)
+EXIT_CODE=0
+bun notion-list.ts "$@" || EXIT_CODE=$?
+END_TS=$(date +%s)
+ELAPSED=$((END_TS - START_TS))
+
+# Notify only for long-running subcommands (fetch, fix-mentions). show/diff
+# usually finish in under 1s — a notification banner is more annoying than
+# helpful at that pace.
+if [ "$SUBCMD" = "fetch" ] || [ "$SUBCMD" = "fix-mentions" ]; then
+  if [ "$EXIT_CODE" -eq 0 ]; then
+    _notify "notion-list ✓" "$SUBCMD complete" "${ELAPSED}s"
+  else
+    _notify "notion-list ✗" "$SUBCMD failed (exit $EXIT_CODE)" "${ELAPSED}s"
+  fi
+fi
+
+exit $EXIT_CODE
