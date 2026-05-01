@@ -1,44 +1,109 @@
 <div align="center">
-  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="128" height="128">
-    <!-- Terminal >_ motif on dark background -->
-    <rect x="0" y="0" width="64" height="64" fill="#0d1117"/>
-    <!-- Window chrome -->
-    <rect x="4" y="4" width="56" height="8" fill="#21262d"/>
-    <rect x="8" y="7" width="4" height="2" fill="#f85149" rx="1"/>
-    <rect x="14" y="7" width="4" height="2" fill="#3fb950" rx="1"/>
-    <rect x="20" y="7" width="4" height="2" fill="#d29922" rx="1"/>
-    <!-- > prompt -->
-    <rect x="8" y="20" width="2" height="6" fill="#58a6ff"/>
-    <rect x="10" y="20" width="2" height="2" fill="#58a6ff"/>
-    <rect x="10" y="24" width="2" height="2" fill="#58a6ff"/>
-    <!-- _ cursor -->
-    <rect x="14" y="26" width="8" height="2" fill="#58a6ff"/>
-    <!-- Notion N icon suggestion -->
-    <rect x="40" y="18" width="4" height="18" fill="#e6edf3"/>
-    <rect x="44" y="18" width="2" height="6" fill="#e6edf3"/>
-    <rect x="46" y="24" width="2" height="6" fill="#8b949e"/>
-    <rect x="48" y="30" width="4" height="6" fill="#8b949e"/>
-    <rect x="52" y="18" width="4" height="18" fill="#8b949e"/>
-    <!-- arrow connecting terminal to N -->
-    <rect x="26" y="27" width="10" height="2" fill="#3fb950"/>
-    <rect x="34" y="25" width="2" height="6" fill="#3fb950"/>
-    <!-- bottom decorative line -->
-    <rect x="4" y="48" width="56" height="2" fill="#21262d"/>
-    <rect x="4" y="52" width="30" height="2" fill="#161b22"/>
-  </svg>
+
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 180" width="640" height="180" role="img" aria-label="notion-sync — markdown → Notion mirror">
+  <!-- Background gradient: cyan → magenta -->
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%"   stop-color="#0d1117"/>
+      <stop offset="50%"  stop-color="#161b22"/>
+      <stop offset="100%" stop-color="#1c1430"/>
+    </linearGradient>
+    <linearGradient id="accent" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%"  stop-color="#22d3ee"/>
+      <stop offset="100%" stop-color="#e879f9"/>
+    </linearGradient>
+  </defs>
+  <rect width="640" height="180" fill="url(#bg)" rx="8"/>
+
+  <!-- Top accent bar -->
+  <rect x="0" y="0" width="640" height="3" fill="url(#accent)"/>
+
+  <!-- Terminal pane (left) -->
+  <rect x="32" y="38" width="220" height="104" fill="#0a0d12" stroke="#22d3ee" stroke-width="1" rx="4"/>
+  <rect x="32" y="38" width="220" height="14" fill="#161b22" rx="4"/>
+  <circle cx="42" cy="45" r="2.5" fill="#f85149"/>
+  <circle cx="50" cy="45" r="2.5" fill="#d29922"/>
+  <circle cx="58" cy="45" r="2.5" fill="#3fb950"/>
+  <text x="44" y="74"  font-family="ui-monospace, Menlo, monospace" font-size="12" fill="#22d3ee">$ bash sync.sh</text>
+  <text x="44" y="92"  font-family="ui-monospace, Menlo, monospace" font-size="11" fill="#7d8590">▸ Phase 1: 304 pages</text>
+  <text x="44" y="106" font-family="ui-monospace, Menlo, monospace" font-size="11" fill="#7d8590">▸ Phase 2: writing...</text>
+  <text x="44" y="120" font-family="ui-monospace, Menlo, monospace" font-size="11" fill="#3fb950">✓ 0 errors</text>
+  <text x="44" y="134" font-family="ui-monospace, Menlo, monospace" font-size="11" fill="#3fb950">✓ 1311 mentions</text>
+
+  <!-- Arrow markdown → Notion -->
+  <line x1="262" y1="90" x2="316" y2="90" stroke="url(#accent)" stroke-width="2"/>
+  <polygon points="316,90 308,86 308,94" fill="#e879f9"/>
+  <text x="262" y="78" font-family="ui-monospace, Menlo, monospace" font-size="9" fill="#e879f9">push</text>
+  <text x="262" y="106" font-family="ui-monospace, Menlo, monospace" font-size="9" fill="#7d8590">.md → blocks</text>
+
+  <!-- Notion pane (right) -->
+  <rect x="326" y="38" width="282" height="104" fill="#0a0d12" stroke="#e879f9" stroke-width="1" rx="4"/>
+  <rect x="326" y="38" width="282" height="14" fill="#161b22" rx="4"/>
+  <text x="338" y="48" font-family="ui-monospace, Menlo, monospace" font-size="9" fill="#7d8590">Notion · Product Docs</text>
+  <!-- Sidebar tree -->
+  <text x="338" y="70"  font-family="ui-monospace, Menlo, monospace" font-size="11" fill="#e6edf3">▾ 📚 Product Docs</text>
+  <text x="354" y="86"  font-family="ui-monospace, Menlo, monospace" font-size="11" fill="#22d3ee">  • 🗺️  Sitemap</text>
+  <text x="354" y="102" font-family="ui-monospace, Menlo, monospace" font-size="11" fill="#22d3ee">  • 🏷️  Tags</text>
+  <text x="354" y="118" font-family="ui-monospace, Menlo, monospace" font-size="11" fill="#7d8590">  ▸ frontend/</text>
+  <text x="354" y="134" font-family="ui-monospace, Menlo, monospace" font-size="11" fill="#7d8590">  ▸ backend/</text>
+
+  <!-- Title strip -->
+  <rect x="0" y="155" width="640" height="25" fill="#0a0d12"/>
+  <text x="32"  y="172" font-family="ui-monospace, Menlo, monospace" font-size="13" font-weight="700" fill="#22d3ee">notion-sync</text>
+  <text x="138" y="172" font-family="ui-monospace, Menlo, monospace" font-size="11" fill="#7d8590">markdown → Notion mirror · v1.1.0</text>
+  <text x="608" y="172" font-family="ui-monospace, Menlo, monospace" font-size="10" fill="#e879f9" text-anchor="end">▶</text>
+</svg>
+
 </div>
 
 <h1 align="center">notion-sync</h1>
 
 <p align="center">
-  Push markdown docs to Notion — maintaining folder structure, icons, covers, and cross-doc links.
+  Push markdown docs to Notion — folder structure, icons, covers, mentions, dashboards, audit logs.
 </p>
 
 <p align="center">
+  <img alt="version" src="https://img.shields.io/badge/version-1.1.0-22d3ee"/>
   <img alt="TypeScript" src="https://img.shields.io/badge/TypeScript-5.x-3178c6?logo=typescript&logoColor=white"/>
-  <img alt="Node" src="https://img.shields.io/badge/Node-22-339933?logo=node.js&logoColor=white"/>
-  <img alt="Standalone" src="https://img.shields.io/badge/standalone-not%20part%20of%20Next.js%20app-orange"/>
+  <img alt="Bun" src="https://img.shields.io/badge/runtime-bun-fbf0df?logo=bun&logoColor=black"/>
+  <img alt="Notion API" src="https://img.shields.io/badge/Notion%20API-v5-000000?logo=notion&logoColor=white"/>
+  <img alt="License" src="https://img.shields.io/badge/license-MIT-3fb950"/>
 </p>
+
+<details>
+<summary align="center"><b>The terminal banner — what each run looks like</b> (click to expand)</summary>
+
+```
+╔==================================================================╗
+║  +--⊕ NOTION-SYNC ⊕--+                                           ║
+║  |  markdown → Notion mirror|                                    ║
+║  +-------------------+                                           ║
+╠==============◆◆====================================◆◆============╣
+║                                                                  ║
+║  ◆ SYNC -------------------------------------------------------  ║
+║  ├- two-phase: discover → write content                          ║
+║  ├- adaptive linear backoff (350-1050ms)                         ║
+║  ├- auto-unarchive Phase 1 (in_trash + archived)                 ║
+║  └- Phase 2 retry pass (up to 3 attempts each)                   ║
+║                                                                  ║
+║  ◇ DASHBOARDS -------------------------------------------------  ║
+║  ├- Sitemap     — terse tree-view of every page                  ║
+║  ├- Tag index   — frontmatter tags, searchable                   ║
+║  ├- Doc Index   — sidecar DB with multi-select views             ║
+║  └- Recently    — feed of last-synced changes                    ║
+║                                                                  ║
+║  ▶ AUDIT ------------------------------------------------------  ║
+║  ├- runs.jsonl  — per-run config + stats + errors                ║
+║  ├- metrics     — rolling per-API-call timing                    ║
+║  ├- partial logs on Ctrl-C / SIGTERM / crash                     ║
+║  └- list.sh recent-errors — copy-paste retry hint                ║
+║                                                                  ║
+╠==============◆◆====================================◆◆============╣
+║  ⊙ v1.1.0  ·  bash sync.sh  ·  bash list.sh sitemap              ║
+╚==================================================================╝
+```
+
+</details>
 
 ---
 
