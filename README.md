@@ -127,6 +127,66 @@ docs/
 
 **Idempotent** — pages are looked up by title under their parent. Repeated runs update content in place and never create duplicates.
 
+## Architecture
+
+```
+                              ┌──────────────────────┐
+   ┌─────────────────┐        │     Notion API       │
+   │  docs/ (.md)    │        │  (api.notion.com)    │
+   │  + frontmatter  │        └──────────┬───────────┘
+   │  + images/      │                   │
+   └────────┬────────┘                   │ HTTPS
+            │ scanTree                   │ rate-limited (350-1050ms adaptive)
+            ▼                            │
+   ┌─────────────────┐                   │
+   │   index.ts      │ ─── 1. discover ──▶  pages.create / find by title
+   │   (sync engine) │ ─── 1.5 sections ─▶  blocks.list + delete-prose + insert
+   │                 │ ─── 2. content ───▶  pages.updateMarkdown
+   │                 │ ─── 2a. images ───▶  fileUploads.{create,send}
+   │                 │ ─── 2b. mentions ─▶  blocks.list + blocks.update
+   └────┬────────┬───┘                   │
+        │        │                       │
+        ▼        ▼                       │
+   ┌────────┐ ┌────────────┐             │
+   │image-  │ │mention-    │             │
+   │uploader│ │converter   │             │
+   └────────┘ └────────────┘             │
+            ▲                            │
+            │                            │
+   ┌────────┴────────┐                   │
+   │   sync.sh       │                   │
+   │   (wizard +     │                   │
+   │   notifier)     │                   │
+   └─────────────────┘                   │
+                                         │
+   ┌─────────────────┐                   │
+   │  notion-list.ts │ ◀─── fetch tree ──┘  blocks.children.list
+   │  + list.sh      │      fix-mentions
+   │  (read / diff)  │
+   └────┬────────────┘
+        │
+        ▼
+   ┌──────────────────────────────────────────────────────────────┐
+   │  Persistent state (gitignored)                               │
+   │   • runs.jsonl              — append-only run log            │
+   │   • metrics.jsonl           — rolling-window per-call timing │
+   │   • .sync-defaults.json     — wizard's saved selections      │
+   │   • .notion-cache.json      — cached remote tree             │
+   │   • .notion-image-cache.json — sha256 → file_upload_id       │
+   └──────────────────────────────────────────────────────────────┘
+```
+
+**Module responsibilities:**
+
+| Module                  | Owns                                                                                  |
+| ----------------------- | ------------------------------------------------------------------------------------- |
+| `sync.sh`               | wizard, env validation, defaults file, completion notification                        |
+| `index.ts`              | Phase 1 discovery, Phase 1.5 sections, Phase 2 leaf writes, retry passes, run logging |
+| `image-uploader.ts`     | sha256 dedup cache, fileUploads create+send, post-write image-block external→file_upload swap |
+| `mention-converter.ts`  | walk page blocks, rewrite text-link annotations → page mentions                       |
+| `notion-list.ts`        | walk Notion tree, save cache, render show/diff/empty-paths/fix-mentions               |
+| `list.sh`               | wraps notion-list.ts; notification on long subcommands                                |
+
 ## Folder indexes (`_index.md`)
 
 Drop a `_index.md` file in any folder to control that folder's section page:

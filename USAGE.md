@@ -371,6 +371,8 @@ For server-side rejections (5xx, WAF blocks), the script auto-checks the markdow
 
 Findings appear in the per-file error log AND in `runs.jsonl`'s `error_summary[].suspicions`.
 
+**Detailed fix guidance with code samples**: see [SUSPICION-RULES.md](SUSPICION-RULES.md). Each rule's section shows what triggers it, what doesn't, and how to rephrase to pass.
+
 ### Common failure patterns
 
 | Symptom | Likely cause | Fix |

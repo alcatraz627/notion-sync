@@ -161,6 +161,8 @@ grep '"run_id":"20260429-143022"' runs.jsonl | python3 -m json.tool
 | `cloudflare-waf-script-tag` | `<script>` tag — always blocked. |
 | `notion-body-too-large` | File exceeds 500 KB — Notion markdown body limit. |
 
+See [SUSPICION-RULES.md](SUSPICION-RULES.md) for full code samples (triggers vs. safe patterns) and fix recipes for each rule.
+
 ### After analysing a run
 
 Append findings to `run-notes.md` — newest entry first, include the `run_id`, date, what happened, and what fixed it (or what to try next). This file is the long-term memory for run patterns.
