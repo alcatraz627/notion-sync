@@ -510,6 +510,7 @@ for p in d.get('pages',[])[:5]:
 | `fix-mentions` | Walk every cached page, convert internal links → mentions |
 | `recent-errors` | Surface failed paths from recent `runs.jsonl` entries (default last 5; `--limit N` to widen) |
 | `sitemap` | Push a `🗺️ Sitemap` page summarizing every cached page; mention pills as leaves. Honours `NOTION_SITEMAP_PAGE_ID` if set, else auto-creates under root. |
+| `tag-index` | Push a `🏷️ Tags` page aggregating tags across all docs (frontmatter `tags:` + body `**Tags:**`). Mention pills per page. Requires `DOCS_DIR`; honours `NOTION_TAG_INDEX_PAGE_ID`. |
 
 ### `.env` essentials
 

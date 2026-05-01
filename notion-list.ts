@@ -14,6 +14,8 @@ import { Client } from "@notionhq/client";
 import * as fs from "fs";
 import * as path from "path";
 import { convertPageLinksToMentions } from "./mention-converter";
+import { generateSitemap } from "./sitemap";
+import { generateTagIndex } from "./tag-index";
 
 // ── Env loading (bun --env-file would work but we mimic sync.sh's behaviour) ──
 const envContent = fs.readFileSync(path.join(__dirname, ".env"), "utf8");
@@ -35,7 +37,10 @@ if (!NOTION_TOKEN || !RAW_ROOT) {
 
 const ROOT_ID = (RAW_ROOT.match(/([0-9a-f]{32})$/i)?.[1] ?? RAW_ROOT).replace(/-/g, "");
 
-const notion = new Client({ auth: NOTION_TOKEN });
+// timeoutMs: bumped from the SDK default (~60s) because chunked sitemap
+// pushes get slower as the page accumulates blocks — section 5+ on a
+// 300-page tree was reliably timing out at 60s.
+const notion = new Client({ auth: NOTION_TOKEN, timeoutMs: 300_000 });
 const sleep = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
 
 // ── Status-line helpers ───────────────────────────────────────────────────────
@@ -596,6 +601,53 @@ function saveCache(cache: Cache): void {
       process.exit(2); // non-zero so command substitution into --only doesn't run sync with no args
     }
     for (const p of matched) console.log(p);
+  } else if (cmd === "tag-index") {
+    // Walk DOCS_DIR for frontmatter / body tags, aggregate by tag, push
+    // a 🏷️ Tags page. Auto-creates if missing; honours
+    // NOTION_TAG_INDEX_PAGE_ID. Requires DOCS_DIR env var.
+    const docsDir = process.env.DOCS_DIR;
+    if (!docsDir) {
+      console.error(red("DOCS_DIR env var not set — required for tag-index"));
+      process.exit(1);
+    }
+    const tagIndexPageId = process.env.NOTION_TAG_INDEX_PAGE_ID || undefined;
+    try {
+      const result = await generateTagIndex({
+        notion, cache, docsDir, tagIndexPageId, rateLimitMs: RATE_LIMIT_MS,
+        log: (msg) => console.log(msg),
+      });
+      if (result.total_tags === 0) {
+        console.log(dim(`\n(no tags found — nothing rendered)`));
+      } else {
+        console.log(
+          `\n${green("Done.")} Tag index ${result.page_was_created ? "created" : "updated"} — ${bold(String(result.total_tags))} tags across ${result.total_docs_with_tags} docs (${result.matched_docs} matched to Notion pages, ${result.unmatched_docs} unmatched), ${result.mentions_converted} mention${result.mentions_converted === 1 ? "" : "s"}.`,
+        );
+        console.log(dim(`  Page: https://www.notion.so/${result.tag_index_page_id.replace(/-/g, "")}`));
+      }
+    } catch (err: any) {
+      console.error(red(`\n✗ Tag index generation failed: ${err.message}`));
+      process.exit(1);
+    }
+  } else if (cmd === "sitemap") {
+    // Push a single 🗺️ Sitemap page summarizing the entire cached tree.
+    // Auto-creates if missing; honours NOTION_SITEMAP_PAGE_ID if set.
+    const sitemapPageId = process.env.NOTION_SITEMAP_PAGE_ID || undefined;
+    try {
+      const result = await generateSitemap({
+        notion,
+        cache,
+        sitemapPageId,
+        rateLimitMs: RATE_LIMIT_MS,
+        log: (msg: string) => console.log(msg),
+      });
+      console.log(
+        `\n${green("Done.")} Sitemap ${result.page_was_created ? "created" : "updated"} — ${bold(String(result.total_pages))} pages, ${result.sections_pushed} section${result.sections_pushed === 1 ? "" : "s"}, ${result.mentions_converted} mention${result.mentions_converted === 1 ? "" : "s"}.`,
+      );
+      console.log(dim(`  Page: https://www.notion.so/${result.sitemap_page_id.replace(/-/g, "")}`));
+    } catch (err: any) {
+      console.error(red(`\n✗ Sitemap generation failed: ${err.message}`));
+      process.exit(1);
+    }
   } else {
     renderTree(cache, { maxDepth, emptyOnly });
   }

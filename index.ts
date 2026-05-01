@@ -617,7 +617,7 @@ const STATUS_EMOJI: Record<string, string> = {
  * Prepended to page body before syncing so Notion pages show doc context.
  * Returns empty string if no relevant fields are present.
  */
-function buildMetaBanner(meta: Record<string, string>): string {
+function buildMetaBanner(meta: Record<string, string>, body?: string): string {
   const parts: string[] = [];
   if (meta.status) {
     const emoji = STATUS_EMOJI[meta.status.toLowerCase()] ?? "🏷";
@@ -625,8 +625,45 @@ function buildMetaBanner(meta: Record<string, string>): string {
   }
   if (meta.audience) parts.push(`audience: ${meta.audience}`);
   if (meta.last_updated) parts.push(`updated: ${meta.last_updated}`);
-  if (parts.length === 0) return "";
-  return `> ${parts.join(" · ")}\n\n`;
+  if (parts.length === 0 && !body) return "";
+  // Tags line — surfaced separately so each tag is full-text-searchable in
+  // Notion. Pulled from frontmatter `tags:` AND any existing body convention
+  // `**Tags:** `a`, `b`, `c``. Sourced via extractTags so both forms merge.
+  const tags = extractTags(meta, body ?? "");
+  const lines: string[] = [];
+  if (parts.length > 0) lines.push(`> ${parts.join(" · ")}`);
+  if (tags.length > 0) {
+    const tagText = tags.map((t) => `\`#${t}\``).join(" ");
+    lines.push(`> Tags: ${tagText}`);
+  }
+  if (lines.length === 0) return "";
+  return `${lines.join("\n")}\n\n`;
+}
+
+// Pull tags from a doc — supports both the YAML frontmatter convention
+// (`tags: [a, b]` or `tags: a, b`) and the existing body convention used
+// in many user docs (`**Tags:** `a`, `b`, `c``). Lower-cases all tags
+// and dedupes across sources.
+export function extractTags(meta: Record<string, string>, body: string): string[] {
+  const out = new Set<string>();
+  const ftRaw = meta.tags ?? meta.tag;
+  if (ftRaw) {
+    const cleaned = ftRaw.replace(/^\[|\]$/g, "").replace(/[`]/g, "");
+    for (const t of cleaned.split(",")) {
+      const trimmed = t.trim().replace(/^["']|["']$/g, "");
+      if (trimmed && trimmed.length < 40) out.add(trimmed.toLowerCase());
+    }
+  }
+  // Body convention: line starting with `**Tags:**` (case-insensitive),
+  // tags as backticked tokens. Skip if the file has no such line.
+  const bodyMatch = body.match(/^\*\*Tags?:?\*\*[:\s]*(.+?)$/im);
+  if (bodyMatch) {
+    for (const m of bodyMatch[1].matchAll(/`([^`]+)`/g)) {
+      const t = m[1].trim().toLowerCase();
+      if (t && t.length < 40) out.add(t);
+    }
+  }
+  return Array.from(out).sort();
 }
 
 /**
@@ -1593,7 +1630,7 @@ async function writeFileContent(
 
   const { title, body, images, icon, cover, meta } = doc;
   const breadcrumb = buildBreadcrumb(relPath, pageIdMap);
-  const banner = SHOW_META ? buildMetaBanner(meta) : "";
+  const banner = SHOW_META ? buildMetaBanner(meta, body) : "";
   // Images first (relative paths → GitHub raw URLs), then links (.md → Notion URLs)
   const rewritten = rewriteLinks(rewriteImages(breadcrumb + banner + body, relPath), relPath, pageIdMap);
   // Footer: divider + italic last-synced timestamp appended to every page
@@ -2055,7 +2092,7 @@ async function main(): Promise<void> {
     const indexRelPath = relDir ? `${relDir}/_index.md` : "_index.md";
     if (folderIndex) {
       try {
-        const banner = SHOW_META ? buildMetaBanner(folderIndex.meta) : "";
+        const banner = SHOW_META ? buildMetaBanner(folderIndex.meta, folderIndex.body) : "";
         const rewritten = rewriteLinks(
           rewriteImages(banner + folderIndex.body, indexRelPath),
           indexRelPath,
