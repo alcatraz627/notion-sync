@@ -8,18 +8,37 @@ A **standalone Node.js script** (`index.ts`) that pushes markdown files from `do
 
 ## Running
 
+**Primary entry point (v1.1+):** `bash run.sh` — pipeline-first launcher with named modes.
+
 ```bash
+bash run.sh                   # interactive picker (gum-styled if available)
+bash run.sh push              # = bash sync.sh
+bash run.sh push:full         # push + fetch + diff + recent-errors + sitemap
+bash run.sh fix               # fix-mentions + recent-errors
+bash run.sh check             # read-only verification
+bash run.sh dashboard         # refresh sitemap + tag-index
+bash run.sh bring-up          # full first-time bring-up sequence
+```
+
+`sync.sh` and `list.sh` remain available as low-level building blocks (and are still the right choice for the GitHub Action and other scripted contexts that don't want the wizard). Users with `just` installed can also use the `Justfile` (mirrors run.sh modes).
+
+```bash
+# Low-level (still supported):
 bash sync.sh                  # interactive wizard (sync OR fix-mentions mode)
-bash sync.sh --no-wizard      # use saved defaults
-bash sync.sh --dry-run        # preview only, no Notion writes
-bash sync.sh --only jobs      # filter to one section
-bash sync.sh --fix-mentions   # convert internal links → mentions on already-synced pages
+bash sync.sh --no-wizard      # saved defaults
+bash sync.sh --dry-run        # preview only
+bash sync.sh --only jobs      # filter
+bash sync.sh --fix-mentions   # mention conversion mode
 
 bash list.sh                  # render cached remote tree
 bash list.sh fetch            # refresh cache from Notion
 bash list.sh diff             # title-based diff vs local docs
-bash list.sh fix-mentions     # standalone mention conversion (no sync)
-bash list.sh empty-paths      # print local paths whose remote page is empty
+bash list.sh fix-mentions     # standalone mention conversion
+bash list.sh sitemap          # push 🗺️ Sitemap dashboard page
+bash list.sh tag-index        # push 🏷️ Tags dashboard page
+bash list.sh index-db         # push 📇 Doc Index sidecar database
+bash list.sh recent-errors    # local-log failure scan
+bash list.sh empty-paths      # paths of empty remote pages
 ```
 
 For end-user docs see [USAGE.md](USAGE.md). This file is for Claude (architectural context).
@@ -31,7 +50,12 @@ For end-user docs see [USAGE.md](USAGE.md). This file is for Claude (architectur
 | `index.ts`              | Sync logic — Phase 1 discovery, Phase 1.5 sections, Phase 2 content + retries   |
 | `image-uploader.ts`     | Notion CDN image upload (sha256-cached) + image-block external→file_upload swap |
 | `mention-converter.ts`  | Walk page blocks, rewrite internal hyperlinks → native page mentions            |
-| `notion-list.ts`        | Read remote tree, cache to `.notion-cache.json`, diff/show/empty-paths/fix-mentions |
+| `notion-list.ts`        | Read remote tree, cache to `.notion-cache.json`, dispatcher for show/diff/fix-mentions/sitemap/tag-index/index-db/recent-errors |
+| `sitemap.ts`            | Render the 🗺️ Sitemap dashboard page from cache (chunked-with-retry push)       |
+| `tag-index.ts`          | Render the 🏷️ Tags dashboard from frontmatter + body tags across all docs       |
+| `index-db.ts`           | Upsert rows in the 📇 Doc Index sidecar database (Notion DB CRUD via SDK)       |
+| `run.sh`                | **Primary launcher** — pipeline modes (push, push:full, fix, check, dashboard, bring-up) |
+| `Justfile`              | `just`-flavoured mirror of run.sh modes for users who have just installed       |
 | `sync.sh`               | Wizard + env validation + macOS notification + bun launcher                     |
 | `list.sh`               | Wraps notion-list.ts with notification on long-running subcommands              |
 | `.env` / `.env.example` | Credentials + behaviour toggles                                                 |
