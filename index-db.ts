@@ -135,10 +135,13 @@ function walkDocs(docsDir: string): DocEntry[] {
 }
 
 // Schema for the 📇 Doc Index database. Property names are user-facing
-// (visible in the Notion UI as column headers).
+// (visible in the Notion UI as column headers). Notion auto-creates a
+// `Name` title property on every new data source; we keep that name
+// rather than trying to rename or replace it (the API rejects creating
+// a second title property — "Cannot create new title property").
 function dbProperties() {
   return {
-    Title: { title: {} },
+    Name: { title: {} },
     Path: { rich_text: {} },
     Section: { select: {} },
     Tags: { multi_select: {} },
@@ -150,16 +153,57 @@ function dbProperties() {
 }
 
 // Find an existing 📇 Doc Index DB under `rootId`, or create one.
+//
+// In Notion's v1 API (post-2025) databases own one or more `data_sources`,
+// and properties live on the data source — not directly on the database.
+// To create rows we need the data_source_id, not the database id.
+//
+// Returns both ids so callers can use:
+//   - database_id when listing children of root or referencing the DB block
+//   - data_source_id when creating/querying rows
 async function findOrCreateIndexDb(
   notion: Client,
   rootId: string,
-  providedId: string | undefined,
+  providedDbId: string | undefined,
   rateLimitMs: number,
   log: (msg: string) => void,
-): Promise<{ id: string; created: boolean }> {
-  if (providedId) {
-    log(`  using configured NOTION_INDEX_DB_ID: ${providedId}`);
-    return { id: providedId, created: false };
+): Promise<{ databaseId: string; dataSourceId: string; created: boolean }> {
+  // Helper: given a database id, retrieve its first data source id and
+  // ensure its property schema matches our expectations. If the data
+  // source is missing any of our properties, PATCH them in (cheap; the
+  // operation is additive — existing rows keep their data).
+  const resolveDataSource = async (dbId: string): Promise<string> => {
+    const meta: any = await (notion.databases as any).retrieve({ database_id: dbId });
+    await sleep(rateLimitMs);
+    const ds = meta?.data_sources;
+    if (!Array.isArray(ds) || ds.length === 0) {
+      throw new Error(`database ${dbId} has no data_sources — schema may have been wiped`);
+    }
+    const dsId = ds[0].id;
+    // Get current property names; patch missing ones.
+    const dsMeta: any = await (notion.dataSources as any).retrieve({ data_source_id: dsId });
+    await sleep(rateLimitMs);
+    const expected = dbProperties();
+    const current = (dsMeta?.properties as Record<string, any>) ?? {};
+    const missing: Record<string, any> = {};
+    for (const [name, schema] of Object.entries(expected)) {
+      if (!current[name]) missing[name] = schema;
+    }
+    if (Object.keys(missing).length > 0) {
+      log(`  patching missing properties on data source: ${Object.keys(missing).join(", ")}`);
+      await (notion.dataSources as any).update({
+        data_source_id: dsId,
+        properties: missing,
+      });
+      await sleep(rateLimitMs);
+    }
+    return dsId;
+  };
+
+  if (providedDbId) {
+    log(`  using configured NOTION_INDEX_DB_ID: ${providedDbId}`);
+    const dataSourceId = await resolveDataSource(providedDbId);
+    return { databaseId: providedDbId, dataSourceId, created: false };
   }
 
   let cursor: string | undefined;
@@ -174,22 +218,34 @@ async function findOrCreateIndexDb(
       if (block.type !== "child_database") continue;
       if (block.child_database?.title !== DB_TITLE) continue;
       log(`  found existing index DB: ${block.id}`);
-      return { id: block.id, created: false };
+      const dataSourceId = await resolveDataSource(block.id);
+      return { databaseId: block.id, dataSourceId, created: false };
     }
     cursor = res.has_more ? res.next_cursor : undefined;
   } while (cursor);
 
-  // Create. databases.create returns the database object (different from
-  // a page object — has `id` and `properties` fields directly).
+  // Create. v5 needs `initial_data_source: { properties }` — the older
+  // top-level `properties` field is silently ignored (the SDK warns
+  // "unknownParams: [properties]").
   const created: any = await (notion.databases as any).create({
     parent: { type: "page_id", page_id: rootId },
     icon: { type: "emoji", emoji: DB_ICON_EMOJI },
     title: [{ type: "text", text: { content: DB_TITLE } }],
-    properties: dbProperties(),
+    initial_data_source: {
+      properties: dbProperties(),
+    },
   });
   await sleep(rateLimitMs);
   log(`  created index DB: ${created.id}`);
-  return { id: created.id, created: true };
+  // The create response includes data_sources[]; first entry is the
+  // initial one we just declared.
+  const dsList = created?.data_sources;
+  if (!Array.isArray(dsList) || dsList.length === 0) {
+    // Fallback to retrieve in case the response shape changes again.
+    const dataSourceId = await resolveDataSource(created.id);
+    return { databaseId: created.id, dataSourceId, created: true };
+  }
+  return { databaseId: created.id, dataSourceId: dsList[0].id, created: true };
 }
 
 // Build a Title → page-id+url map. Index DB rows reference the source
@@ -209,7 +265,7 @@ function buildTitleIndex(cache: IndexDbCache): Map<string, IndexDbCachePage> {
 // this as an inline pill that hover-previews the linked page.
 function buildRowProps(doc: DocEntry, sourcePageId: string | null): any {
   const props: any = {
-    Title: { title: [{ type: "text", text: { content: doc.title } }] },
+    Name: { title: [{ type: "text", text: { content: doc.title } }] },
     Path: { rich_text: [{ type: "text", text: { content: doc.relPath } }] },
     Section: { select: { name: doc.section || "(root)" } },
     Tags: {
@@ -237,14 +293,14 @@ function buildRowProps(doc: DocEntry, sourcePageId: string | null): any {
 // everything since the DB grows roughly with docs/.
 async function fetchExistingRows(
   notion: Client,
-  databaseId: string,
+  dataSourceId: string,
   rateLimitMs: number,
 ): Promise<Map<string, string>> {
   const byPath = new Map<string, string>(); // path → page_id (row id)
   let cursor: string | undefined;
   do {
-    const res: any = await (notion.databases as any).query({
-      database_id: databaseId,
+    const res: any = await (notion.dataSources as any).query({
+      data_source_id: dataSourceId,
       page_size: 100,
       ...(cursor ? { start_cursor: cursor } : {}),
     });
@@ -318,12 +374,14 @@ export async function generateIndexDb(opts: {
     log(`  ${unmatched} doc${unmatched === 1 ? "" : "s"} couldn't be matched to a Notion page (will render without a page mention)`);
   }
 
-  const { id: dbId, created } = await findOrCreateIndexDb(
+  const { databaseId: dbId, dataSourceId, created } = await findOrCreateIndexDb(
     notion, cache.root_id, databaseId, rateLimitMs, log,
   );
 
   log(`  fetching existing rows…`);
-  const existingByPath = created ? new Map<string, string>() : await fetchExistingRows(notion, dbId, rateLimitMs);
+  const existingByPath = created
+    ? new Map<string, string>()
+    : await fetchExistingRows(notion, dataSourceId, rateLimitMs);
   log(`  ${existingByPath.size} existing row${existingByPath.size === 1 ? "" : "s"}`);
 
   const localPaths = new Set(docs.map((d) => d.relPath));
@@ -347,7 +405,10 @@ export async function generateIndexDb(opts: {
     } else {
       await withRetry(
         `create ${doc.relPath}`,
-        () => notion.pages.create({ parent: { database_id: dbId }, properties: props }),
+        () => notion.pages.create({
+          parent: { type: "data_source_id", data_source_id: dataSourceId } as any,
+          properties: props,
+        }),
         log,
       );
       rowsCreated++;
