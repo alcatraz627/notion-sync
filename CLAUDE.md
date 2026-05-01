@@ -43,6 +43,7 @@ For end-user docs see [USAGE.md](USAGE.md). This file is for Claude (architectur
 | `SETUP.md`              | One-time Notion integration setup guide                                         |
 | `USAGE.md`              | Task-oriented end-user guide (covers all scenarios)                             |
 | `run-notes.md`          | Long-term log of notable runs and what fixed them                               |
+| `RCA-ARCHIVED-PAGES.md` | Post-mortem of the 2026-04-29 → 04-30 archived-page cascade — read before attempting any "archived block / archived ancestor" fix |
 
 ## Architecture — two-phase sync
 
@@ -177,3 +178,5 @@ See [SUSPICION-RULES.md](SUSPICION-RULES.md) for full code samples (triggers vs.
 ### After analysing a run
 
 Append findings to `run-notes.md` — newest entry first, include the `run_id`, date, what happened, and what fixed it (or what to try next). This file is the long-term memory for run patterns.
+
+For the archived-page incident specifically, see [RCA-ARCHIVED-PAGES.md](RCA-ARCHIVED-PAGES.md) — the consolidated post-mortem, including a diagnostic recipe for any future "archived block" / "archived ancestor" recurrences. Read that before patching anything around `getOrCreateChildPage` or `listChildPages`.
