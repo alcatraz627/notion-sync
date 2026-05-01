@@ -128,6 +128,8 @@ bash sync.sh --only auth-flow e2e-get-started
 
 See [SETUP.md](SETUP.md) for one-time Notion integration setup, and [USAGE.md](USAGE.md) for a task-oriented guide covering every scenario (selective sync, image upload, mentions, diff, retry, performance tuning, etc.).
 
+> **Pipeline at a glance:** [PIPELINE.md](PIPELINE.md) — full end-to-end diagram (discovery → sections → leaf content → dashboards → prune) with the rename-safety move detection and the cache/runs flow. Re-render any time with `bash scripts/render-pipeline-diagram.sh`.
+
 ## Commands
 
 Two scripts cover everything. Each row links to the relevant USAGE section.
@@ -193,6 +195,8 @@ docs/
 **Idempotent** — pages are looked up by title under their parent. Repeated runs update content in place and never create duplicates.
 
 ## Architecture
+
+> The diagram below is a compact view. For the full gum-rendered pipeline including Phase 1.5 sections, dashboards, and prune subcommands, see [PIPELINE.md](PIPELINE.md).
 
 ```
                               ┌──────────────────────┐
