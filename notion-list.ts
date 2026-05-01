@@ -38,6 +38,52 @@ const ROOT_ID = (RAW_ROOT.match(/([0-9a-f]{32})$/i)?.[1] ?? RAW_ROOT).replace(/-
 const notion = new Client({ auth: NOTION_TOKEN });
 const sleep = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
 
+// ── Status-line helpers ───────────────────────────────────────────────────────
+// Two flavours: bounded progress bar (used when total is known up front, e.g.
+// fix-mentions, diff) and unbounded counter (used during fetch, where total
+// page count is only knowable by completing the walk).
+
+function fmtElapsedShort(ms: number): string {
+  const s = Math.floor(ms / 1000);
+  if (s < 60) return `${s}s`;
+  const m = Math.floor(s / 60);
+  if (m < 60) return `${m}m${String(s % 60).padStart(2, "0")}s`;
+  const h = Math.floor(m / 60);
+  return `${h}h${String(m % 60).padStart(2, "0")}m`;
+}
+
+function progressBar(n: number, total: number, label: string, startTs: number): string {
+  const pct = total > 0 ? n / total : 0;
+  const width = 28;
+  const filled = Math.min(width, Math.round(pct * width));
+  // Use Unicode block + light-shade for a clean filled/empty look
+  const bar = "\x1b[32m" + "█".repeat(filled) + "\x1b[0m" + "\x1b[2m" + "░".repeat(width - filled) + "\x1b[0m";
+  const pctStr = String(Math.floor(pct * 100)).padStart(3);
+  const elapsed = Date.now() - startTs;
+  // Use already-elapsed avg-per-item to project remaining. n must be >0 for
+  // the rate to be meaningful — otherwise show "—" for ETA.
+  const remaining = Math.max(0, total - n);
+  let etaStr = "—";
+  if (n > 0 && remaining > 0) {
+    const avgMsPerItem = elapsed / n;
+    const etaMs = remaining * avgMsPerItem;
+    etaStr = fmtElapsedShort(etaMs);
+  }
+  const truncLabel = label.length > 48 ? label.slice(0, 47) + "…" : label;
+  return `[${bar}] ${String(n).padStart(String(total).length)}/${total} ${pctStr}%  ETA ${etaStr.padStart(7)}  ${truncLabel.padEnd(48)}`;
+}
+
+function unboundedStatus(n: number, label: string, startTs: number): string {
+  const elapsed = Date.now() - startTs;
+  const rate = n > 0 ? n / Math.max(1, elapsed / 1000) : 0;
+  const truncLabel = label.length > 50 ? label.slice(0, 49) + "…" : label;
+  return `${dim(`elapsed ${fmtElapsedShort(elapsed)}  ·  ${n} pages  ·  ${rate.toFixed(1)}/s`)}  ${truncLabel.padEnd(50)}`;
+}
+
+function clearLine(): void {
+  process.stdout.write("\r" + " ".repeat(120) + "\r");
+}
+
 // Retry transient Notion failures (5xx, network errors, rate-limit 429).
 // Cloudflare often returns 502 mid-walk under load. Without retry, a single
 // blip kills the whole fetch. Backoff: 2s, 4s, 8s, 16s, 32s. Honours
@@ -181,7 +227,9 @@ async function walk(opts: { fetchIcons: boolean }): Promise<Cache> {
   // Recursive walk — produces depth-first ordered pages array
   async function visit(pageId: string, parentId: string | null, depth: number, title: string, icon: CachedPage["icon"]): Promise<void> {
     const url = `https://www.notion.so/${pageId.replace(/-/g, "")}`;
-    process.stdout.write(`\r  fetching depth ${depth}: ${title.slice(0, 60).padEnd(60)} (${pages.length} pages so far)`);
+    // Unbounded progress (total unknown during fetch — depth-first discovery).
+    // Shows: elapsed time, pages so far, throughput, current title.
+    process.stdout.write(`\r  ${unboundedStatus(pages.length, `[d${depth}] ${title}`, start)}`);
 
     const { blocks, apiCalls: ac } = await listChildren(pageId);
     apiCalls += ac; walkProgress!.apiCalls = apiCalls;
@@ -456,9 +504,10 @@ function saveCache(cache: Cache): void {
     let totalUpdated = 0;
     let pagesProcessed = 0;
     let pagesWithChanges = 0;
+    const startTs = Date.now();
     for (const p of cache.pages) {
       pagesProcessed++;
-      process.stdout.write(`\r  [${pagesProcessed}/${cache.pages.length}] ${p.title.slice(0, 60).padEnd(60)}`);
+      process.stdout.write(`\r  ${progressBar(pagesProcessed, cache.pages.length, p.title, startTs)}`);
       try {
         const r = await convertPageLinksToMentions({
           notion,
