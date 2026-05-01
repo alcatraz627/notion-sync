@@ -51,3 +51,4 @@ metrics.jsonl
 .sync-defaults.json
 .notion-cache.json
 .notion-image-cache.json
+/.claude/
