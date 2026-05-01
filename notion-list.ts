@@ -18,6 +18,7 @@ import { generateSitemap } from "./sitemap";
 import { generateTagIndex } from "./tag-index";
 import { generateIndexDb } from "./index-db";
 import { generateBacklinks } from "./backlinks";
+import { generateRecentFeed } from "./recent-feed";
 
 // ── Env loading (bun --env-file would work but we mimic sync.sh's behaviour) ──
 const envContent = fs.readFileSync(path.join(__dirname, ".env"), "utf8");
@@ -603,6 +604,31 @@ function saveCache(cache: Cache): void {
       process.exit(2); // non-zero so command substitution into --only doesn't run sync with no args
     }
     for (const p of matched) console.log(p);
+  } else if (cmd === "recent-feed") {
+    // Render the 📣 Recently Synced page from runs.jsonl. No DOCS_DIR
+    // needed; cache provides the page-existence filter.
+    const limitArg = args[args.indexOf("--limit") + 1];
+    const limit = args.includes("--limit") ? parseInt(limitArg, 10) : 50;
+    const recentFeedPageId = process.env.NOTION_RECENT_FEED_PAGE_ID || undefined;
+    const runsPath = path.join(__dirname, "runs.jsonl");
+    try {
+      const result = await generateRecentFeed({
+        notion, cache, runsPath, limit, recentFeedPageId,
+        rateLimitMs: RATE_LIMIT_MS,
+        log: (msg) => console.log(msg),
+      });
+      if (result.total_entries_emitted === 0) {
+        console.log(dim(`\n(no entries to render — runs.jsonl is empty or has no successful syncs)`));
+      } else {
+        console.log(
+          `\n${green("Done.")} Recent feed ${result.page_was_created ? "created" : "updated"} — ${bold(String(result.total_entries_emitted))} unique pages, ${result.blocks_wiped} wiped, ${result.batches_pushed} batch${result.batches_pushed === 1 ? "" : "es"} pushed.`,
+        );
+        console.log(dim(`  Page: https://www.notion.so/${result.recent_feed_page_id.replace(/-/g, "")}`));
+      }
+    } catch (err: any) {
+      console.error(red(`\n✗ Recent feed generation failed: ${err.message}`));
+      process.exit(1);
+    }
   } else if (cmd === "backlinks") {
     // Walk DOCS_DIR for the link graph, append a "🔗 Linked from"
     // callout to each Notion page that has inbound links from other

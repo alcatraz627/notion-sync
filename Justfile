@@ -72,6 +72,10 @@ index-db:
 backlinks:
     bash list.sh backlinks
 
+# Push the 📣 Recently Synced feed page
+recent-feed *ARGS:
+    bash list.sh recent-feed {{ARGS}}
+
 # ── Maintenance
 
 # Type-check the TypeScript modules

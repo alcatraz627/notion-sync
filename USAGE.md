@@ -513,6 +513,7 @@ for p in d.get('pages',[])[:5]:
 | `tag-index` | Push a `🏷️ Tags` page aggregating tags across all docs (frontmatter `tags:` + body `**Tags:**`). Mention pills per page. Requires `DOCS_DIR`; honours `NOTION_TAG_INDEX_PAGE_ID`. |
 | `index-db` | Push/refresh the `📇 Doc Index` sidecar Notion database — one row per doc with `Title`, `Path`, `Section`, `Tags`, `Status`, `Last updated`, `Body chars`, `Page` (mention) properties. Filterable / sortable views. Requires `DOCS_DIR`; honours `NOTION_INDEX_DB_ID`. |
 | `backlinks` | Append a `🔗 Linked from` callout to each page listing other docs that reference it. Walks the link graph locally; replaces existing callouts on re-run. Requires `DOCS_DIR`. Stale callouts (page no longer has inbound links) sit until next time someone links to that page. |
+| `recent-feed` | Push a `📣 Recently Synced` page rendered from `runs.jsonl`. Last 50 unique pages (newest first, deduplicated by page_id). `--limit N` widens the window. Honours `NOTION_RECENT_FEED_PAGE_ID`. |
 
 ### `.env` essentials
 

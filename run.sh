@@ -122,6 +122,11 @@ phase_backlinks() {
   bash list.sh backlinks
 }
 
+phase_recent_feed() {
+  _h "▶ Recent feed (list.sh recent-feed)"
+  bash list.sh recent-feed
+}
+
 # ── Mode dispatchers
 #
 # Each mode is a fixed sequence. Modes don't take arguments themselves —
@@ -161,6 +166,7 @@ mode_dashboard() {
   phase_sitemap
   phase_tag_index
   phase_backlinks
+  phase_recent_feed
   echo ""
   _h "✓ dashboard complete"
 }
