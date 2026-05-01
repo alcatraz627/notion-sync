@@ -1146,6 +1146,42 @@ async function listChildPages(parentId: string): Promise<PageInfo[]> {
   return pages;
 }
 
+// v1.2 rename-safety: built lazily at preflight from .notion-cache.json.
+// Maps page title → its current Notion page id, but ONLY for titles that
+// appear exactly once in the cache. When a local doc moves to a new
+// parent, getOrCreateChildPage uses this to MOVE the existing page
+// (preserving its id and inbound mentions) instead of creating a fresh
+// one and orphaning the old. Skipping titles with multiple occurrences
+// is intentional — moving the wrong "Modal" page would be much worse
+// than creating a duplicate.
+interface GlobalTitleEntry { id: string; parent_id: string | null }
+let globalTitleIndex: Map<string, GlobalTitleEntry> | null = null;
+
+function loadGlobalTitleIndex(): Map<string, GlobalTitleEntry> | null {
+  const cachePath = path.join(__dirname, ".notion-cache.json");
+  if (!fs.existsSync(cachePath)) return null;
+  try {
+    const cache = JSON.parse(fs.readFileSync(cachePath, "utf8"));
+    const seen = new Map<string, GlobalTitleEntry | "duplicate">();
+    for (const p of cache.pages ?? []) {
+      if (!p.title || !p.id) continue;
+      const existing = seen.get(p.title);
+      if (existing === undefined) {
+        seen.set(p.title, { id: p.id, parent_id: p.parent_id ?? null });
+      } else {
+        seen.set(p.title, "duplicate");
+      }
+    }
+    const out = new Map<string, GlobalTitleEntry>();
+    for (const [title, entry] of seen) {
+      if (entry !== "duplicate") out.set(title, entry as GlobalTitleEntry);
+    }
+    return out;
+  } catch {
+    return null;
+  }
+}
+
 async function getOrCreateChildPage(
   parentId: string,
   title: string,
@@ -1171,6 +1207,47 @@ async function getOrCreateChildPage(
     }
     // trashed/archived — fall through to pages.create below
   }
+
+  // v1.2 rename-safety: before creating a new page, check whether a page
+  // with this exact title exists ELSEWHERE in the cached tree. If so,
+  // and the title is unique (only one match in the whole cache), assume
+  // the doc was moved and migrate the existing page to this new parent
+  // — preserves the page id and all inbound mentions.
+  if (globalTitleIndex) {
+    const moved = globalTitleIndex.get(title);
+    if (moved && moved.id !== parentId) {
+      // Verify the page is still alive (not in trash) before moving.
+      try {
+        const meta: any = await apiCall(
+          () => notion.pages.retrieve({ page_id: moved.id }),
+          "pages.retrieve",
+        );
+        if (!(meta.in_trash || meta.archived)) {
+          // Found a live page with our title under a different parent.
+          // Move it. notion.pages.update accepts {parent:{page_id}}.
+          await apiCall(
+            () => (notion.pages as any).update({
+              page_id: moved.id,
+              parent: { page_id: parentId, type: "page_id" },
+            }),
+            "pages.move",
+          );
+          // Don't mark as new — the page existed before and inbound
+          // mentions still resolve to it. Caller treats this like a
+          // matched-existing case.
+          console.log(clr.dim(`    ↪ moved "${title}" to new parent (${moved.id.slice(0, 8)}…)`));
+          children.push({ id: moved.id, title });
+          // Remove from globalTitleIndex so subsequent lookups don't
+          // try to move the same page again on retries / re-runs.
+          globalTitleIndex.delete(title);
+          return { id: moved.id, isNew: false };
+        }
+      } catch {
+        // Stale cache entry — page no longer exists. Fall through to create.
+      }
+    }
+  }
+
   const page = await apiCall(() =>
     notion.pages.create({
       parent: { page_id: parentId },
@@ -1200,13 +1277,18 @@ async function updatePageMeta(
   pageId: string,
   icon: NotionIcon | undefined,
   cover: NotionCover | undefined,
+  title?: string,
 ): Promise<void> {
-  if (!icon && !cover) return;
+  if (!icon && !cover && !title) return;
   await apiCall(() =>
     notion.pages.update({
       page_id: pageId,
       ...(icon ? { icon: icon as any } : {}),
       ...(cover ? { cover: cover as any } : {}),
+      // v1.2 rename-safety: keep the Notion page title in sync with the
+      // current doc H1. Without this, an H1 change orphans the previous
+      // page (title-based discovery would create a fresh page next time).
+      ...(title ? { properties: { title: { title: [{ text: { content: title } }] } } } : {}),
     } as any),
     "pages.update",
   );
@@ -1215,6 +1297,16 @@ async function updatePageMeta(
 // ── Preflight ─────────────────────────────────────────────────────────────────
 
 async function preflight(): Promise<string> {
+  // v1.2 rename-safety: load the global title→pageId index from the
+  // .notion-cache.json before Phase 1 starts. If the cache is missing
+  // or stale, move-detection silently falls back to the create-fresh
+  // path (existing v1.1 behaviour). User can `bash list.sh fetch`
+  // to refresh the cache before a sync if they expect renames/moves.
+  globalTitleIndex = loadGlobalTitleIndex();
+  if (globalTitleIndex && globalTitleIndex.size > 0) {
+    console.log(clr.dim(`  Loaded ${globalTitleIndex.size} unique-title entries from .notion-cache.json (move-detection enabled)`));
+  }
+
   const problems: string[] = [];
   if (!NOTION_TOKEN) {
     problems.push("NOTION_TOKEN env var is not set");
@@ -1707,7 +1799,7 @@ async function writeFileContent(
 
   const doWrite = async (): Promise<void> => {
     await sleep(currentRateLimitMs);
-    await updatePageMeta(discovery.id, icon, cover);
+    await updatePageMeta(discovery.id, icon, cover, title);
     await apiCall(() =>
       (notion.pages as any).updateMarkdown({
         page_id: discovery.id,
@@ -2100,7 +2192,7 @@ async function main(): Promise<void> {
         );
         const indexSyncedAt = fmtTimestamp(new Date());
         const rewrittenWithFooter = `${rewritten}\n\n---\n\n*Synced: ${indexSyncedAt}*\n`;
-        await updatePageMeta(sectionPageId, folderIndex.icon, folderIndex.cover);
+        await updatePageMeta(sectionPageId, folderIndex.icon, folderIndex.cover, folderIndex.title);
         await writeSectionContent(sectionPageId, rewrittenWithFooter);
         return { ok: true, title: folderIndex.title };
       } catch (err: any) {

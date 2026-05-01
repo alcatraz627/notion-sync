@@ -8,7 +8,7 @@ A **standalone Node.js script** (`index.ts`) that pushes markdown files from `do
 
 ## Running
 
-**Primary entry point (v1.1+):** `bash run.sh` — pipeline-first launcher with named modes.
+**Primary entry point (v1.2+):** `bash run.sh` — pipeline-first launcher with named modes.
 
 ```bash
 bash run.sh                   # interactive picker (gum-styled if available)
@@ -16,8 +16,9 @@ bash run.sh push              # = bash sync.sh
 bash run.sh push:full         # push + fetch + diff + recent-errors + sitemap
 bash run.sh fix               # fix-mentions + recent-errors
 bash run.sh check             # read-only verification
-bash run.sh dashboard         # refresh sitemap + tag-index
+bash run.sh dashboard         # refresh sitemap + tag-index + backlinks + recent-feed + health
 bash run.sh bring-up          # full first-time bring-up sequence
+bash run.sh prune             # list orphan Notion pages (dry run; --apply to archive)
 ```
 
 `sync.sh` and `list.sh` remain available as low-level building blocks (and are still the right choice for the GitHub Action and other scripted contexts that don't want the wizard). Users with `just` installed can also use the `Justfile` (mirrors run.sh modes).
@@ -37,6 +38,10 @@ bash list.sh fix-mentions     # standalone mention conversion
 bash list.sh sitemap          # push 🗺️ Sitemap dashboard page
 bash list.sh tag-index        # push 🏷️ Tags dashboard page
 bash list.sh index-db         # push 📇 Doc Index sidecar database
+bash list.sh backlinks        # append 🔗 Linked from callouts to each page
+bash list.sh recent-feed      # push 📣 Recently Synced page (last 50 unique)
+bash list.sh health           # push 🩺 Sync Status page from latest run
+bash list.sh prune            # list orphan pages; --apply to archive
 bash list.sh recent-errors    # local-log failure scan
 bash list.sh empty-paths      # paths of empty remote pages
 ```
@@ -54,7 +59,10 @@ For end-user docs see [USAGE.md](USAGE.md). This file is for Claude (architectur
 | `sitemap.ts`            | Render the 🗺️ Sitemap dashboard page from cache (chunked-with-retry push)       |
 | `tag-index.ts`          | Render the 🏷️ Tags dashboard from frontmatter + body tags across all docs       |
 | `index-db.ts`           | Upsert rows in the 📇 Doc Index sidecar database (Notion DB CRUD via SDK)       |
-| `run.sh`                | **Primary launcher** — pipeline modes (push, push:full, fix, check, dashboard, bring-up) |
+| `recent-feed.ts`        | 📣 Recently Synced page rendered from `runs.jsonl` (top N unique syncs)        |
+| `backlinks.ts`          | 🔗 Linked from callouts on each page (idempotent marker-based replace)         |
+| `health.ts`             | 🩺 Sync Status page — latest run summary + recent run strip + error retry hint |
+| `run.sh`                | **Primary launcher** — pipeline modes (push, push:full, fix, check, dashboard, bring-up, prune) |
 | `Justfile`              | `just`-flavoured mirror of run.sh modes for users who have just installed       |
 | `sync.sh`               | Wizard + env validation + macOS notification + bun launcher                     |
 | `list.sh`               | Wraps notion-list.ts with notification on long-running subcommands              |

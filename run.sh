@@ -61,6 +61,7 @@ show_help() {
     check         Read-only verification: fetch + diff + recent-errors
     dashboard     Refresh sitemap + tag-index (and any other dashboards)
     bring-up      Full first-time bring-up: push, fetch, sitemap, tag-index
+    prune         List orphan Notion pages (dry run; pass --apply to archive)
 
   Other:
 
@@ -127,6 +128,16 @@ phase_recent_feed() {
   bash list.sh recent-feed
 }
 
+phase_health() {
+  _h "▶ Sync Status (list.sh health)"
+  bash list.sh health
+}
+
+phase_prune_dry() {
+  _h "▶ Prune orphans — DRY RUN (list.sh prune)"
+  bash list.sh prune
+}
+
 # ── Mode dispatchers
 #
 # Each mode is a fixed sequence. Modes don't take arguments themselves —
@@ -167,8 +178,15 @@ mode_dashboard() {
   phase_tag_index
   phase_backlinks
   phase_recent_feed
+  phase_health
   echo ""
   _h "✓ dashboard complete"
+}
+
+mode_prune() {
+  shift # consume "prune" so any --apply flag is passed through
+  _h "▶ Prune orphans (list.sh prune)"
+  bash list.sh prune "$@"
 }
 
 mode_bring_up() {
@@ -251,6 +269,9 @@ case "$MODE" in
     ;;
   bring-up|bringup|bring_up)
     mode_bring_up
+    ;;
+  prune)
+    mode_prune "$@"
     ;;
   *)
     _err "unknown mode: $MODE"

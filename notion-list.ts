@@ -19,6 +19,7 @@ import { generateTagIndex } from "./tag-index";
 import { generateIndexDb } from "./index-db";
 import { generateBacklinks } from "./backlinks";
 import { generateRecentFeed } from "./recent-feed";
+import { generateHealth } from "./health";
 
 // ── Env loading (bun --env-file would work but we mimic sync.sh's behaviour) ──
 const envContent = fs.readFileSync(path.join(__dirname, ".env"), "utf8");
@@ -604,6 +605,72 @@ function saveCache(cache: Cache): void {
       process.exit(2); // non-zero so command substitution into --only doesn't run sync with no args
     }
     for (const p of matched) console.log(p);
+  } else if (cmd === "prune") {
+    // v1.2 rename-safety: list (or archive) Notion pages that have no
+    // matching local doc by title. Without --apply, dry-run only —
+    // prints what WOULD be archived. With --apply, archives each one
+    // via pages.update({archived: true}). Pages remain in Notion's
+    // trash for ~30 days and can be restored manually.
+    const apply = args.includes("--apply");
+    const local = scanLocalDocs();
+    // Orphans: pages whose title has no matching local doc H1 AND
+    // which have no child pages of their own. The latter excludes
+    // section pages (titled by folder name, not H1) — those would
+    // false-positive otherwise. Real leaf orphans are pages with
+    // 0 children that no longer correspond to a local file.
+    const orphans = cache.pages.filter(
+      (p) => p.parent_id !== null
+        && p.child_page_count === 0
+        && !local.titles.has(p.title),
+    );
+    if (orphans.length === 0) {
+      console.log(dim("No orphaned pages found — every Notion page has a matching local doc title."));
+      return;
+    }
+    console.log(`${bold(red(`Found ${orphans.length} orphaned page${orphans.length === 1 ? "" : "s"}`))} ${dim("— in Notion, no matching local doc title")}\n`);
+    for (const p of orphans) {
+      console.log(`  ${cyan(p.title)}  ${dim(p.url)}`);
+    }
+    if (!apply) {
+      console.log(`\n${dim("Dry-run only. To archive these pages:")}  ${bold("bash list.sh prune --apply")}`);
+      console.log(dim("  Pages will move to Notion's Trash; restore from there if needed."));
+      return;
+    }
+    console.log(`\n${yellow("Archiving…")}  (${RATE_LIMIT_MS}ms between calls)`);
+    let archived = 0;
+    let failed = 0;
+    for (const p of orphans) {
+      try {
+        await notion.pages.update({ page_id: p.id, archived: true } as any);
+        archived++;
+        console.log(`  ${green("✓")} ${p.title}`);
+      } catch (err: any) {
+        failed++;
+        console.error(`  ${red("✗")} ${p.title} — ${(err.message as string).slice(0, 80)}`);
+      }
+      await sleep(RATE_LIMIT_MS);
+    }
+    console.log(`\n${green("Done.")} ${archived} archived${failed > 0 ? `, ${red(String(failed))} failed` : ""}.`);
+  } else if (cmd === "health") {
+    // Render the latest run's stats + recent run strip + last errors
+    // to a 🩺 Sync Status page. No DOCS_DIR needed; cache provides
+    // existence filter only for the find/create path.
+    const healthPageId = process.env.NOTION_HEALTH_PAGE_ID || undefined;
+    const runsPath = path.join(__dirname, "runs.jsonl");
+    try {
+      const result = await generateHealth({
+        notion, cache, runsPath, healthPageId,
+        rateLimitMs: RATE_LIMIT_MS,
+        log: (msg) => console.log(msg),
+      });
+      console.log(
+        `\n${green("Done.")} Sync Status ${result.page_was_created ? "created" : "updated"} — ${bold(String(result.blocks_pushed))} blocks${result.ran_against ? ` (latest run: ${result.ran_against})` : ""}.`,
+      );
+      console.log(dim(`  Page: https://www.notion.so/${result.health_page_id.replace(/-/g, "")}`));
+    } catch (err: any) {
+      console.error(red(`\n✗ Health generation failed: ${err.message}`));
+      process.exit(1);
+    }
   } else if (cmd === "recent-feed") {
     // Render the 📣 Recently Synced page from runs.jsonl. No DOCS_DIR
     // needed; cache provides the page-existence filter.

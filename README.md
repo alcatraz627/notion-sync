@@ -50,7 +50,7 @@
   <!-- Title strip -->
   <rect x="0" y="155" width="640" height="25" fill="#0a0d12"/>
   <text x="32"  y="172" font-family="ui-monospace, Menlo, monospace" font-size="13" font-weight="700" fill="#22d3ee">notion-sync</text>
-  <text x="138" y="172" font-family="ui-monospace, Menlo, monospace" font-size="11" fill="#7d8590">markdown → Notion mirror · v1.1.0</text>
+  <text x="138" y="172" font-family="ui-monospace, Menlo, monospace" font-size="11" fill="#7d8590">markdown → Notion mirror · v1.2.0</text>
   <text x="608" y="172" font-family="ui-monospace, Menlo, monospace" font-size="10" fill="#e879f9" text-anchor="end">▶</text>
 </svg>
 
@@ -63,7 +63,7 @@
 </p>
 
 <p align="center">
-  <img alt="version" src="https://img.shields.io/badge/version-1.1.0-22d3ee"/>
+  <img alt="version" src="https://img.shields.io/badge/version-1.2.0-22d3ee"/>
   <img alt="TypeScript" src="https://img.shields.io/badge/TypeScript-5.x-3178c6?logo=typescript&logoColor=white"/>
   <img alt="Bun" src="https://img.shields.io/badge/runtime-bun-fbf0df?logo=bun&logoColor=black"/>
   <img alt="Notion API" src="https://img.shields.io/badge/Notion%20API-v5-000000?logo=notion&logoColor=white"/>
@@ -99,7 +99,7 @@
 ║  └- list.sh recent-errors — copy-paste retry hint                ║
 ║                                                                  ║
 ╠==============◆◆====================================◆◆============╣
-║  ⊙ v1.1.0  ·  bash sync.sh  ·  bash list.sh sitemap              ║
+║  ⊙ v1.2.0  ·  bash run.sh  ·  bash list.sh sitemap              ║
 ╚==================================================================╝
 ```
 

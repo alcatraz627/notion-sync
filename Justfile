@@ -76,6 +76,14 @@ backlinks:
 recent-feed *ARGS:
     bash list.sh recent-feed {{ARGS}}
 
+# List orphan Notion pages; pass --apply to archive them
+prune *ARGS:
+    bash list.sh prune {{ARGS}}
+
+# Push the 🩺 Sync Status page (latest run summary + recent run strip)
+health:
+    bash list.sh health
+
 # ── Maintenance
 
 # Type-check the TypeScript modules
