@@ -18,6 +18,39 @@ Claude should:
 
 <!-- entries below, newest first -->
 
+## 2026-05-02 — `pages.updateMarkdown` 504s correlate with target page block count
+
+**Symptom:** D1 (sitemap) and D2 (tag-index) both reliably succeeded for ~5 chunks of `pages.updateMarkdown({type: "insert_content"})`, then started returning 504 / "Request to Notion API failed with status: 504" repeatedly even with 4-12s exponential retries. Smaller chunks didn't help; longer inter-chunk delays didn't help; the same chunk failed 3 retries in a row before throwing.
+
+**Diagnosis:** the failure rate **correlates with the target page's accumulated block count, not the per-call payload size.** First few chunks → fast. Once the page had ~100+ blocks the markdown parser+inserter started timing out internally.
+
+**Fix (commit `f7d6810`):** rewrite both modules to use `blocks.children.append` directly. Build Notion blocks programmatically (heading_2 / heading_3 / bulleted_list_item with mention rich_text) and push 100 blocks per `append` call. Skips Notion's markdown parser entirely; mentions emitted directly so no post-pass mention-converter needed.
+
+**Real-world numbers from validation (304-page docs root):**
+- Sitemap: 305 blocks in 4 batches of 100 → 20 seconds, 0 retries
+- Tag-index: 1299 blocks (351 tags × heading + bullets) in 13 batches → 4 minutes, occasional 504 retries (recovered cleanly)
+- Index DB: 254 rows via separate page-create calls → 5 minutes, 0 retries (different API path, no parser involvement)
+
+**Pattern to watch:** any feature that pushes structured content to Notion should prefer `blocks.children.append` over `pages.updateMarkdown` when the content is under our control. The markdown endpoint is convenient for one-shot whole-page replaces (Phase 2 leaf writes), but suffers on incremental builds. Reserve markdown for the user's source docs; use blocks API for our generated dashboards.
+
+**Notion's nested-children-depth quirk:** the API validates nested children at most 2 levels deep in a single `append` call. `body.children[3].bulleted_list_item.children[0].bulleted_list_item.children[9].bulleted_list_item.children should be not present`. For deeper hierarchies, flatten using indented text (sitemap uses gray-italic folder-path prefix) or do follow-up appends targeting the parent.
+
+## 2026-05-02 — `databases.create` v5 SDK shape change — properties live on data sources
+
+**Symptom:** D4 (sidecar Index DB) creation failed with `Title is not a property that exists. Path is not a property that exists. ...` — the database was created but with no properties beyond the auto-created `Name` (title).
+
+**Diagnosis:** Notion's API split databases into two layers in the v5 SDK: a `database` is now a container; the actual properties live on a `data_source`. `databases.create({parent, properties})` (the v4 shape) silently ignores the `properties` field — the SDK warns `unknownParams: [properties]` but proceeds. The right shape is `databases.create({parent, initial_data_source: {properties: ...}})`. Page rows are parented via `data_source_id`, not `database_id`. Queries via `dataSources.query` (not `databases.query`).
+
+**Fix (commit `379496d`):** in `index-db.ts`:
+1. Use `initial_data_source: {properties}` when creating the database.
+2. After create, extract `data_source_id` from the response.
+3. For existing databases (re-runs), call `databases.retrieve` and use the first `data_sources[].id`.
+4. Page rows: `parent: {type: "data_source_id", data_source_id}` instead of `database_id`.
+5. Queries: `dataSources.query({data_source_id})`.
+6. **Schema patch on existing DBs:** if a previous (broken) run created a DB without our properties, retrieve the data source, diff against expected, and `dataSources.update({data_source_id, properties})` to add missing ones. Idempotent — script can recover a half-broken DB.
+
+**Default title quirk:** Notion auto-creates a `Name` (title) property on every new data source and rejects `Cannot create new title property` when adding another. We use `Name` as our title column rather than `Title` so the auto-created one suffices.
+
 ## 2026-05-01 — Notion auto-detect URL bug — `[foo.md](url)` link text hijacks the href
 
 **Symptom:** Pages like `https://www.notion.so/Jobs-352bacd27dee81a4a53de063b3094432` had every internal link rendered as `http://overview.md/` (Moldova TLD), not the Notion URL we wrote. `fix-mentions` reported 0 conversions on these because the URLs weren't recognized as `notion.so` / `app.notion.com`. Affected every `_index.md`-style page that referenced sibling docs as `[overview.md](overview.md)`.
