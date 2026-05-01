@@ -274,7 +274,7 @@ Mapped folders bypass the default root and root their subtree directly under the
 | `DRY_RUN`                    | no       | —                  | Set `1` to preview without writing                                |
 | `VERBOSE`                    | no       | —                  | Set `1` for per-file output instead of progress bar               |
 
-> `NOTION_FULL_WIDTH` is intentionally unused — `is_full_width` is not settable via Notion's public REST API. Toggle it manually in Notion UI.
+> `NOTION_FULL_WIDTH` is intentionally unused — `is_full_width` is **not settable via Notion's public REST API**. Verified 2026-05-01 across `format.full_width`, `is_full_width`, `page.full_width`, `format.is_full_width` shapes — all return `validation_error: body.X should be not present`. Notion strips the field from both reads and writes. Workarounds: toggle per-page in the Notion UI; or use a userscript / browser extension to auto-toggle on page load. Database views (D4 sidecar Index DB, future feature) render wide by default and partially address this.
 
 ## Link and image rewriting
 

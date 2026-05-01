@@ -103,7 +103,7 @@ Walks page block trees, renders to markdown, handles mentions back to `.md` path
 | Limitation | Detail |
 |---|---|
 | Images in private repos | mitigated by `NOTION_UPLOAD_IMAGES=1` (Notion CDN upload pipeline shipped in v1.0) |
-| `is_full_width` has no effect | `NOTION_FULL_WIDTH` env var read but ignored — not exposed by Notion's public REST API |
+| `is_full_width` has no effect | Confirmed unfixable: Notion's v1 API rejects every shape (`format.full_width`, `is_full_width`, `page.full_width`, `format.is_full_width`) with `validation_error: body.X should be not present`. Toggle per-page in the Notion UI, or use a userscript. Database views (D4) render wide by default and partially address this. Tables sit inside their parent page's width — same root cause for the wider-tables ask. |
 | Notion rate limit | adaptive linear backoff (350-1050ms); large trees take proportional time |
 | `_index.md` icon only | folders without `_index.md` use `NOTION_FOLDER_ICON` default |
 
