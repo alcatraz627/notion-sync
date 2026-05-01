@@ -16,7 +16,6 @@
 import { Client } from "@notionhq/client";
 import * as fs from "fs";
 import * as path from "path";
-import { convertPageLinksToMentions } from "./mention-converter";
 
 const TAG_INDEX_TITLE = "🏷️ Tags";
 
@@ -187,57 +186,111 @@ async function wipeBlocks(notion: Client, pageId: string, rateLimitMs: number): 
 // pages by title from the cache. Unmatched docs are still surfaced under
 // each tag, but render as plain text (no mention pill).
 interface TagAggregate {
-  [tag: string]: Array<{ title: string; relPath: string; pageUrl: string | null }>;
+  [tag: string]: Array<{ title: string; relPath: string; pageUrl: string | null; pageId: string | null }>;
 }
 
 function aggregate(docs: DocEntry[], cache: TagIndexCache): TagAggregate {
-  const titleToUrl = new Map<string, string>();
-  for (const p of cache.pages) titleToUrl.set(p.title, p.url);
+  const titleToPage = new Map<string, { url: string; id: string }>();
+  for (const p of cache.pages) titleToPage.set(p.title, { url: p.url, id: p.id });
   const out: TagAggregate = {};
   for (const doc of docs) {
-    const url = titleToUrl.get(doc.title) ?? null;
+    const matched = titleToPage.get(doc.title);
     for (const tag of doc.tags) {
       const arr = out[tag] ?? (out[tag] = []);
-      arr.push({ title: doc.title, relPath: doc.relPath, pageUrl: url });
+      arr.push({
+        title: doc.title,
+        relPath: doc.relPath,
+        pageUrl: matched?.url ?? null,
+        pageId: matched?.id ?? null,
+      });
     }
   }
-  // Sort each tag's doc list by title for stable output.
   for (const tag of Object.keys(out)) {
     out[tag].sort((a, b) => a.title.localeCompare(b.title));
   }
   return out;
 }
 
-function renderHeader(totalTags: number, totalDocs: number): string {
+// Build a single Notion block for the page header (italic timestamp +
+// help line + divider). Replaces the renderHeader markdown.
+function buildHeaderBlocks(totalTags: number, totalDocs: number): any[] {
   const ts = new Date().toISOString().replace("T", " ").slice(0, 16) + " UTC";
   return [
-    `# ${TAG_INDEX_TITLE}`,
-    "",
-    `_Last refreshed: ${ts} · ${totalTags} tags across ${totalDocs} docs_`,
-    "",
-    "Each tag below collects every doc that carries it (frontmatter `tags:` or body `**Tags:**` line). Click a doc title to jump to its Notion page.",
-    "",
-    "---",
-    "",
-  ].join("\n");
+    {
+      type: "paragraph",
+      paragraph: {
+        rich_text: [{
+          type: "text",
+          text: { content: `Last refreshed: ${ts} · ${totalTags} tags across ${totalDocs} docs` },
+          annotations: { bold: false, italic: true, strikethrough: false, underline: false, code: false, color: "default" },
+        }],
+      },
+    },
+    {
+      type: "paragraph",
+      paragraph: {
+        rich_text: [{
+          type: "text",
+          text: { content: "Each tag below collects every doc that carries it (frontmatter tags: or body **Tags:** line)." },
+          annotations: { bold: false, italic: false, strikethrough: false, underline: false, code: false, color: "gray" },
+        }],
+      },
+    },
+    { type: "divider", divider: {} },
+  ];
 }
 
-function renderTagSection(
+// Build the heading_3 + bullet-per-doc blocks for one tag. Doc bullets
+// use mention pills directly when the doc was matched in the cache;
+// unmatched docs render as italic-gray text with the path appended.
+function buildTagSectionBlocks(
   tag: string,
-  docs: Array<{ title: string; relPath: string; pageUrl: string | null }>,
-): string {
-  const lines: string[] = [];
-  lines.push(`## \`#${tag}\` _(${docs.length})_`);
-  lines.push("");
+  docs: Array<{ title: string; relPath: string; pageUrl: string | null; pageId: string | null }>,
+): any[] {
+  const blocks: any[] = [];
+  blocks.push({
+    type: "heading_3",
+    heading_3: {
+      rich_text: [
+        {
+          type: "text",
+          text: { content: `#${tag}` },
+          annotations: { bold: true, italic: false, strikethrough: false, underline: false, code: true, color: "default" },
+        },
+        {
+          type: "text",
+          text: { content: ` (${docs.length})` },
+          annotations: { bold: false, italic: true, strikethrough: false, underline: false, code: false, color: "gray" },
+        },
+      ],
+    },
+  });
   for (const d of docs) {
-    if (d.pageUrl) {
-      lines.push(`- [${d.title}](${d.pageUrl})`);
+    const richText: any[] = [];
+    if (d.pageId) {
+      richText.push({
+        type: "mention",
+        mention: { type: "page", page: { id: d.pageId } },
+        annotations: { bold: false, italic: false, strikethrough: false, underline: false, code: false, color: "default" },
+      });
     } else {
-      lines.push(`- ${d.title} _(unmatched: ${d.relPath})_`);
+      richText.push({
+        type: "text",
+        text: { content: `${d.title} ` },
+        annotations: { bold: false, italic: false, strikethrough: false, underline: false, code: false, color: "default" },
+      });
+      richText.push({
+        type: "text",
+        text: { content: `(unmatched: ${d.relPath})` },
+        annotations: { bold: false, italic: true, strikethrough: false, underline: false, code: false, color: "gray" },
+      });
     }
+    blocks.push({
+      type: "bulleted_list_item",
+      bulleted_list_item: { rich_text: richText },
+    });
   }
-  lines.push("");
-  return lines.join("\n");
+  return blocks;
 }
 
 // Linear-backoff retry on transient 5xx — same pattern as sitemap.ts.
@@ -322,45 +375,37 @@ export async function generateTagIndex(opts: {
   const wiped = await wipeBlocks(notion, pageId, rateLimitMs);
   log(`  wiped ${wiped} block${wiped === 1 ? "" : "s"}`);
 
-  // Header chunk.
-  await withChunkRetry("header", () =>
-    (notion.pages as any).updateMarkdown({
-      page_id: pageId,
-      type: "insert_content",
-      insert_content: { content: renderHeader(tags.length, docs.length) },
-    }),
-    log,
-  );
-  await sleep(Math.max(rateLimitMs, 1500));
-
-  // One chunk per tag — keeps each insert small and avoids backpressure 504s
-  // on the larger pages.
-  let pushed = 0;
+  // Build the entire block list, push in batches of 100 via
+  // blocks.children.append. Same architecture as sitemap.ts — bypasses
+  // Notion's markdown parser (which slows on a growing target page).
+  const allBlocks: any[] = [
+    ...buildHeaderBlocks(tags.length, docs.length),
+  ];
   for (const tag of tags) {
-    await withChunkRetry(`#${tag}`, () =>
-      (notion.pages as any).updateMarkdown({
-        page_id: pageId,
-        type: "insert_content",
-        insert_content: { content: renderTagSection(tag, tagMap[tag]) },
-      }),
+    allBlocks.push(...buildTagSectionBlocks(tag, tagMap[tag]));
+  }
+  log(`  built ${allBlocks.length} blocks (${tags.length} tags × heading + bullets)`);
+
+  const BATCH_SIZE = 100;
+  const INTER_BATCH_MS = 1500;
+  let pushed = 0;
+  let batches = 0;
+  for (let i = 0; i < allBlocks.length; i += BATCH_SIZE) {
+    const batch = allBlocks.slice(i, i + BATCH_SIZE);
+    await withChunkRetry(
+      `batch ${batches + 1}`,
+      () =>
+        notion.blocks.children.append({
+          block_id: pageId,
+          children: batch,
+        }),
       log,
     );
-    await sleep(Math.max(rateLimitMs, 1500));
-    pushed++;
-    log(`  ✓ pushed [${pushed}/${tags.length}] #${tag} (${tagMap[tag].length} docs)`);
+    batches++;
+    pushed += batch.length;
+    log(`  ✓ pushed batch [${batches}/${Math.ceil(allBlocks.length / BATCH_SIZE)}] — ${pushed}/${allBlocks.length} blocks`);
+    await sleep(INTER_BATCH_MS);
   }
-
-  log(`  converting links → mentions…`);
-  const ourPageIds = new Set(
-    cache.pages.map((p) => p.id.replace(/-/g, "").toLowerCase()),
-  );
-  const mentionResult = await convertPageLinksToMentions({
-    notion,
-    pageId,
-    ourPageIds,
-    rateLimitMs,
-  });
-  log(`  ✓ converted ${mentionResult.links_converted} link${mentionResult.links_converted === 1 ? "" : "s"} → mention${mentionResult.links_converted === 1 ? "" : "s"} (${mentionResult.blocks_updated} block update${mentionResult.blocks_updated === 1 ? "" : "s"})`);
 
   return {
     tag_index_page_id: pageId,
@@ -370,7 +415,7 @@ export async function generateTagIndex(opts: {
     matched_docs: matched,
     unmatched_docs: docs.length - matched,
     blocks_wiped: wiped,
-    mentions_converted: mentionResult.links_converted,
-    blocks_updated: mentionResult.blocks_updated,
+    mentions_converted: 0,    // mentions emitted directly in blocks
+    blocks_updated: batches,  // batches pushed
   };
 }

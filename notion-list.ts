@@ -665,7 +665,7 @@ function saveCache(cache: Cache): void {
         log: (msg: string) => console.log(msg),
       });
       console.log(
-        `\n${green("Done.")} Sitemap ${result.page_was_created ? "created" : "updated"} — ${bold(String(result.total_pages))} pages, ${result.sections_pushed} section${result.sections_pushed === 1 ? "" : "s"}, ${result.mentions_converted} mention${result.mentions_converted === 1 ? "" : "s"}.`,
+        `\n${green("Done.")} Sitemap ${result.page_was_created ? "created" : "updated"} — ${bold(String(result.total_pages))} pages, ${result.total_blocks} blocks in ${result.batches_pushed} batch${result.batches_pushed === 1 ? "" : "es"}.`,
       );
       console.log(dim(`  Page: https://www.notion.so/${result.sitemap_page_id.replace(/-/g, "")}`));
     } catch (err: any) {
