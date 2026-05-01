@@ -117,6 +117,11 @@ phase_tag_index() {
   bash list.sh tag-index
 }
 
+phase_backlinks() {
+  _h "▶ Backlinks (list.sh backlinks)"
+  bash list.sh backlinks
+}
+
 # ── Mode dispatchers
 #
 # Each mode is a fixed sequence. Modes don't take arguments themselves —
@@ -155,6 +160,7 @@ mode_check() {
 mode_dashboard() {
   phase_sitemap
   phase_tag_index
+  phase_backlinks
   echo ""
   _h "✓ dashboard complete"
 }

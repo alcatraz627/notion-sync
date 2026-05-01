@@ -17,6 +17,7 @@ import { convertPageLinksToMentions } from "./mention-converter";
 import { generateSitemap } from "./sitemap";
 import { generateTagIndex } from "./tag-index";
 import { generateIndexDb } from "./index-db";
+import { generateBacklinks } from "./backlinks";
 
 // ── Env loading (bun --env-file would work but we mimic sync.sh's behaviour) ──
 const envContent = fs.readFileSync(path.join(__dirname, ".env"), "utf8");
@@ -602,6 +603,28 @@ function saveCache(cache: Cache): void {
       process.exit(2); // non-zero so command substitution into --only doesn't run sync with no args
     }
     for (const p of matched) console.log(p);
+  } else if (cmd === "backlinks") {
+    // Walk DOCS_DIR for the link graph, append a "🔗 Linked from"
+    // callout to each Notion page that has inbound links from other
+    // docs. Idempotent — replaces existing callouts on re-run.
+    const docsDir = process.env.DOCS_DIR;
+    if (!docsDir) {
+      console.error(red("DOCS_DIR env var not set — required for backlinks"));
+      process.exit(1);
+    }
+    try {
+      const result = await generateBacklinks({
+        notion, cache, docsDir, rateLimitMs: RATE_LIMIT_MS,
+        log: (msg) => console.log(msg),
+      });
+      console.log(
+        `\n${green("Done.")} Backlinks — ${bold(String(result.pages_with_backlinks))} pages with inbound links · ${result.callouts_added} added · ${result.callouts_replaced} replaced${result.pages_unmatched > 0 ? ` · ${result.pages_unmatched} unmatched` : ""}.`,
+      );
+      console.log(dim(`  Scanned ${result.total_docs_scanned} docs, found ${result.total_links_found} internal links`));
+    } catch (err: any) {
+      console.error(red(`\n✗ Backlinks generation failed: ${err.message}`));
+      process.exit(1);
+    }
   } else if (cmd === "index-db") {
     // Push/refresh the 📇 Doc Index sidecar database. Walks DOCS_DIR
     // for every leaf doc, upserts one row per doc keyed by Path. Source

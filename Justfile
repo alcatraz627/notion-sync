@@ -68,6 +68,10 @@ tag-index:
 index-db:
     bash list.sh index-db
 
+# Append "🔗 Linked from" callouts to pages with inbound links
+backlinks:
+    bash list.sh backlinks
+
 # ── Maintenance
 
 # Type-check the TypeScript modules
