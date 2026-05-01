@@ -44,6 +44,7 @@ For end-user docs see [USAGE.md](USAGE.md). This file is for Claude (architectur
 | `USAGE.md`              | Task-oriented end-user guide (covers all scenarios)                             |
 | `run-notes.md`          | Long-term log of notable runs and what fixed them                               |
 | `RCA-ARCHIVED-PAGES.md` | Post-mortem of the 2026-04-29 → 04-30 archived-page cascade — read before attempting any "archived block / archived ancestor" fix |
+| `NAV-STRUCTURE-EXPLORATION.md` | Design exploration: alternatives to the deep nested-page tree (databases, flatten + ToC, synced-block nav, column layouts, toggles) |
 
 ## Architecture — two-phase sync
 
