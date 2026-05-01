@@ -883,15 +883,29 @@ function rewriteLinks(
         return `[${text}](${url})`;
       if (url.startsWith("#")) return `[${text}](${url})`;
       const [urlPath, anchor] = url.split("#");
-      if (urlPath.endsWith(".md") || urlPath.endsWith("/") || urlPath === "") {
+      // Treat as an internal doc/section link if:
+      //   - it looks like a markdown file (.md)
+      //   - it ends with `/` (directory link to section page)
+      //   - it's empty (anchor-only on the same page handled above already)
+      //   - OR it has no extension and looks relative (bare `[X](dir)` or
+      //     `[X](dir/sibling)` — common in hand-written markdown). The bare
+      //     case is identified by a leading `./` / `../` / no protocol AND no
+      //     dot in the basename (so we don't grab `[X](https://example.com)`
+      //     — those already returned above — or `[X](image.png)`).
+      const looksLikeInternalLink =
+        urlPath.endsWith(".md") ||
+        urlPath.endsWith("/") ||
+        urlPath === "" ||
+        (urlPath.length > 0 && !path.extname(urlPath));
+      if (looksLikeInternalLink) {
         const resolved = path
           .normalize(path.join(dir, urlPath || "."))
           .replace(/\\/g, "/");
         if (resolved.startsWith("..")) return text;
         if (LINK_MODE === "notion") {
-          // Try (in order): exact match, .md-stripped, .md-appended, _index.md
-          // for the directory itself (handles `dir/` and bare `dir` links to
-          // section pages, which are registered in pageIdMap as `dir/_index.md`).
+          // Try (in order): exact, .md-stripped, .md-appended, _index.md fallback.
+          // The _index.md fallback handles directory-style links (`dir/`, `dir`)
+          // pointing at section pages registered as `dir/_index.md`.
           const noTrailSlash = resolved.replace(/\/$/, "");
           const pid =
             pageIdMap.get(resolved) ??
