@@ -18,6 +18,30 @@ Claude should:
 
 <!-- entries below, newest first -->
 
+## 2026-05-02 — Audit: behaviour of doc updates (renames/moves leave orphans)
+
+User asked how future doc updates flow through the pipeline. Traced the code paths; results:
+
+**Pages are identified in Notion by `(parent_id, title)`, not by file path.** Page IDs are stable forever once created — mentions reference page IDs and continue to work even if the file path changes. But `getOrCreateChildPage` only matches by current title under current parent, and `updatePageMeta` only updates icon/cover, never title. So:
+
+- **Content-only edits** (scenario 1): perfect. Hit `replace_content` on the existing page. Mentions stay valid.
+- **H1 title changed** (scenario 2): script creates a NEW page with new title; old page lingers as orphan. Inbound mentions still point at old page (stale).
+- **File renamed without H1 change** (scenario 3): perfect. Same parent + title → finds existing page.
+- **File moved across folders** (scenario 4): new parent → new page. Old page orphaned.
+- **Folder renamed** (scenario 5): cascade. Whole subtree gets re-created at the new section. Old subtree fully orphaned.
+- **File deleted locally** (scenario 7): page on Notion sits untouched.
+- **Anchor in link** (`foo.md#section`): URL is preserved correctly, but Notion doesn't navigate to fragment anchors — known platform limitation.
+
+**Three v1.2 fixes that would close the structural gap:**
+
+1. **Update title on existing page when H1 changes** — one-liner: `notion.pages.update({page_id, properties: {title: ...}})` after content write. Closes #2.
+2. **Move-detection in `getOrCreateChildPage`** — search for title across the entire cached tree, not just direct children. If found under a different parent, `pages.update({parent: {page_id: newParent}})` to move. Closes #4, #5.
+3. **`bash run.sh prune` mode** — uses `notion-diff` extras + interactive confirmation to archive orphans. Closes #7 and the accumulation from #2/#4/#5.
+
+Together these would make the pipeline "rename-safe" — ~1 day of v1.2 work.
+
+**Pattern to watch:** if user reports duplicate pages or stale mentions after a doc reorg, this is the cause. Workaround until v1.2: manually delete the orphan in Notion (the trashed-page detection in `getOrCreateChildPage` will then re-create cleanly if needed).
+
 ## 2026-05-02 — `pages.updateMarkdown` 504s correlate with target page block count
 
 **Symptom:** D1 (sitemap) and D2 (tag-index) both reliably succeeded for ~5 chunks of `pages.updateMarkdown({type: "insert_content"})`, then started returning 504 / "Request to Notion API failed with status: 504" repeatedly even with 4-12s exponential retries. Smaller chunks didn't help; longer inter-chunk delays didn't help; the same chunk failed 3 retries in a row before throwing.

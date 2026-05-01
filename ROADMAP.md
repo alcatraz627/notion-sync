@@ -76,6 +76,20 @@ For each leaf, append a "← Linked from" callout listing pages that reference i
 
 ---
 
+## Tier 3 — v1.2 (next cycle)
+
+### Rename-safety — title update + move detection + prune
+
+The pipeline currently identifies pages by `(parent_id, title)` and never updates the title on an existing page. Renaming a doc's H1 or moving a doc across folders therefore orphans the previous Notion page and inbound mentions go stale. Three fixes together close this:
+
+1. **Update title on existing page** when source H1 changes — `notion.pages.update({page_id, properties: {title: ...}})` after every content write.
+2. **Move-detection in `getOrCreateChildPage`** — search the full cached tree (not just direct children) for the title; if found under a different parent, `pages.update({parent: {page_id: newParent}})` to move.
+3. **`bash run.sh prune` mode** — interactive archival of `notion-diff` extras.
+
+~1 day of work. See `run-notes.md` 2026-05-02 audit entry for the full scenario-by-scenario analysis.
+
+---
+
 ## V2 shelf — deferred (future major version)
 
 These are tracked so they don't get lost, but won't ship in v1.x:
