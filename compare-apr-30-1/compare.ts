@@ -395,5 +395,5 @@ console.log("  04-path-diff.json  (structured)");
 console.log("  05-summary.txt     (human-readable)");
 console.log("");
 console.log(`Totals: ${result.totals.local_docs} local | ${result.totals.notion_pages} remote | ` +
-            `${result.totals.matched} matched | ${result.totals.missing_on_remote} missing | ` +
+            `${result.totals.matched_docs} matched | ${result.totals.missing_on_remote} missing | ` +
             `${result.totals.extra_on_remote} extra | ${result.totals.thin_remote_pages} thin`);

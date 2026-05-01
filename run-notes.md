@@ -18,6 +18,47 @@ Claude should:
 
 <!-- entries below, newest first -->
 
+## 2026-05-01 — clean state milestone — 0 missing / 0 extras / 0 thin
+
+After completing the bring-up sequence + retroactive mention conversion, the path-based comparator returns:
+
+```
+Local docs:                  298
+Notion pages:                303
+Matched docs:                298
+Matched auto-index sections: 6
+Missing on remote:           0
+Extra on remote:             0
+Thin remote pages:           0
+```
+
+This is the first time the comparator has reported zero drift. Confirms:
+- 6 previously-stranded index-only folders (`boring-technical-stuff/observability/`, `frontend/auth/`, `widgets-v2/`, `flows/`, `backend/tooling/`, `workers/`) were correctly synced after the `scanTree` fix in `0115c3a`.
+- 2 transient Phase 1.5 failures (`improvements/credits/_index.md`, `product/modals/_index.md`) recovered on the targeted `--only improvements/credits product/modals` re-run.
+- Root-level files (`structure.md`, `product-todos.md`) now in cache — confirmed the wizard "all sections" filter trap from `aff07ec`.
+
+## 2026-05-01 — fix-mentions found 0 conversions — Notion canonicalizes URLs
+
+**Symptom:** After the v1 mention-converter shipped (`f4267e0`), running `bash list.sh fix-mentions` reported "Converted 0 links → mentions across 0 pages" despite user-visible "open in new tab" behaviour confirming many internal links remained unconverted.
+
+**Root cause (commit `cf39327`):** Notion's markdown API silently rewrites `https://www.notion.so/<id>` URLs to `https://app.notion.com/p/<id>` when storing them in rich_text annotations. Our regex only matched `notion.so` URLs, so:
+- The post-sync mention pass during `writeFileContent` was a no-op on EVERY page synced since `f4267e0`
+- `fix-mentions` couldn't find any candidates to convert
+
+Diagnostic that surfaced this — list one synced page's blocks, count `text.link.url` annotations, sample a few:
+
+```typescript
+// All sample URLs were:
+//   https://app.notion.com/p/352bacd27dee81aaa79ec7b80ec8479c
+// (Not the https://www.notion.so/ form we wrote)
+```
+
+**Fix:** regex extended to match `app.notion.com/p/` AND dashed-UUID form. Verified with 7 unit-test URLs.
+
+After the fix: 1311 links converted to mentions across 27 pages (1117 block updates).
+
+**Lesson for next session:** when an API converts your input format silently, your write-side rewriter and your read-side scanner have to know about both forms. Test with the actual stored data, not what you wrote.
+
 ## 2026-04-30 — run 20260430-021257 — archived ancestor unarchive+retry race condition (10 errors, aborted)
 
 **Run:** 17 created, 0 updated, 10 errors, aborted (abort policy: 10). All errors under `boring-technical-stuff/frontend/...`.

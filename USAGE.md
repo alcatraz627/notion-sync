@@ -2,6 +2,88 @@
 
 This guide is task-oriented: each section answers a "how do I…" question. For first-time setup of the Notion integration, see [SETUP.md](SETUP.md). For architectural notes (Claude context, key files, two-phase design), see [CLAUDE.md](CLAUDE.md).
 
+## Quick recipes — first-time vs update
+
+### First-time full bring-up (~30 min)
+
+You have a docs tree, an empty (or near-empty) Notion root page, and a fresh `.env`. Run:
+
+```bash
+# 1. Sanity check — dry run, see what would happen
+bash sync.sh --no-wizard --dry-run
+
+# 2. Live sync (~20 min for ~300 docs)
+bash sync.sh --no-wizard
+
+# 3. Snapshot remote into the local cache (~5 min)
+bash list.sh fetch
+
+# 4. Verify everything matched
+bun compare-apr-30-1/compare.ts
+cat compare-apr-30-1/05-summary.txt
+# Expected: 0 missing, 0 extras, 0 thin
+```
+
+The wizard is great for one-offs but `--no-wizard` keeps a fresh project's first run scriptable. After this, your saved `.sync-defaults.json` lets you re-run with no prompts.
+
+### Routine update — small change to a few docs (~30 sec)
+
+```bash
+bash sync.sh --no-wizard --only my-changed-doc-1 my-changed-doc-2
+# Or by directory:
+bash sync.sh --no-wizard --only product/jobs
+```
+
+`--only` matches against any path component or filename stem. Saved defaults (image upload, mentions, etc.) apply automatically.
+
+### Bigger update — many docs changed across multiple sections (~5–20 min)
+
+```bash
+bash sync.sh --no-wizard
+```
+
+Idempotent — only doc-content writes happen, no duplicate pages. Pages whose content didn't change are still rewritten (Notion's API has no "if-modified" header), but it's harmless.
+
+### Periodic verification (~5 min)
+
+```bash
+bash list.sh fetch              # refresh cache
+bun compare-apr-30-1/compare.ts # path-based comparator
+```
+
+Run this monthly or after a big batch of doc edits. Catches any drift caused by manual Notion edits, accidentally deleted pages, or files renamed/moved without re-syncing.
+
+### One-shot retroactive fixes
+
+```bash
+# Convert all internal links → page mentions on already-synced pages
+bash list.sh fix-mentions
+
+# Mop up empty remote pages (sync started but content failed to write)
+bash sync.sh --no-wizard --only $(bash list.sh empty-paths)
+```
+
+### After a Notion API outage / failed run
+
+The script auto-retries transient failures up to 3 times each at the end of the run. If items are still failing:
+
+```bash
+# Find the last run's failures
+tail -1 runs.jsonl | python3 -c "
+import sys, json
+d = json.loads(sys.stdin.readline())
+fails = [e['path'] for e in d.get('error_summary',[]) or []]
+fails += [s['rel_dir'] for s in d.get('sections',[]) or [] if not s.get('content_written')]
+print(' '.join(fails))"
+
+# Re-run them with the new adaptive backoff
+bash sync.sh --no-wizard --only <paste-output-here>
+```
+
+Wait 5–10 minutes after a Notion-wide outage so backoff has air to breathe.
+
+---
+
 > **Tools at a glance**
 > - `bash sync.sh` — push local markdown → Notion (the main thing)
 > - `bash list.sh` — read remote Notion tree, diff against local, batch-fix

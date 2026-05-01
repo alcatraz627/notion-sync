@@ -1,62 +1,15 @@
 # Notion vs Local Docs — Path-based Comparison
-Generated: 2026-04-30T15:35:37.821Z
-Cache fetched: 2026-04-30T14:53:08.974Z
+Generated: 2026-05-01T14:50:17.543Z
+Cache fetched: 2026-05-01T14:49:34.637Z
 
 ## Totals
   Local docs:                  298
   Local dirs (any depth):      79
-  Notion pages:                295
-  Matched docs:                290
+  Notion pages:                303
+  Matched docs:                298
   Matched auto-index sections: 6  (Notion section page ↔ local dir without _index.md)
-  Missing on remote:           8  (local exists, no Notion page)
+  Missing on remote:           0  (local exists, no Notion page)
   Extra on remote:             0    (Notion page, no local doc or dir)
   Thin remote pages:           0  (block_count <30% of expected)
 
-## ✗ Missing on remote — local doc has no Notion page
-  structure.md
-    title:  "Docs Structure — Sidebar Map & Rationale"
-    parent: (root)
-    chars:  15792
-    why:    no Notion page at file path or matching sibling title
-
-  boring-technical-stuff/frontend/auth/_index.md
-    title:  "Auth (Frontend)"
-    parent: boring-technical-stuff / frontend
-    chars:  569
-    why:    no Notion page at directory path
-
-  boring-technical-stuff/frontend/widgets-v2/_index.md
-    title:  "Widgets v2"
-    parent: boring-technical-stuff / frontend
-    chars:  985
-    why:    no Notion page at directory path
-
-  boring-technical-stuff/frontend/flows/_index.md
-    title:  "Frontend — Flows"
-    parent: boring-technical-stuff / frontend
-    chars:  308
-    why:    no Notion page at directory path
-
-  boring-technical-stuff/backend/tooling/_index.md
-    title:  "BTS/Backend — Tooling"
-    parent: boring-technical-stuff / backend
-    chars:  5255
-    why:    no Notion page at directory path
-
-  boring-technical-stuff/backend/workers/_index.md
-    title:  "BTS/Backend — Workers (scheduler + async task runner)"
-    parent: boring-technical-stuff / backend
-    chars:  7556
-    why:    no Notion page at directory path
-
-  boring-technical-stuff/observability/_index.md
-    title:  "Observability"
-    parent: boring-technical-stuff
-    chars:  802
-    why:    no Notion page at directory path
-
-  product-todos.md
-    title:  "Product TODOs — consolidated backlog"
-    parent: (root)
-    chars:  63482
-    why:    no Notion page at file path or matching sibling title
+## ✓ No local docs missing on remote
