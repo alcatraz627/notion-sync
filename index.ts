@@ -945,13 +945,50 @@ function rewriteLinks(
           // The _index.md fallback handles directory-style links (`dir/`, `dir`)
           // pointing at section pages registered as `dir/_index.md`.
           const noTrailSlash = resolved.replace(/\/$/, "");
-          const pid =
-            pageIdMap.get(resolved) ??
-            pageIdMap.get(resolved.replace(/\.md$/, "")) ??
-            pageIdMap.get(resolved + ".md") ??
-            pageIdMap.get(`${noTrailSlash}/_index.md`);
-          if (pid)
-            return `[${text}](${notionUrl(pid)}${anchor ? "#" + anchor : ""})`;
+          const candidateKeys = [
+            resolved,
+            resolved.replace(/\.md$/, ""),
+            resolved + ".md",
+            `${noTrailSlash}/_index.md`,
+          ];
+          let pid: string | undefined;
+          let matchedKey: string | undefined;
+          for (const k of candidateKeys) {
+            const p = pageIdMap.get(k);
+            if (p) {
+              pid = p;
+              matchedKey = k;
+              break;
+            }
+          }
+          if (pid) {
+            // If the anchor text contains `.md`, Notion's markdown parser
+            // hijacks the link URL — it sees `.md` in the text and overrides
+            // the explicit href with `http://<text>/` (the Moldova TLD). The
+            // mention-converter then can't recognize the mangled URL as
+            // internal and leaves the link plain.
+            //
+            // Fix: substitute the linked doc's title for the anchor text
+            // whenever the original text contains `.md`. The result reads
+            // better anyway (real titles vs. raw filenames), and matches
+            // what mention conversion would substitute server-side.
+            //
+            // Resolve title from the canonical doc (the .md key — for
+            // section/directory matches, fall back to a humanized dir name).
+            let finalText = text;
+            if (/\.md\b/i.test(text)) {
+              const docKey = matchedKey!.endsWith(".md") ? matchedKey! : matchedKey + ".md";
+              const linked = getDoc(docKey);
+              if (linked?.title) {
+                finalText = linked.title;
+              } else {
+                // Last-resort: humanize the basename without extension.
+                const base = path.basename(matchedKey!.replace(/\/_index\.md$/, "").replace(/\.md$/, ""));
+                finalText = base.replace(/-/g, " ").replace(/^./, (c) => c.toUpperCase());
+              }
+            }
+            return `[${finalText}](${notionUrl(pid)}${anchor ? "#" + anchor : ""})`;
+          }
           // Log when a relative .md link can't be resolved — helps diagnose
           // missing pageIdMap entries. Notion auto-links plain-text "foo.md" as
           // http://foo.md (Moldova TLD), so unresolved links cause bad renders.

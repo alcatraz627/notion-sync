@@ -18,6 +18,18 @@ Claude should:
 
 <!-- entries below, newest first -->
 
+## 2026-05-01 — Notion auto-detect URL bug — `[foo.md](url)` link text hijacks the href
+
+**Symptom:** Pages like `https://www.notion.so/Jobs-352bacd27dee81a4a53de063b3094432` had every internal link rendered as `http://overview.md/` (Moldova TLD), not the Notion URL we wrote. `fix-mentions` reported 0 conversions on these because the URLs weren't recognized as `notion.so` / `app.notion.com`. Affected every `_index.md`-style page that referenced sibling docs as `[overview.md](overview.md)`.
+
+**Diagnosis:** Wrote a debug hook that captured the post-`rewriteLinks` markdown to `/tmp/rewritten-*.md`. The markdown was correct: `[overview.md](https://www.notion.so/352bacd27dee819ea4dce1f6b5d7814f)`. Yet Notion's stored block had `text.link.url = "http://overview.md/"`. **Notion's markdown parser ignored the explicit href and synthesized one from the link text** — it sees `something.md` in the text and auto-links to the Moldova TLD `.md`. mention-converter then can't recognize the mangled URL as internal and leaves the link plain.
+
+**Fix (commit pending):** in `rewriteLinks`, when the resolved internal link's anchor text contains `.md`, substitute the linked doc's `title` (from `getDoc(matchedKey)`) as the anchor text. So `[overview.md](url)` becomes `[Jobs — Overview](url)` — Notion has no `.md` in the text to auto-detect, the URL stays as written, and mention conversion succeeds. Falls back to a humanized basename when the doc title isn't in `docCache` (e.g. cross-section section page references during a filtered `--only` run).
+
+**Validated on:** `product/jobs/_index.md` — re-synced with `--only product/jobs`. Inspector now reports `broken_md: 0`, `app.notion.com: 8` (Notion's canonical form for `notion.so`), titles substituted correctly. After a follow-up `bash list.sh fix-mentions` pass, all 8 become mention pills.
+
+**Lesson:** When integrating with a markdown parser you don't own, never trust that explicit syntax wins over autodetect. Notion specifically aggressively auto-links anything that resembles a URL in *any* text content — this trumps even an explicit `[text](href)` annotation. The defense is to keep URL-shaped tokens out of link text entirely.
+
 ## 2026-05-01 — audit logging hardening (no run, infrastructure note)
 
 Three improvements landed in this session — relevant for future RCA-style runs:
