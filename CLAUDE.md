@@ -45,6 +45,7 @@ For end-user docs see [USAGE.md](USAGE.md). This file is for Claude (architectur
 | `run-notes.md`          | Long-term log of notable runs and what fixed them                               |
 | `RCA-ARCHIVED-PAGES.md` | Post-mortem of the 2026-04-29 → 04-30 archived-page cascade — read before attempting any "archived block / archived ancestor" fix |
 | `NAV-STRUCTURE-EXPLORATION.md` | Design exploration: alternatives to the deep nested-page tree (databases, flatten + ToC, synced-block nav, column layouts, toggles) |
+| `DASHBOARDS-AND-ORCHESTRATION-EXPLORATION.md` | Design exploration: sitemap / tag index / recent-feed dashboards on Notion + pipeline-first project orchestration (`bash run.sh` modes) |
 
 ## Architecture — two-phase sync
 
