@@ -61,7 +61,7 @@ bash sync.sh --only jobs
 bash sync.sh --only auth-flow e2e-get-started
 ```
 
-See [SETUP.md](SETUP.md) for one-time Notion integration setup.
+See [SETUP.md](SETUP.md) for one-time Notion integration setup, and [USAGE.md](USAGE.md) for a task-oriented guide covering every scenario (selective sync, image upload, mentions, diff, retry, performance tuning, etc.).
 
 ## What it does
 

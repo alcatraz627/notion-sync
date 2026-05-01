@@ -9,23 +9,40 @@ A **standalone Node.js script** (`index.ts`) that pushes markdown files from `do
 ## Running
 
 ```bash
-bash sync.sh              # local run (reads .env)
-bash sync.sh --dry-run    # preview only, no Notion writes
-bash sync.sh --only jobs  # filter to one section
+bash sync.sh                  # interactive wizard (sync OR fix-mentions mode)
+bash sync.sh --no-wizard      # use saved defaults
+bash sync.sh --dry-run        # preview only, no Notion writes
+bash sync.sh --only jobs      # filter to one section
+bash sync.sh --fix-mentions   # convert internal links → mentions on already-synced pages
+
+bash list.sh                  # render cached remote tree
+bash list.sh fetch            # refresh cache from Notion
+bash list.sh diff             # title-based diff vs local docs
+bash list.sh fix-mentions     # standalone mention conversion (no sync)
+bash list.sh empty-paths      # print local paths whose remote page is empty
 ```
 
-Or manually: `node_modules/.bin/tsx index.ts [--only ...]`
+For end-user docs see [USAGE.md](USAGE.md). This file is for Claude (architectural context).
 
 ## Key files
 
-| File           | Purpose                                         |
-| -------------- | ----------------------------------------------- |
-| `index.ts`     | Entire sync logic — types, config, API calls    |
-| `sync.sh`      | Local runner: loads `.env`, installs deps, runs |
-| `.env`         | Local credentials (not committed)               |
-| `.env.example` | Template for `.env`                             |
-| `SETUP.md`     | One-time Notion integration setup guide         |
-| `runs.jsonl`   | Append-only log of every sync run               |
+| File                    | Purpose                                                                         |
+| ----------------------- | ------------------------------------------------------------------------------- |
+| `index.ts`              | Sync logic — Phase 1 discovery, Phase 1.5 sections, Phase 2 content + retries   |
+| `image-uploader.ts`     | Notion CDN image upload (sha256-cached) + image-block external→file_upload swap |
+| `mention-converter.ts`  | Walk page blocks, rewrite internal hyperlinks → native page mentions            |
+| `notion-list.ts`        | Read remote tree, cache to `.notion-cache.json`, diff/show/empty-paths/fix-mentions |
+| `sync.sh`               | Wizard + env validation + macOS notification + bun launcher                     |
+| `list.sh`               | Wraps notion-list.ts with notification on long-running subcommands              |
+| `.env` / `.env.example` | Credentials + behaviour toggles                                                 |
+| `.sync-defaults.json`   | Wizard's saved selections (gitignored)                                          |
+| `.notion-cache.json`    | Cached remote page tree from `list.sh fetch` (gitignored)                       |
+| `.notion-image-cache.json` | sha256 → file_upload_id map for uploaded images (gitignored)                |
+| `runs.jsonl`            | Append-only log of every sync run                                               |
+| `metrics.jsonl`         | Rolling-window (last 5) per-API-call timing                                     |
+| `SETUP.md`              | One-time Notion integration setup guide                                         |
+| `USAGE.md`              | Task-oriented end-user guide (covers all scenarios)                             |
+| `run-notes.md`          | Long-term log of notable runs and what fixed them                               |
 
 ## Architecture — two-phase sync
 
@@ -37,15 +54,25 @@ The two-phase design is necessary: phase 2 needs all page IDs upfront so cross-f
 
 ## Environment variables
 
-| Variable              | Required | Description                                         |
-| --------------------- | -------- | --------------------------------------------------- |
-| `NOTION_TOKEN`        | yes      | Integration secret (`secret_...` or `ntn_...`)      |
-| `NOTION_ROOT_PAGE_ID` | yes      | Root page ID or URL                                 |
-| `GITHUB_REPO`         | no       | `owner/repo` for GitHub link fallbacks              |
-| `GITHUB_BRANCH`       | no       | Branch for GitHub links (default: `development`)    |
-| `NOTION_LINK_MODE`    | no       | `notion` (default) \| `github` \| `strip`           |
-| `NOTION_PAGE_ICON`    | no       | Default emoji for pages without frontmatter `icon:` |
-| `DRY_RUN`             | no       | `1` = preview only                                  |
+| Variable                     | Required | Description                                         |
+| ---------------------------- | -------- | --------------------------------------------------- |
+| `NOTION_TOKEN`               | yes      | Integration secret (`secret_...` or `ntn_...`)      |
+| `NOTION_ROOT_PAGE_ID`        | yes      | Root page ID or URL                                 |
+| `DOCS_DIR`                   | yes-ish  | Absolute path to local docs root (default `./docs`) |
+| `GITHUB_REPO`                | no       | `owner/repo` for GitHub link fallbacks              |
+| `GITHUB_BRANCH`              | no       | Branch for GitHub links (default: `development`)    |
+| `GITHUB_DOCS_ROOT`           | no       | Repo-relative path corresponding to DOCS_DIR        |
+| `GITHUB_DOC_SOURCE_URL_BASE` | no       | Override for "View source" link in breadcrumb       |
+| `NOTION_LINK_MODE`           | no       | `notion` (default) \| `github` \| `strip`           |
+| `NOTION_PAGE_ICON`           | no       | Default emoji for pages without frontmatter `icon:` |
+| `NOTION_FOLDER_ICON`         | no       | Default emoji for sections without `_index.md`      |
+| `NOTION_SHOW_META`           | no       | `0` to disable frontmatter banner (default: on)     |
+| `NOTION_UPLOAD_IMAGES`       | no       | `1` to upload images to Notion CDN — required for private repos |
+| `NOTION_USE_MENTIONS`        | no       | `0` to disable internal-link → mention conversion (default: on) |
+| `NOTION_SYNC_MAP`            | no       | Path to JSON mapping top-level dirs → separate Notion roots |
+| `ABORT_POLICY`               | no       | `disabled` \| `1` \| `2` \| `3` \| `5` \| `10` (consecutive errors) |
+| `DRY_RUN`                    | no       | `1` = preview only                                  |
+| `VERBOSE`                    | no       | `1` = per-file output instead of progress bar       |
 
 ## Frontmatter
 
@@ -80,8 +107,17 @@ cover: https://images.unsplash.com/photo-xxx?w=1200
 
 - Uses `@notionhq/client` v5 with the native markdown endpoint: `PATCH /pages/:id/markdown`
 - The `replace_content` body must be `{ new_str: string, allow_deleting_content: true }` (object, not string)
-- Rate limit: 350ms sleep after every API call (~3 req/sec)
+- Rate limit: **adaptive** — floor 350ms, ceiling 1050ms (3×). Widens on every API failure, narrows after 3 consecutive successes (commit `16e7eec`).
 - Page lookup is by title under parent — no external state file needed
+- **`replace_content` deletes child_page subpages too**, so Phase 1.5 uses a list-blocks → delete-non-child_page-blocks → `insert_content` flow to keep subpages alive (commit `83c9f41`).
+- **`blocks.update` for images rejects an explicit `type` field** — the discriminator is inferred from which sub-field is present. Send `{image: {file_upload: {id}}}`, NOT `{image: {type: "file_upload", file_upload: {id}}}`.
+- **Mention objects display the linked page's CURRENT title**, not the original markdown anchor text. By design (auto-updating), but worth noting if anchor text matters.
+
+## Phases
+
+- **Phase 1 (discovery)**: walk all `.md`, `getOrCreateChildPage` for each, build `pageIdMap` and `discoveryMap`. Section pages also discovered + queued for Phase 1.5.
+- **Phase 1.5 (section content)**: write `_index.md` content (or auto-index for folders without one) to each section page. Uses non-destructive list-blocks + delete-prose + `insert_content` to preserve child_page subpages. Failed sections get a retry pass at the end (up to 3 attempts each).
+- **Phase 2 (leaf content)**: for each leaf doc — upload images (if `NOTION_UPLOAD_IMAGES=1`) → `updateMarkdown` → swap image blocks external→file_upload → convert internal links → mentions (if `NOTION_USE_MENTIONS=1`). Failed docs get a retry pass at the end (up to 3 attempts each).
 
 ## GitHub Actions
 
