@@ -1,58 +1,6 @@
 <div align="center">
 
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 180" width="640" height="180" role="img" aria-label="notion-sync — markdown → Notion mirror">
-  <!-- Background gradient: cyan → magenta -->
-  <defs>
-    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0%"   stop-color="#0d1117"/>
-      <stop offset="50%"  stop-color="#161b22"/>
-      <stop offset="100%" stop-color="#1c1430"/>
-    </linearGradient>
-    <linearGradient id="accent" x1="0" y1="0" x2="1" y2="0">
-      <stop offset="0%"  stop-color="#22d3ee"/>
-      <stop offset="100%" stop-color="#e879f9"/>
-    </linearGradient>
-  </defs>
-  <rect width="640" height="180" fill="url(#bg)" rx="8"/>
-
-  <!-- Top accent bar -->
-  <rect x="0" y="0" width="640" height="3" fill="url(#accent)"/>
-
-  <!-- Terminal pane (left) -->
-  <rect x="32" y="38" width="220" height="104" fill="#0a0d12" stroke="#22d3ee" stroke-width="1" rx="4"/>
-  <rect x="32" y="38" width="220" height="14" fill="#161b22" rx="4"/>
-  <circle cx="42" cy="45" r="2.5" fill="#f85149"/>
-  <circle cx="50" cy="45" r="2.5" fill="#d29922"/>
-  <circle cx="58" cy="45" r="2.5" fill="#3fb950"/>
-  <text x="44" y="74"  font-family="ui-monospace, Menlo, monospace" font-size="12" fill="#22d3ee">$ bash sync.sh</text>
-  <text x="44" y="92"  font-family="ui-monospace, Menlo, monospace" font-size="11" fill="#7d8590">▸ Phase 1: 304 pages</text>
-  <text x="44" y="106" font-family="ui-monospace, Menlo, monospace" font-size="11" fill="#7d8590">▸ Phase 2: writing...</text>
-  <text x="44" y="120" font-family="ui-monospace, Menlo, monospace" font-size="11" fill="#3fb950">✓ 0 errors</text>
-  <text x="44" y="134" font-family="ui-monospace, Menlo, monospace" font-size="11" fill="#3fb950">✓ 1311 mentions</text>
-
-  <!-- Arrow markdown → Notion -->
-  <line x1="262" y1="90" x2="316" y2="90" stroke="url(#accent)" stroke-width="2"/>
-  <polygon points="316,90 308,86 308,94" fill="#e879f9"/>
-  <text x="262" y="78" font-family="ui-monospace, Menlo, monospace" font-size="9" fill="#e879f9">push</text>
-  <text x="262" y="106" font-family="ui-monospace, Menlo, monospace" font-size="9" fill="#7d8590">.md → blocks</text>
-
-  <!-- Notion pane (right) -->
-  <rect x="326" y="38" width="282" height="104" fill="#0a0d12" stroke="#e879f9" stroke-width="1" rx="4"/>
-  <rect x="326" y="38" width="282" height="14" fill="#161b22" rx="4"/>
-  <text x="338" y="48" font-family="ui-monospace, Menlo, monospace" font-size="9" fill="#7d8590">Notion · Product Docs</text>
-  <!-- Sidebar tree -->
-  <text x="338" y="70"  font-family="ui-monospace, Menlo, monospace" font-size="11" fill="#e6edf3">▾ 📚 Product Docs</text>
-  <text x="354" y="86"  font-family="ui-monospace, Menlo, monospace" font-size="11" fill="#22d3ee">  • 🗺️  Sitemap</text>
-  <text x="354" y="102" font-family="ui-monospace, Menlo, monospace" font-size="11" fill="#22d3ee">  • 🏷️  Tags</text>
-  <text x="354" y="118" font-family="ui-monospace, Menlo, monospace" font-size="11" fill="#7d8590">  ▸ frontend/</text>
-  <text x="354" y="134" font-family="ui-monospace, Menlo, monospace" font-size="11" fill="#7d8590">  ▸ backend/</text>
-
-  <!-- Title strip -->
-  <rect x="0" y="155" width="640" height="25" fill="#0a0d12"/>
-  <text x="32"  y="172" font-family="ui-monospace, Menlo, monospace" font-size="13" font-weight="700" fill="#22d3ee">notion-sync</text>
-  <text x="138" y="172" font-family="ui-monospace, Menlo, monospace" font-size="11" fill="#7d8590">markdown → Notion mirror · v1.2.0</text>
-  <text x="608" y="172" font-family="ui-monospace, Menlo, monospace" font-size="10" fill="#e879f9" text-anchor="end">▶</text>
-</svg>
+<img src="assets/banner.svg" alt="notion-sync — markdown → Notion mirror" width="640"/>
 
 </div>
 
@@ -196,54 +144,13 @@ docs/
 
 ## Architecture
 
-> The diagram below is a compact view. For the full gum-rendered pipeline including Phase 1.5 sections, dashboards, and prune subcommands, see [PIPELINE.md](PIPELINE.md).
+<div align="center">
 
-```
-                              ┌──────────────────────┐
-   ┌─────────────────┐        │     Notion API       │
-   │  docs/ (.md)    │        │  (api.notion.com)    │
-   │  + frontmatter  │        └──────────┬───────────┘
-   │  + images/      │                   │
-   └────────┬────────┘                   │ HTTPS
-            │ scanTree                   │ rate-limited (350-1050ms adaptive)
-            ▼                            │
-   ┌─────────────────┐                   │
-   │   index.ts      │ ─── 1. discover ──▶  pages.create / find by title
-   │   (sync engine) │ ─── 1.5 sections ─▶  blocks.list + delete-prose + insert
-   │                 │ ─── 2. content ───▶  pages.updateMarkdown
-   │                 │ ─── 2a. images ───▶  fileUploads.{create,send}
-   │                 │ ─── 2b. mentions ─▶  blocks.list + blocks.update
-   └────┬────────┬───┘                   │
-        │        │                       │
-        ▼        ▼                       │
-   ┌────────┐ ┌────────────┐             │
-   │image-  │ │mention-    │             │
-   │uploader│ │converter   │             │
-   └────────┘ └────────────┘             │
-            ▲                            │
-            │                            │
-   ┌────────┴────────┐                   │
-   │   sync.sh       │                   │
-   │   (wizard +     │                   │
-   │   notifier)     │                   │
-   └─────────────────┘                   │
-                                         │
-   ┌─────────────────┐                   │
-   │  notion-list.ts │ ◀─── fetch tree ──┘  blocks.children.list
-   │  + list.sh      │      fix-mentions
-   │  (read / diff)  │
-   └────┬────────────┘
-        │
-        ▼
-   ┌──────────────────────────────────────────────────────────────┐
-   │  Persistent state (gitignored)                               │
-   │   • runs.jsonl              — append-only run log            │
-   │   • metrics.jsonl           — rolling-window per-call timing │
-   │   • .sync-defaults.json     — wizard's saved selections      │
-   │   • .notion-cache.json      — cached remote tree             │
-   │   • .notion-image-cache.json — sha256 → file_upload_id       │
-   └──────────────────────────────────────────────────────────────┘
-```
+<img src="assets/architecture.svg" alt="notion-sync architecture — pipeline, dashboards, caches" width="100%"/>
+
+</div>
+
+> Three concentric loops: **engine** (push) → **Notion API** → **cache** → **dashboards** (read). Caches are gitignored, runs.jsonl is append-only telemetry. For the line-by-line gum-rendered pipeline (Phase 1.5 sections, retry semantics, prune subcommands), see [PIPELINE.md](PIPELINE.md).
 
 **Module responsibilities:**
 

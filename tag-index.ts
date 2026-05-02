@@ -161,25 +161,41 @@ async function findOrCreateTagIndexPage(
   return { id: created.id, created: true };
 }
 
-// Wipe all blocks on the target page before re-rendering.
-async function wipeBlocks(notion: Client, pageId: string, rateLimitMs: number): Promise<number> {
-  const all: any[] = [];
+// Wipe all blocks on the target page before re-rendering. Reads + deletes
+// in lockstep so memory stays flat on large pages, and each Notion call is
+// retried on transient 5xx via withChunkRetry.
+async function wipeBlocks(
+  notion: Client,
+  pageId: string,
+  rateLimitMs: number,
+  log: (msg: string) => void = () => {},
+): Promise<number> {
+  let total = 0;
   let cursor: string | undefined;
   do {
-    const res: any = await notion.blocks.children.list({
-      block_id: pageId,
-      page_size: 100,
-      ...(cursor ? { start_cursor: cursor } : {}),
-    });
+    const res: any = await withChunkRetry(
+      `wipe.list cursor=${cursor?.slice(0, 8) ?? "start"}`,
+      () =>
+        notion.blocks.children.list({
+          block_id: pageId,
+          page_size: 100,
+          ...(cursor ? { start_cursor: cursor } : {}),
+        }),
+      log,
+    );
     await sleep(rateLimitMs);
-    all.push(...res.results);
+    for (const b of res.results) {
+      await withChunkRetry(
+        `wipe.delete ${b.id.slice(0, 8)}`,
+        () => notion.blocks.delete({ block_id: b.id }),
+        log,
+      );
+      await sleep(rateLimitMs);
+      total++;
+    }
     cursor = res.has_more ? res.next_cursor : undefined;
   } while (cursor);
-  for (const b of all) {
-    await notion.blocks.delete({ block_id: b.id });
-    await sleep(rateLimitMs);
-  }
-  return all.length;
+  return total;
 }
 
 // Aggregate per-doc tags into a tag → docs map. Match local docs to Notion
@@ -308,10 +324,15 @@ async function withChunkRetry<T>(
       lastErr = err;
       const status = err?.status;
       const code = err?.code;
+      const msg: string = err?.message || "";
+      const msgStatus = msg.match(/status:\s*(\d+)/)?.[1];
       const retriable =
         status === 504 || status === 502 || status === 503 ||
         status === 408 || status === 429 ||
+        msgStatus === "504" || msgStatus === "502" || msgStatus === "503" ||
+        msgStatus === "408" || msgStatus === "429" ||
         code === "notionhq_client_request_timeout" ||
+        code === "notionhq_client_response_error" ||
         code === "ECONNRESET" || code === "ETIMEDOUT";
       if (!retriable || attempt === maxAttempts) throw err;
       const waitMs = 4000 * attempt;
@@ -372,7 +393,7 @@ export async function generateTagIndex(opts: {
   );
 
   log(`  wiping existing blocks…`);
-  const wiped = await wipeBlocks(notion, pageId, rateLimitMs);
+  const wiped = await wipeBlocks(notion, pageId, rateLimitMs, log);
   log(`  wiped ${wiped} block${wiped === 1 ? "" : "s"}`);
 
   // Build the entire block list, push in batches of 100 via
