@@ -18,6 +18,21 @@ Claude should:
 
 <!-- entries below, newest first -->
 
+## 2026-05-02 — `tag-index` 504 on wipe — existing page too large to read in one shot
+
+**Run IDs:** 20260502-051846 (bring-up) succeeded for tag-index inside `bring-up`'s flow when it was a fresh build. The follow-up `dashboard` mode invocation later the same day FAILED tag-index after 1192s. Aborted before backlinks/recent-feed/health, requiring the orchestrator to invoke each remaining dashboard manually.
+
+**What happened:** `tag-index.ts` first reads the existing page's blocks (to wipe before rebuild). The current tag-index page has 1299 blocks (351 tags × ~3.7 blocks each). Notion's `blocks.children.list` 504s when called against a page that large in a single hop.
+
+**Why this matters for the orchestrator:**
+- A failed dashboard subprocess kills the rest of `bash run.sh dashboard` because the script chains phases sequentially without `|| true`.
+- The fix in `tag-index.ts` should paginate the wipe (read+delete in chunks of 100 blocks, like sitemap.ts does for new pushes — but in reverse). Until that's fixed, the workaround is: archive the old page in Notion UI, then re-run — fresh-build path completes in ~4 min.
+- Also worth: changing `mode_dashboard` in `run.sh` to use `||` between phases so one failure doesn't strand the others.
+
+**Suspicion engine:** The first run's `create-upload.md` failure tagged `cloudflare-waf-shell-pipe` and `cloudflare-waf-sql-keyword` but the actual error was `Request to Notion API has timed out` — a transient that cleared on retry. This is a useful reminder: WAF suspicions are a **content hint**, not a diagnosis. When the underlying error is a timeout, ignore the suspicion tags and just retry.
+
+---
+
 ## 2026-05-02 — Audit: behaviour of doc updates (renames/moves leave orphans)
 
 User asked how future doc updates flow through the pipeline. Traced the code paths; results:

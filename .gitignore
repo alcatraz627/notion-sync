@@ -51,4 +51,13 @@ metrics.jsonl
 .sync-defaults.json
 .notion-cache.json
 .notion-image-cache.json
-/.claude/
+# .claude — track skills/SKILL.md, ignore session/runtime state
+/.claude/wal.jsonl
+/.claude/wal.*
+/.claude/scheduled_tasks.lock
+/.claude/settings.local.json
+/.claude/locks/
+/.claude/_*.claude.md
+/.claude/skills/runtime-notes.md
+/.claude/skills/**/runtime-notes.md
+/.claude/skills/**/_*.claude.md
