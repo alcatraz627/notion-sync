@@ -11,7 +11,7 @@
 </p>
 
 <p align="center">
-  <img alt="version" src="https://img.shields.io/badge/version-1.2.0-22d3ee"/>
+  <img alt="version" src="https://img.shields.io/badge/version-1.3.0-22d3ee"/>
   <img alt="TypeScript" src="https://img.shields.io/badge/TypeScript-5.x-3178c6?logo=typescript&logoColor=white"/>
   <img alt="Bun" src="https://img.shields.io/badge/runtime-bun-fbf0df?logo=bun&logoColor=black"/>
   <img alt="Notion API" src="https://img.shields.io/badge/Notion%20API-v5-000000?logo=notion&logoColor=white"/>
@@ -47,7 +47,7 @@
 ║  └- list.sh recent-errors — copy-paste retry hint                ║
 ║                                                                  ║
 ╠==============◆◆====================================◆◆============╣
-║  ⊙ v1.2.0  ·  bash run.sh  ·  bash list.sh sitemap              ║
+║  ⊙ v1.3.0  ·  bash sync.sh  ·  bash sync.sh reconcile           ║
 ╚==================================================================╝
 ```
 
@@ -92,6 +92,8 @@ Two scripts cover everything. Each row links to the relevant USAGE section.
 | `bash sync.sh --only X Y …` | Sync only matching sections / files | [§2 Selective sync](USAGE.md#2-selective-sync) |
 | `bash sync.sh --verbose` | Per-file output instead of progress bar | [§11 Performance tuning](USAGE.md#11-performance-tuning) |
 | `bash sync.sh --fix-mentions` | Skip sync; convert internal links → page mentions | [§8 Mentions](USAGE.md#8-internal-links--page-mentions) |
+| `bash sync.sh reconcile` | 🛡 Resolve guardrail-protected pages from last sync (interactive) | [§11.5 Guardrails](USAGE.md#115-overwrite-guardrails--reconciliation) |
+| `bash sync.sh reconcile <path>` | Reconcile a single page (matches like `--only`) | [§11.5](USAGE.md#115-overwrite-guardrails--reconciliation) |
 | `bash sync.sh -h` | Inline help | — |
 
 ### `list.sh` — read remote, diff, batch-fix
@@ -142,6 +144,32 @@ docs/
 
 **Idempotent** — pages are looked up by title under their parent. Repeated runs update content in place and never create duplicates.
 
+## Overwrite guardrails 🛡 (v1.3)
+
+Stops `notion-sync` from silently overwriting human edits, page moves, or archival in Notion.
+
+After every successful push, a per-page baseline is recorded in `.notion-sync-state.json` (`last_edited_time` + parent + block count, plus the integration's bot user id). Before the next push, every known page is re-checked against current Notion state. Detected divergence kinds:
+
+| Kind | Means |
+|---|---|
+| `user-edited` | A human (not the integration bot) edited the page after the last sync |
+| `moved` | The page's parent changed |
+| `moved-out` | The page is now outside the synced root |
+| `archived` | The page is in Notion's Trash |
+| `benign-drift` | `last_edited_time` advanced but our bot is still the last editor (soft warning) |
+
+Default mode `strict` skips protected pages and reports them at end of run. Modes `warn` and `off` are available via `NOTION_GUARDRAILS=...` or the wizard.
+
+**Resolve protected pages with `bash sync.sh reconcile`** — an interactive walk through every protected page with kind-specific menus:
+
+- **`user-edited`**: View diff first / Pull Notion → local (preserve human edits) / Keep local — overwrite Notion / Skip
+- **`moved`**: Accept the move / Move it back to expected parent / Skip
+- **`archived`**: Accept the archive / Force-recreate at original location / Skip
+
+Per-page CLI escape hatches (`--force-overwrite`, `--accept-move`, `--accept-archive`) skip the wizard. The pull path uses Notion's `pages.retrieveMarkdown` endpoint and converts mention tags back to plain markdown links so the next sync round-trips cleanly.
+
+Full UX walkthrough in [USAGE.md §11.5](USAGE.md#115-overwrite-guardrails--reconciliation). Design rationale in [OVERWRITE-GUARDRAILS-EXPLORATION.md](OVERWRITE-GUARDRAILS-EXPLORATION.md) and [RECONCILIATION-EXPLORATION.md](RECONCILIATION-EXPLORATION.md).
+
 ## Architecture
 
 <div align="center">
@@ -156,8 +184,10 @@ docs/
 
 | Module                  | Owns                                                                                  |
 | ----------------------- | ------------------------------------------------------------------------------------- |
-| `sync.sh`               | wizard, env validation, defaults file, completion notification                        |
-| `index.ts`              | Phase 1 discovery, Phase 1.5 sections, Phase 2 leaf writes, retry passes, run logging |
+| `sync.sh`               | wizard, env validation, defaults file, completion notification, `reconcile` dispatch  |
+| `index.ts`              | Phase 1 discovery, Phase 1.5 sections, **Phase 1.7 guardrail check**, Phase 2 leaf writes, retry passes, run logging |
+| `sync-state.ts`         | `.notion-sync-state.json` baseline tracking, bot-id cache, `checkDivergence` (returns all applicable kinds), `recordPageBaseline` |
+| `reconcile.ts`          | Interactive guided resolution of protected pages — kind-specific menus, ← Back nav, live re-check, pull-from-Notion path |
 | `image-uploader.ts`     | sha256 dedup cache, fileUploads create+send, post-write image-block external→file_upload swap |
 | `mention-converter.ts`  | walk page blocks, rewrite text-link annotations → page mentions                       |
 | `notion-list.ts`        | walk Notion tree, save cache, render show/diff/empty-paths/fix-mentions               |
@@ -245,6 +275,7 @@ Mapped folders bypass the default root and root their subtree directly under the
 | `NOTION_SHOW_META`           | no       | on                 | Set `0` to suppress the frontmatter banner on each page           |
 | `NOTION_UPLOAD_IMAGES`       | no       | off                | `1` to upload images to Notion's CDN — required for private repos |
 | `NOTION_USE_MENTIONS`        | no       | on                 | `0` to disable internal-link → page-mention conversion            |
+| `NOTION_GUARDRAILS`          | no       | `strict`           | `strict` \| `warn` \| `off` — overwrite protection for human-edited pages (v1.3) |
 | `NOTION_SYNC_MAP`            | no       | —                  | Path to JSON file mapping top-level folders to Notion roots       |
 | `ABORT_POLICY`               | no       | `disabled`         | `disabled` \| `1` \| `2` \| `3` \| `5` \| `10` (consecutive errors) |
 | `DRY_RUN`                    | no       | —                  | Set `1` to preview without writing                                |

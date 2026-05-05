@@ -85,6 +85,7 @@ show_help() {
 
   _section "MODES"
   _row  "(default)"              "Sync local docs → Notion"
+  _row  "reconcile [paths...]"   "Resolve guardrail-protected pages from the last live sync (interactive)"
   _row  "--fix-mentions"         "Convert all already-synced internal links → page mentions"
   echo ""
 
@@ -105,6 +106,7 @@ show_help() {
   _rowD "NOTION_SHOW_META"       "1|0 — frontmatter banner  (default: 1)"
   _rowD "NOTION_UPLOAD_IMAGES"   "1 — upload images to Notion CDN (private-repo support)"
   _rowD "NOTION_USE_MENTIONS"    "0 — disable internal-link → mention conversion (default ON)"
+  _rowD "NOTION_GUARDRAILS"      "strict | warn | off — overwrite protection for human-edited pages (default: strict)"
   echo ""
 
   _section "EXAMPLES"
@@ -114,6 +116,8 @@ show_help() {
   echo "  bash sync.sh --only boring-technical-stuff"
   echo "  bash sync.sh --only jobs workflows --verbose"
   echo "  bash sync.sh --fix-mentions            # retro-fix internal links on synced pages"
+  echo "  bash sync.sh reconcile                 # resolve guardrail-protected pages from last sync"
+  echo "  bash sync.sh reconcile create-upload   # only this page"
   echo ""
 
   _section "WIZARD"
@@ -129,6 +133,20 @@ for arg in "$@"; do
     exit 0
   fi
 done
+
+# ── Mode dispatch ─────────────────────────────────────────────────────────────
+# `reconcile` is its own subcommand — interactive guided resolution of
+# guardrail-protected pages from the last live sync. Bypasses the wizard
+# entirely (it has its own gum prompts) and runs a separate TS entrypoint.
+if [ "${1:-}" = "reconcile" ]; then
+  shift
+  # Load .env so the TS script has NOTION_TOKEN / NOTION_ROOT_PAGE_ID for
+  # any future Notion calls (PR 3's pull path will need them).
+  if [ -f "$SCRIPT_DIR/.env" ]; then
+    set -a; source "$SCRIPT_DIR/.env"; set +a
+  fi
+  exec bun "$SCRIPT_DIR/reconcile.ts" "$@"
+fi
 
 # ── Pre-flight env validation ─────────────────────────────────────────────────
 # Surface every problem at once, with hints, BEFORE the wizard. The Node script
@@ -240,6 +258,7 @@ DEF_LINK_MODE="$(_load link_mode notion)"
 DEF_SHOW_META="$(_load show_meta true)"
 DEF_UPLOAD_IMAGES="$(_load upload_images true)"
 DEF_USE_MENTIONS="$(_load use_mentions true)"
+DEF_GUARDRAILS="$(_load guardrails strict)"
 
 # ── Parse CLI flags ───────────────────────────────────────────────────────────
 
@@ -490,6 +509,30 @@ PYEOF
     *)            CHOSEN_ABORT_POLICY=disabled ;;
   esac
 
+  # ── Guardrails ──
+  echo ""
+  gum style --foreground 245 "🛡  Guardrails — protect human-edited Notion pages from overwrite?"
+  GUARDRAIL_OPTIONS=(
+    "strict — check each page; skip + report any with human edits, moves, or archival (recommended)"
+    "warn   — print warnings but overwrite anyway"
+    "off    — no check (legacy behavior)"
+  )
+  case "$DEF_GUARDRAILS" in
+    warn) GUARDRAIL_SELECTED="${GUARDRAIL_OPTIONS[1]}" ;;
+    off)  GUARDRAIL_SELECTED="${GUARDRAIL_OPTIONS[2]}" ;;
+    *)    GUARDRAIL_SELECTED="${GUARDRAIL_OPTIONS[0]}" ;;
+  esac
+  gum_ec=0
+  GUARDRAIL_CHOICE=$(printf '%s\n' "${GUARDRAIL_OPTIONS[@]}" | \
+    gum choose --selected="$GUARDRAIL_SELECTED" --height=5) || gum_ec=$?
+  [ $gum_ec -eq 130 ] && _cancelled
+  [ $gum_ec -ne 0 ] && GUARDRAIL_CHOICE="$GUARDRAIL_SELECTED"
+  case "$GUARDRAIL_CHOICE" in
+    "warn"*) CHOSEN_GUARDRAILS=warn ;;
+    "off"*)  CHOSEN_GUARDRAILS=off ;;
+    *)       CHOSEN_GUARDRAILS=strict ;;
+  esac
+
   # ── Summary + final confirm ──
   echo ""
   gum style --border normal --border-foreground 238 --padding "0 1" \
@@ -502,7 +545,8 @@ PYEOF
   Verbose:        $CHOSEN_VERBOSE
   Show meta:      $CHOSEN_SHOW_META
   Link mode:      $CHOSEN_LINK_MODE
-  Abort policy:   $CHOSEN_ABORT_POLICY"
+  Abort policy:   $CHOSEN_ABORT_POLICY
+  Guardrails:     $CHOSEN_GUARDRAILS"
 
   echo ""
   gum_ec=0
@@ -539,6 +583,7 @@ else
   CHOSEN_SHOW_META="$DEF_SHOW_META"
   CHOSEN_UPLOAD_IMAGES="$DEF_UPLOAD_IMAGES"
   CHOSEN_USE_MENTIONS="$DEF_USE_MENTIONS"
+  CHOSEN_GUARDRAILS="$DEF_GUARDRAILS"
 
   if [ "$NO_WIZARD" = false ] && [ -f "$DEFAULTS_FILE" ]; then
     echo "notion-sync: using saved defaults (run with a TTY for the interactive wizard)"
@@ -561,6 +606,7 @@ data = {
     "show_meta":      to_bool("${CHOSEN_SHOW_META}"),
     "upload_images":  to_bool("${CHOSEN_UPLOAD_IMAGES}"),
     "use_mentions":   to_bool("${CHOSEN_USE_MENTIONS}"),
+    "guardrails":     "${CHOSEN_GUARDRAILS}",
 }
 with open("$DEFAULTS_FILE", "w") as f:
     json.dump(data, f, indent=2)
@@ -595,6 +641,7 @@ else
 fi
 export ABORT_POLICY="$CHOSEN_ABORT_POLICY"
 export NOTION_LINK_MODE="$CHOSEN_LINK_MODE"
+export NOTION_GUARDRAILS="$CHOSEN_GUARDRAILS"
 
 # ── Build --only args from filter ─────────────────────────────────────────────
 

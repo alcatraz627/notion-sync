@@ -43,10 +43,22 @@ import * as fs from "fs";
 import * as path from "path";
 import { ImageUploader, swapImageBlocks } from "./image-uploader";
 import { convertPageLinksToMentions, buildPageIdSet } from "./mention-converter";
+import {
+  loadState,
+  saveState,
+  ensureBotId,
+  checkDivergence,
+  recordPageBaseline,
+  formatDivergences,
+  getStatePath,
+  type SyncStateFile,
+  type Divergence,
+  type GuardrailMode,
+} from "./sync-state";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
-type SyncStatus = "created" | "updated" | "dry_run" | "error";
+type SyncStatus = "created" | "updated" | "dry_run" | "error" | "protected";
 type LinkMode = "notion" | "github" | "strip";
 type NotionIcon =
   | { type: "emoji"; emoji: string }
@@ -60,6 +72,7 @@ interface PageInfo {
 interface PageDiscovery {
   id: string;
   isNew: boolean;
+  parentId: string; // Notion id of immediate parent (section page or root). Used by guardrails.
 }
 interface ParsedDoc {
   title: string;
@@ -122,6 +135,8 @@ interface SyncResult {
   word_count?: number;
   error?: string;
   suspicions?: SuspicionMatch[];
+  protected_kinds?: Divergence["kind"][];
+  protected_details?: string[];
 }
 
 // ── Metrics types (written to metrics.jsonl, rolling last N runs) ─────────────
@@ -206,6 +221,12 @@ interface RunLogEntry {
   pages: SyncResult[];
   sections: SectionResult[];
   error_summary: { path: string; error: string; suspicions: string[] }[] | null;
+  // Pages skipped because of overwrite-guardrail divergence (NOTION_GUARDRAILS=strict).
+  // Always present (may be empty array). Surfaced by /sync-all and the
+  // reconcile flow. Schema v2 (2026-05-06): `kinds` is an array — a single
+  // page can have multiple simultaneous divergences (e.g. moved + edited).
+  protected_pages: { path: string; kinds: string[]; details: string[]; notion_url: string }[];
+  guardrails_mode: GuardrailMode;
 }
 
 // Live snapshot of run progress, updated by main() at checkpoints. The SIGINT
@@ -334,7 +355,17 @@ const ABORT_ENABLED = ABORT_POLICY_ENV !== "disabled";
 const ABORT_ERRORS = parseInt(ABORT_POLICY_ENV) || 5;
 const ABORT_WINDOW = 10;
 
-const SCRIPT_VERSION = "1.2.0";
+// Overwrite guardrails — see OVERWRITE-GUARDRAILS-EXPLORATION.md.
+// strict: skip and report any page where divergence is detected.
+// warn  : print warnings but overwrite anyway (useful during initial rollout).
+// off   : skip the check entirely (legacy behavior).
+const GUARDRAILS_MODE: GuardrailMode = (() => {
+  const raw = (process.env.NOTION_GUARDRAILS ?? "strict").toLowerCase();
+  if (raw === "warn" || raw === "off") return raw;
+  return "strict";
+})();
+
+const SCRIPT_VERSION = "1.3.0";
 const RATE_LIMIT_MS = 350;
 
 const LOG_FILE = path.join(__dirname, "runs.jsonl");
@@ -410,15 +441,54 @@ const SUSPICION_RULES: SuspicionRule[] = [
 
 const argv = process.argv.slice(2);
 const onlyPaths: string[] = [];
-let collectingOnly = false;
+const forceOverwritePaths = new Set<string>();
+const acceptMovePaths = new Set<string>();
+const acceptArchivePaths = new Set<string>();
 let argVerbose = false;
+let argSeedState = false;
+let argRefreshBotId = false;
+let argGuardrailsOverride: GuardrailMode | null = null;
+
+// Multi-value flags: --only / --force-overwrite / --accept-move / --accept-archive
+// each consume subsequent positional args until the next "--flag".
+type ListSink = "only" | "force" | "accept-move" | "accept-archive" | null;
+let listSink: ListSink = null;
 for (const arg of argv) {
-  if (arg === "--only") { collectingOnly = true; continue; }
-  if (arg === "--verbose") { argVerbose = true; collectingOnly = false; continue; }
-  if (arg.startsWith("--")) { collectingOnly = false; continue; }
-  if (collectingOnly) onlyPaths.push(arg.replace(/\/$/, ""));
+  if (arg === "--only")             { listSink = "only";          continue; }
+  if (arg === "--force-overwrite")  { listSink = "force";         continue; }
+  if (arg === "--accept-move")      { listSink = "accept-move";   continue; }
+  if (arg === "--accept-archive")   { listSink = "accept-archive";continue; }
+  if (arg === "--verbose")          { argVerbose = true; listSink = null; continue; }
+  if (arg === "--seed-state")       { argSeedState = true; listSink = null; continue; }
+  if (arg === "--refresh-bot-id")   { argRefreshBotId = true; listSink = null; continue; }
+  if (arg === "--guardrails") {
+    listSink = null;
+    // Value is the next arg — handle inline by consuming via index. Cheap
+    // alternative: use --guardrails=strict syntax. Keep both forms working.
+    continue;
+  }
+  if (arg.startsWith("--guardrails=")) {
+    const v = arg.slice("--guardrails=".length).toLowerCase();
+    if (v === "strict" || v === "warn" || v === "off") argGuardrailsOverride = v;
+    listSink = null;
+    continue;
+  }
+  if (arg.startsWith("--")) { listSink = null; continue; }
+  if (listSink === "only")            onlyPaths.push(arg.replace(/\/$/, ""));
+  else if (listSink === "force")      forceOverwritePaths.add(arg.replace(/\/$/, ""));
+  else if (listSink === "accept-move") acceptMovePaths.add(arg.replace(/\/$/, ""));
+  else if (listSink === "accept-archive") acceptArchivePaths.add(arg.replace(/\/$/, ""));
 }
 
+// Handle "--guardrails strict" (space-separated) form by post-walking argv.
+for (let i = 0; i < argv.length; i++) {
+  if (argv[i] === "--guardrails" && i + 1 < argv.length) {
+    const v = argv[i + 1].toLowerCase();
+    if (v === "strict" || v === "warn" || v === "off") argGuardrailsOverride = v as GuardrailMode;
+  }
+}
+
+const EFFECTIVE_GUARDRAILS: GuardrailMode = argGuardrailsOverride ?? GUARDRAILS_MODE;
 const VERBOSE = process.env.VERBOSE === "1" || argVerbose;
 
 function shouldSync(relPath: string): boolean {
@@ -1186,8 +1256,41 @@ async function getOrCreateChildPage(
   parentId: string,
   title: string,
   icon?: NotionIcon,
+  knownPageId?: string,        // from .notion-sync-state.json — strongest lookup signal
 ): Promise<{ id: string; isNew: boolean }> {
   if (DRY_RUN) return { id: `dry-run-${Date.now()}`, isNew: false };
+
+  // Strongest signal: id from the persistent state file. Survives renames in
+  // Notion (which break title lookup) and is cheaper than listing children.
+  // Fall through to title-based lookup if the id is archived/missing.
+  if (knownPageId) {
+    try {
+      const meta: any = await apiCall(
+        () => notion.pages.retrieve({ page_id: knownPageId }),
+        "pages.retrieve",
+      );
+      const isTrashed = meta.in_trash === true || meta.archived === true;
+      if (!isTrashed) {
+        // If parent drifted, re-parent (the divergence check would have flagged
+        // this earlier in strict mode; reaching here means the user passed
+        // --accept-move OR is in warn/off mode).
+        if (meta.parent?.page_id && meta.parent.page_id !== parentId) {
+          await apiCall(
+            () => (notion.pages as any).update({
+              page_id: knownPageId,
+              parent: { page_id: parentId, type: "page_id" },
+            }),
+            "pages.move",
+          );
+        }
+        return { id: knownPageId, isNew: false };
+      }
+      // archived — fall through to title lookup / create
+    } catch {
+      // page deleted from Notion entirely — fall through
+    }
+  }
+
   const children = await listChildPages(parentId);
   const existing = children.find((p) => p.title === title);
   if (existing) {
@@ -1527,6 +1630,7 @@ async function discoverTree(
   sectionResults: SectionResult[] = [],
   sectionWriteQueue: SectionWriteItem[] = [],
   discoveryCounter: { n: number; total: number } = { n: 0, total: 0 },
+  syncState?: SyncStateFile,       // sync-state for id-based lookup (rename-safety)
 ): Promise<void> {
   // Files directly in this dir go under parentPageId
   for (const relPath of tree.files) {
@@ -1534,12 +1638,14 @@ async function discoverTree(
     const doc = getDoc(relPath);
     if (!doc) continue;
     try {
+      const knownPageId = syncState?.pages[relPath]?.page_id;
       const { id, isNew } = await getOrCreateChildPage(
         parentPageId,
         doc.title,
         doc.icon,
+        knownPageId,
       );
-      discoveryMap.set(relPath, { id, isNew });
+      discoveryMap.set(relPath, { id, isNew, parentId: parentPageId });
       pageIdMap.set(relPath, id);
       discoveryCounter.n++;
       logDiscovered({
@@ -1577,7 +1683,7 @@ async function discoverTree(
     if (mappedRootId) {
       vlog(`${indent}${clr.section(dirName)} ${sym.arr} ${clr.dim("[mapped]")}  ${clr.url(notionUrl(mappedRootId))}`);
       // Don't pass folderMap recursively — mapping only applies at top level
-      await discoverTree(subTree, mappedRootId, discoveryMap, pageIdMap, indent + "  ", undefined, childRelDir, sectionResults, sectionWriteQueue, discoveryCounter);
+      await discoverTree(subTree, mappedRootId, discoveryMap, pageIdMap, indent + "  ", undefined, childRelDir, sectionResults, sectionWriteQueue, discoveryCounter, syncState);
       continue;
     }
 
@@ -1637,9 +1743,9 @@ async function discoverTree(
     // is fully populated (so links to child pages resolve to Notion URLs) and
     // uses a non-destructive block-level write that preserves child_page blocks.
     sectionWriteQueue.push({ relDir: childRelDir, dirName, sectionTitle, sectionPageId, folderIndex, subTree });
-    discoveryMap.set(indexRelPath, { id: sectionPageId, isNew: false });
+    discoveryMap.set(indexRelPath, { id: sectionPageId, isNew: false, parentId: parentPageId });
 
-    await discoverTree(subTree, sectionPageId, discoveryMap, pageIdMap, indent + "  ", undefined, childRelDir, sectionResults, sectionWriteQueue, discoveryCounter);
+    await discoverTree(subTree, sectionPageId, discoveryMap, pageIdMap, indent + "  ", undefined, childRelDir, sectionResults, sectionWriteQueue, discoveryCounter, syncState);
   }
 }
 
@@ -1704,7 +1810,33 @@ async function writeFileContent(
   pageIdMap: Map<string, string>,
   counter: { n: number; total: number },
   ourPageIds?: Set<string>, // pre-built set of our page IDs for mention-conversion (lazy by caller)
+  protectedDivergences?: Divergence[] | null, // if non-empty + mode=strict, skip write
+  syncState?: SyncStateFile,                  // for post-write baseline recording
+  expectedParentId?: string,                  // recorded into the new baseline
 ): Promise<SyncResult> {
+  const hasProtection = protectedDivergences && protectedDivergences.length > 0;
+  // Strict-mode guardrail: skip write entirely, surface as a "protected" SyncResult
+  // so the run summary + runs.jsonl record the skip without it counting as an error.
+  if (hasProtection && EFFECTIVE_GUARDRAILS === "strict") {
+    if (!VERBOSE && IS_TTY) renderProgress(counter.n, counter.total, relPath, "protected");
+    if (VERBOSE) {
+      console.log(`\n  ${clr.warn(`[${counter.n}/${counter.total}]`)} ${relPath}  ${clr.dim("(protected)")}`);
+      for (const d of protectedDivergences!) console.log(`     ${clr.dim("Reason:")}  ${d.kind} — ${d.detail}`);
+    }
+    return {
+      path: relPath,
+      title: relPath,
+      status: "protected",
+      page_id: discovery.id,
+      protected_kinds: protectedDivergences!.map((d) => d.kind),
+      protected_details: protectedDivergences!.map((d) => d.detail),
+    };
+  }
+  if (hasProtection && EFFECTIVE_GUARDRAILS === "warn") {
+    if (VERBOSE) {
+      for (const d of protectedDivergences!) console.log(`     ${clr.warn(`${sym.warn} guardrail (warn): ${d.kind} — ${d.detail}`)}`);
+    }
+  }
   const t0 = Date.now();
   const doc = getDoc(relPath);
 
@@ -1851,6 +1983,15 @@ async function writeFileContent(
       console.log(`     ${clr.dim("Notion:")}  ${clr.url(pageNotionUrl)}`);
       console.log(`     ${clr.dim("Status:")}  ${actionBadge}  ${clr.dim(fmtElapsed(elapsed))}`);
     }
+
+    // Record baseline for the next run's divergence check. Notion's reported
+    // last_edited_time is what we compare against (string equality), so we
+    // must store the value Notion gives us, not our local clock. Failure here
+    // is non-fatal — next run just treats this doc as un-baselined.
+    if (syncState && expectedParentId && EFFECTIVE_GUARDRAILS !== "off") {
+      await recordPageBaseline(notion, syncState, relPath, discovery.id, expectedParentId);
+    }
+
     return {
       path: relPath,
       title,
@@ -2042,6 +2183,15 @@ function writePartialRunLog(reason: string): void {
             }))
           : null,
       image_stats: imageUploader ? imageUploader.getStats() : null,
+      protected_pages: snap.results
+        .filter((r) => r.status === "protected")
+        .map((r) => ({
+          path: r.path,
+          kinds: r.protected_kinds ?? [],
+          details: r.protected_details ?? [],
+          notion_url: r.notion_url ?? "",
+        })),
+      guardrails_mode: EFFECTIVE_GUARDRAILS,
       partial: true,
       partial_reason: reason,
     };
@@ -2103,6 +2253,23 @@ async function main(): Promise<void> {
   const tree = scanDocs();
   const allToSync = collectFiles(tree).filter(shouldSync);
 
+  // Sync-state — overwrite guardrails. Loaded once; mutated as Phase 2
+  // succeeds; saved at end. Skipped entirely for dry-runs (no writes happen
+  // so baselines wouldn't be valid anyway).
+  const syncState: SyncStateFile = loadState();
+  if (!DRY_RUN && EFFECTIVE_GUARDRAILS !== "off") {
+    try {
+      await ensureBotId(notion, syncState, argRefreshBotId);
+      console.log(`${clr.dim("Guardrails:")} ${EFFECTIVE_GUARDRAILS}  ${clr.dim(`(bot: ${syncState.bot_id?.slice(0, 8)}…)`)}`);
+    } catch (err: any) {
+      console.error(clr.warn(`  ${sym.warn} could not fetch bot id: ${err.message}. Guardrails disabled for this run.`));
+    }
+  } else if (DRY_RUN) {
+    console.log(`${clr.dim("Guardrails:")} ${clr.dim("(skipped — dry-run)")}`);
+  } else {
+    console.log(`${clr.dim("Guardrails:")} ${clr.dim("off")}`);
+  }
+
   // Pre-run listing + confirmation — also warms docCache for all files
   const confirmed = await preRunListing(allToSync);
   if (!confirmed) {
@@ -2136,10 +2303,41 @@ async function main(): Promise<void> {
     n: 0,
     total: collectFiles(tree).filter(shouldSync).length + countSections(tree),
   };
-  await discoverTree(tree, rootPageId, discoveryMap, pageIdMap, "  ", folderMap, "", sectionResults, sectionWriteQueue, discoveryCounter);
+  await discoverTree(tree, rootPageId, discoveryMap, pageIdMap, "  ", folderMap, "", sectionResults, sectionWriteQueue, discoveryCounter, syncState);
   const phase1Ms = Date.now() - phase1Start;
   if (!VERBOSE && IS_TTY) clearProgress();
   console.log(`  ${clr.ok(sym.ok)} ${discoveryMap.size} pages mapped\n`);
+
+  // ── --seed-state short-circuit ──
+  // Records baselines for every existing (not freshly-created) page WITHOUT
+  // writing any content. Use after first install / after a guardrail upgrade
+  // so the next real run has something to compare against.
+  if (argSeedState) {
+    if (DRY_RUN) {
+      console.log(clr.warn(`  ${sym.warn} --seed-state has no effect under --dry-run. Re-run without --dry-run.`));
+      process.exit(0);
+    }
+    if (EFFECTIVE_GUARDRAILS === "off") {
+      console.log(clr.warn(`  ${sym.warn} --seed-state is a no-op when NOTION_GUARDRAILS=off. Set guardrails to strict or warn first.`));
+      process.exit(0);
+    }
+    console.log(`${clr.phase("Seeding baselines:")} retrieving last_edited_time for ${discoveryMap.size} pages...`);
+    let seeded = 0;
+    let skipped = 0;
+    for (const relPath of allToSync) {
+      const discovery = discoveryMap.get(relPath);
+      if (!discovery) continue;
+      if (discovery.isNew) { skipped++; continue; } // freshly created — nothing to baseline yet
+      await recordPageBaseline(notion, syncState, relPath, discovery.id, discovery.parentId);
+      seeded++;
+      if (!VERBOSE && IS_TTY) renderProgress(seeded, allToSync.length, relPath, "seeding");
+    }
+    if (!VERBOSE && IS_TTY) clearProgress();
+    saveState(syncState);
+    console.log(`  ${clr.ok(sym.ok)} ${seeded} baseline(s) recorded${skipped > 0 ? clr.dim(`, ${skipped} new pages skipped`) : ""}`);
+    console.log(clr.dim(`  State written → ${path.relative(process.cwd(), getStatePath())}`));
+    process.exit(0);
+  }
 
   // Arm the partial-save snapshot. After this point, SIGINT will flush a
   // `partial: true` runs.jsonl entry with whatever progress has accumulated.
@@ -2270,6 +2468,100 @@ async function main(): Promise<void> {
     }
   }
 
+  // ── Phase 1.7 — divergence check (overwrite guardrails) ──
+  // Cost: one pages.retrieve per known doc with a baseline. Skipped entirely
+  // for dry-runs or guardrails=off, and skipped per-page for docs the user
+  // explicitly overrode via --force-overwrite / --accept-move / --accept-archive.
+  // Spec: OVERWRITE-GUARDRAILS-EXPLORATION.md
+  const protectedByPath = new Map<string, Divergence[]>();
+  const divergenceList: Divergence[] = [];
+  const overrideMatches = (set: Set<string>, relPath: string): boolean => {
+    if (set.size === 0) return false;
+    const base = path.basename(relPath, ".md");
+    const basename = path.basename(relPath);
+    for (const f of set) {
+      if (relPath === f || relPath.startsWith(f + "/") || basename === f || base === f) return true;
+    }
+    return false;
+  };
+
+  if (!DRY_RUN && EFFECTIVE_GUARDRAILS !== "off" && syncState.bot_id) {
+    console.log(`${clr.phase("Phase 1.7:")} checking for human-edited Notion pages...`);
+    let checked = 0;
+    let protectedCount = 0;
+    for (const relPath of allToSync) {
+      const discovery = discoveryMap.get(relPath);
+      if (!discovery || discovery.isNew) continue; // freshly created — no baseline possible
+      if (!syncState.pages[relPath]) continue;       // no baseline recorded yet
+      if (!VERBOSE && IS_TTY) renderProgress(checked + 1, allToSync.length, relPath, "checking");
+
+      // Caller-supplied per-page overrides — the user explicitly accepted the
+      // divergence, so don't even check (and don't surface the "would have
+      // been protected" finding either).
+      if (overrideMatches(forceOverwritePaths, relPath)) continue;
+
+      // For accept-move and accept-archive, we still run the check so the
+      // SyncResult records what was overridden — but we don't add to the
+      // protected map (the write proceeds).
+      try {
+        // checkDivergence now returns ALL applicable kinds. The reconcile
+        // flow gets a richer picture — e.g. a page that's both moved AND
+        // user-edited shows BOTH, so the user can't accidentally pick
+        // "move it back" without realizing the human's edits exist.
+        const baseline = syncState.pages[relPath];
+        const divs = await checkDivergence({
+          notion,
+          state: syncState,
+          relPath,
+          pageId: discovery.id,
+          expectedParentId: baseline.expected_parent_id,
+        });
+        if (divs.length === 0) { checked++; continue; }
+
+        // Apply per-page CLI overrides. acceptMove / acceptArchive only
+        // dismiss the corresponding kind — other divergences still surface.
+        let remaining = divs;
+        if (overrideMatches(acceptMovePaths, relPath)) {
+          if (remaining.some((d) => d.kind === "moved")) {
+            baseline.expected_parent_id = discovery.parentId;
+            remaining = remaining.filter((d) => d.kind !== "moved");
+          }
+        }
+        if (overrideMatches(acceptArchivePaths, relPath)) {
+          if (remaining.some((d) => d.kind === "archived")) {
+            delete syncState.pages[relPath];
+            remaining = []; // dropping the doc clears all divergences for it
+          }
+        }
+        if (remaining.length === 0) { checked++; continue; }
+
+        for (const d of remaining) divergenceList.push(d);
+        // benign-drift is soft-warn — present in divergenceList for the report
+        // but not in protectedByPath, so it doesn't block the write.
+        const blocking = remaining.filter((d) => d.kind !== "benign-drift");
+        if (blocking.length > 0) {
+          protectedByPath.set(relPath, blocking);
+          protectedCount++;
+        }
+      } catch (err: any) {
+        console.error(`  ${clr.warn(`${sym.warn} divergence check failed for ${relPath}: ${err.message?.slice(0, 80)}`)}`);
+      }
+      checked++;
+    }
+    if (!VERBOSE && IS_TTY) clearProgress();
+    if (protectedCount === 0 && divergenceList.length === 0) {
+      console.log(`  ${clr.ok(sym.ok)} no human edits detected (${checked} pages checked)\n`);
+    } else {
+      const c = { warn: clr.warn, err: clr.err, dim: clr.dim, bold: clr.bold, url: clr.url };
+      console.log(formatDivergences(divergenceList, EFFECTIVE_GUARDRAILS, c));
+      if (EFFECTIVE_GUARDRAILS === "warn") {
+        console.log(clr.warn(`  ${sym.warn} guardrails=warn — overwriting anyway. Re-run with --guardrails strict to block.\n`));
+      } else if (protectedCount > 0) {
+        console.log(clr.dim(`  Continuing with ${allToSync.length - protectedCount} unprotected page(s).\n`));
+      }
+    }
+  }
+
   // Phase 2 — write content with cross-file Notion links resolved
   console.log(`${clr.phase("Phase 2:")} writing content...`);
   // Reuse partialResults so the SIGINT handler sees pushes in-place.
@@ -2301,7 +2593,8 @@ async function main(): Promise<void> {
     }
 
     if (!VERBOSE && IS_TTY) renderProgress(counter.n, total, relPath);
-    const r = await writeFileContent(relPath, discovery, pageIdMap, counter, ourPageIds);
+    const protectedDivs = protectedByPath.get(relPath) ?? null;
+    const r = await writeFileContent(relPath, discovery, pageIdMap, counter, ourPageIds, protectedDivs, syncState, discovery.parentId);
     results.push(r);
     recentStatuses.push(r.status);
     if (recentStatuses.length > ABORT_WINDOW) recentStatuses.shift();
@@ -2339,7 +2632,7 @@ async function main(): Promise<void> {
         if (!discovery) continue;
         for (let attempt = 1; attempt <= 3; attempt++) {
           console.log(`  ↻ ${r.path} — attempt ${attempt}/3  ${clr.dim(`(rate-limit ${currentRateLimitMs}ms)`)}`);
-          const retryResult = await writeFileContent(r.path, discovery, pageIdMap, { n: counter.n, total: counter.total }, ourPageIds);
+          const retryResult = await writeFileContent(r.path, discovery, pageIdMap, { n: counter.n, total: counter.total }, ourPageIds, null, syncState, discovery.parentId);
           if (retryResult.status !== "error") {
             results[idx] = retryResult;
             console.log(`    ${clr.ok(sym.ok)} recovered (${retryResult.status})`);
@@ -2361,6 +2654,7 @@ async function main(): Promise<void> {
   const created = results.filter((r) => r.status === "created");
   const updated = results.filter((r) => r.status === "updated");
   const dryRun = results.filter((r) => r.status === "dry_run");
+  const protectedResults = results.filter((r) => r.status === "protected");
 
   console.log(`\n${HR}`);
   if (DRY_RUN) {
@@ -2375,6 +2669,8 @@ async function main(): Promise<void> {
       parts.push(clr.ok(`${sym.new} ${created.length} created`));
     if (updated.length)
       parts.push(clr.warn(`${sym.upd} ${updated.length} updated`));
+    if (protectedResults.length)
+      parts.push(clr.warn(`🛡  ${protectedResults.length} protected`));
     if (errors.length)
       parts.push(clr.err(`${sym.err} ${errors.length} errors`));
     console.log(`Sync complete — ${parts.join("   ")}`);
@@ -2469,11 +2765,27 @@ async function main(): Promise<void> {
           }))
         : null,
     image_stats: imageUploader ? imageUploader.getStats() : null,
+    protected_pages: protectedResults.map((r) => ({
+      path: r.path,
+      kinds: r.protected_kinds ?? [],
+      details: r.protected_details ?? [],
+      notion_url: r.notion_url ?? notionUrl(r.page_id ?? ""),
+    })),
+    guardrails_mode: EFFECTIVE_GUARDRAILS,
   };
 
   // Run completed — disarm the partial-save handler so a late shutdown signal
   // doesn't overwrite the full log entry we're about to write.
   partialSnapshot = null;
+
+  // Persist any baselines recorded by recordPageBaseline during this run, plus
+  // any --accept-move/--accept-archive mutations to the state file. Skipped
+  // for dry-runs (no real writes happened) and guardrails=off.
+  if (!DRY_RUN && EFFECTIVE_GUARDRAILS !== "off") {
+    try { saveState(syncState); }
+    catch (err: any) { console.error(clr.warn(`  ${sym.warn} could not save .notion-sync-state.json: ${err.message}`)); }
+  }
+
   appendRunLog(logEntry);
   console.log(
     clr.dim(`\nRun logged → ${path.relative(process.cwd(), LOG_FILE)}`),

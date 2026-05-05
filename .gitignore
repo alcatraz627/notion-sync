@@ -51,6 +51,7 @@ metrics.jsonl
 .sync-defaults.json
 .notion-cache.json
 .notion-image-cache.json
+.notion-sync-state.json
 # .claude — track skills/SKILL.md, ignore session/runtime state
 /.claude/wal.jsonl
 /.claude/wal.*

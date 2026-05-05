@@ -55,6 +55,8 @@ For end-user docs see [USAGE.md](USAGE.md). This file is for Claude (architectur
 | `index.ts`              | Sync logic — Phase 1 discovery, Phase 1.5 sections, Phase 2 content + retries   |
 | `image-uploader.ts`     | Notion CDN image upload (sha256-cached) + image-block external→file_upload swap |
 | `mention-converter.ts`  | Walk page blocks, rewrite internal hyperlinks → native page mentions            |
+| `sync-state.ts`         | Overwrite guardrails — bot-id cache, baseline tracking, divergence detection (`Divergence[]`), state file (`.notion-sync-state.json`) |
+| `reconcile.ts`          | Interactive guided resolution of guardrail-protected pages (`bash sync.sh reconcile`) |
 | `notion-list.ts`        | Read remote tree, cache to `.notion-cache.json`, dispatcher for show/diff/fix-mentions/sitemap/tag-index/index-db/recent-errors |
 | `sitemap.ts`            | Render the 🗺️ Sitemap dashboard page from cache (chunked-with-retry push)       |
 | `tag-index.ts`          | Render the 🏷️ Tags dashboard from frontmatter + body tags across all docs       |
@@ -70,12 +72,17 @@ For end-user docs see [USAGE.md](USAGE.md). This file is for Claude (architectur
 | `.sync-defaults.json`   | Wizard's saved selections (gitignored)                                          |
 | `.notion-cache.json`    | Cached remote page tree from `list.sh fetch` (gitignored)                       |
 | `.notion-image-cache.json` | sha256 → file_upload_id map for uploaded images (gitignored)                |
+| `.notion-sync-state.json` | Per-page baseline (page_id, expected_parent_id, last_pushed_edited_time, last_pushed_block_count) + cached bot_id. Read by Phase 1.7 + reconcile. Gitignored. |
 | `runs.jsonl`            | Append-only log of every sync run                                               |
 | `metrics.jsonl`         | Rolling-window (last 5) per-API-call timing                                     |
 | `SETUP.md`              | One-time Notion integration setup guide                                         |
 | `USAGE.md`              | Task-oriented end-user guide (covers all scenarios)                             |
 | `run-notes.md`          | Long-term log of notable runs and what fixed them                               |
 | `RCA-ARCHIVED-PAGES.md` | Post-mortem of the 2026-04-29 → 04-30 archived-page cascade — read before attempting any "archived block / archived ancestor" fix |
+| `OVERWRITE-GUARDRAILS-EXPLORATION.md` | Design + research for the guardrails feature (sync-state.ts). Notion API edit-attribution, schema, rollout plan. |
+| `RECONCILIATION-EXPLORATION.md` | Design (post-review) for the reconcile flow (reconcile.ts). 4-PR rollout; PR 1+2 done; PR 3 (pull-from-Notion) pending. |
+| `scripts/probe-bot-id.ts` | Read-only probe — validates `users.me()` + `last_edited_by` + minute-rounding assumptions. Run before changing guardrail logic. |
+| `scripts/simulate-human-edit.ts` | Tampers `.notion-sync-state.json` to force a divergence. Test-only utility. |
 | `NAV-STRUCTURE-EXPLORATION.md` | Design exploration: alternatives to the deep nested-page tree (databases, flatten + ToC, synced-block nav, column layouts, toggles) |
 | `DASHBOARDS-AND-ORCHESTRATION-EXPLORATION.md` | Design exploration: sitemap / tag index / recent-feed dashboards on Notion + pipeline-first project orchestration (`bash run.sh` modes) |
 
@@ -104,6 +111,7 @@ The two-phase design is necessary: phase 2 needs all page IDs upfront so cross-f
 | `NOTION_SHOW_META`           | no       | `0` to disable frontmatter banner (default: on)     |
 | `NOTION_UPLOAD_IMAGES`       | no       | `1` to upload images to Notion CDN — required for private repos |
 | `NOTION_USE_MENTIONS`        | no       | `0` to disable internal-link → mention conversion (default: on) |
+| `NOTION_GUARDRAILS`          | no       | `strict` (default) \| `warn` \| `off` — overwrite protection for human-edited pages |
 | `NOTION_SYNC_MAP`            | no       | Path to JSON mapping top-level dirs → separate Notion roots |
 | `ABORT_POLICY`               | no       | `disabled` \| `1` \| `2` \| `3` \| `5` \| `10` (consecutive errors) |
 | `DRY_RUN`                    | no       | `1` = preview only                                  |

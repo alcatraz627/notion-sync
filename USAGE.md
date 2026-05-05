@@ -458,6 +458,89 @@ Drops Phase 2 per-page time from ~14s to ~5s. Useful for testing structural chan
 
 ---
 
+## 11.5. Overwrite guardrails + reconciliation
+
+`notion-sync` records a baseline (`last_edited_time`, parent, block count) for every page after each successful push and stores it in `.notion-sync-state.json`. Before the next push, every known page is checked against current Notion state. If divergence is detected, the page is **protected** — Phase 2 skips the write, the divergence is reported, and you resolve it explicitly.
+
+### What gets detected
+
+| Kind | Means | What's lost if you blindly overwrite |
+|---|---|---|
+| `user-edited` | A human (not the integration bot) edited the page after the last sync | The human's edits |
+| `moved` | The page's parent in Notion no longer matches the recorded baseline | The reorganization the human did |
+| `archived` | The page is in Notion's Trash | Nothing, but pushing creates a duplicate |
+| `benign-drift` | `last_edited_time` advanced but the bot is still the last editor | Soft warning only — auto-resolves on next push |
+
+A page can have **multiple** simultaneous kinds (e.g. `[moved, user-edited]`). The reconcile flow surfaces all of them.
+
+### Wizard knob
+
+The `sync.sh` wizard asks `🛡 Guardrails — protect human-edited Notion pages?` Three modes:
+
+| Mode | Behavior |
+|---|---|
+| `strict` (default) | Skip protected pages, list them at end of run, exit 0 (not error) |
+| `warn` | Print warnings but overwrite anyway — useful for first rollout |
+| `off` | Legacy behavior; no check |
+
+Set programmatically via `NOTION_GUARDRAILS=strict|warn|off`.
+
+### Reconcile workflow
+
+After a sync flags one or more pages, run:
+
+```bash
+bash sync.sh reconcile           # interactive walk through every protected page
+bash sync.sh reconcile <path>    # only this page (matches like --only)
+bash sync.sh reconcile --dry-run # preview decisions without mutating state
+```
+
+For each page, you'll get a kind-specific menu:
+
+| Kind | Options |
+|---|---|
+| `user-edited` | View diff first · Pull Notion → local · Keep local (overwrite Notion) · Skip |
+| `moved` | Accept the move · Move it back · Skip |
+| `moved-out` | Accept (drop from sync) · Re-create at original location · Skip |
+| `archived` | Accept the archive · Force-recreate at original location · Skip |
+
+Plus `← Back to previous page` (after the first page) and `✗ Cancel reconciliation` are always available.
+
+### What "reconcile" actually does
+
+- **Read-only safety**: every reconcile invocation re-checks live divergence first, so previously-resolved pages auto-skip.
+- **State-only resolutions** (`accept-move`, `accept-archive`) mutate `.notion-sync-state.json` directly — no Notion writes, immediate effect.
+- **Push-needed resolutions** (`force-overwrite`, `move-back`, `force-recreate`) print the exact `bash sync.sh ...` command for you to run; reconcile never auto-pushes.
+- **Pull-from-Notion** (the `Pull Notion → local` option for `user-edited`) is wired in PR 3 — current placeholder prints "use force-overwrite if you don't need the human's edits".
+- **Data-loss guard**: `move-back` and `force-recreate` re-check for human edits at apply-time. If a human edited the page after it was first flagged, the destructive command is blocked and the user is prompted to pick a different resolution.
+
+### CLI escape hatches (bypass the menu)
+
+If you know what you want, skip the interactive flow:
+
+```bash
+# Push local content over the human's edits
+bash sync.sh --no-wizard --only <stem> --force-overwrite <relPath>
+
+# Update baseline to accept Notion's current parent (no Notion write)
+bash sync.sh --no-wizard --accept-move <relPath>
+
+# Drop from sync state (next run won't re-create)
+bash sync.sh --no-wizard --accept-archive <relPath>
+```
+
+### Diagnosing a protected run
+
+```bash
+# Last run's protected pages
+tail -1 runs.jsonl | jq '.protected_pages'
+
+# Has any past run had protections?
+jq -c 'select(.protected_pages and (.protected_pages | length > 0)) | {run_id, count: (.protected_pages | length)}' runs.jsonl
+```
+
+---
+
 ## 12. Recipes & full command reference
 
 ### Common workflows
@@ -495,6 +578,13 @@ for p in d.get('pages',[])[:5]:
 | `--only <X> [Y...]` | Filter to specific section/file stems |
 | `--verbose` | Per-file output |
 | `--fix-mentions` | Skip sync, run mention-converter on cached pages |
+| `reconcile [path...]` | Subcommand: interactive guardrail resolution (see §11.5) |
+| `--guardrails strict\|warn\|off` | Override saved guardrail mode for this run |
+| `--force-overwrite <path>` | Per-page bypass: push local even if Notion was human-edited |
+| `--accept-move <path>` | Per-page: update baseline to accept Notion's current parent |
+| `--accept-archive <path>` | Per-page: drop from sync state |
+| `--seed-state` | After upgrade: record baselines for every existing page without writing content |
+| `--refresh-bot-id` | Force re-fetch of `notion.users.me().id` (cached 7 days) |
 
 ### `list.sh` subcommands
 
@@ -535,6 +625,7 @@ NOTION_USE_MENTIONS=1                    # internal links → mentions (default 
 NOTION_SHOW_META=1                       # frontmatter banner (default ON)
 NOTION_PAGE_ICON=📄                      # default emoji for icon-less pages
 NOTION_FOLDER_ICON=📁                    # default emoji for sections
+NOTION_GUARDRAILS=strict                 # strict | warn | off — overwrite protection (default: strict)
 ```
 
 Full env reference: see `.env.example`.
