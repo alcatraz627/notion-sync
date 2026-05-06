@@ -1556,6 +1556,7 @@ async function main(): Promise<void> {
         body = stripSyncFooter(body);
         body = stripBreadcrumbAndBanner(body);
         body = convertMentionTagsToLinks(body);
+        body = convertHtmlTablesToMarkdown(body);
         const merged = mergeWithLocalFrontmatter(localAbsPath, body);
         const tmp = `${localAbsPath}.notion-preview.tmp`;
         fs.writeFileSync(tmp, merged, "utf-8");
