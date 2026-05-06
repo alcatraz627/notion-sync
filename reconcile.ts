@@ -211,6 +211,26 @@ async function readStdinLine(): Promise<string | null> {
   return r.done ? null : r.value;
 }
 
+/** Yes/no confirm. Default applies on empty input or non-TTY. Uses gum if
+ *  available + interactive; otherwise falls back to readline. */
+async function confirmYN(prompt: string, defaultYes: boolean): Promise<boolean> {
+  const useGum = await gumAvailable();
+  if (useGum) {
+    const args = ["gum", "confirm", prompt, `--affirmative=${defaultYes ? "Yes" : "yes"}`, `--negative=${defaultYes ? "no" : "No"}`];
+    if (defaultYes) args.push("--default");
+    const proc = Bun.spawn(args, { stdin: "inherit", stdout: "inherit", stderr: "inherit" });
+    await proc.exited;
+    if (proc.exitCode === 130) return false; // ctrl-c
+    return proc.exitCode === 0;
+  }
+  // Readline fallback. Non-TTY → return default silently.
+  if (!process.stdin.isTTY) return defaultYes;
+  process.stdout.write(`${c.dim(prompt)} ${c.dim(defaultYes ? "[Y/n]" : "[y/N]")} `);
+  const ans = (await readStdinLine())?.trim();
+  if (ans == null || ans === "") return defaultYes;
+  return /^y(es)?$/i.test(ans);
+}
+
 async function readlineChoose(prompt: string, options: string[]): Promise<string | null> {
   console.log(c.dim(prompt));
   for (let i = 0; i < options.length; i++) console.log(`  ${i + 1}. ${options[i]}`);
@@ -278,6 +298,49 @@ function mergeWithLocalFrontmatter(localAbsPath: string, pulledBody: string): st
   const fmMatch = local.match(/^---\n[\s\S]*?\n---\n/);
   if (!fmMatch) return pulledBody;
   return fmMatch[0] + "\n" + pulledBody.replace(/^\n+/, "");
+}
+
+/** Read the existing frontmatter block (between `^---\n` and `\n---\n`) as
+ *  a raw string. Returns null if the file has no frontmatter or doesn't exist.
+ *  Cheap regex split — we don't parse YAML, just locate fields by line. */
+function readLocalFrontmatterBlock(localAbsPath: string): string | null {
+  if (!fs.existsSync(localAbsPath)) return null;
+  const local = fs.readFileSync(localAbsPath, "utf-8");
+  const fmMatch = local.match(/^---\n[\s\S]*?\n---\n/);
+  return fmMatch ? fmMatch[0] : null;
+}
+
+/** Pull a top-level scalar value from a frontmatter block by key (e.g. `icon`). */
+function getFrontmatterField(fm: string, key: string): string | null {
+  const m = fm.match(new RegExp(`^${key}:\\s*(.*)$`, "m"));
+  if (!m) return null;
+  return m[1].trim().replace(/^["']|["']$/g, ""); // strip optional quotes
+}
+
+/** Replace or insert a top-level scalar field in a frontmatter block. */
+function setFrontmatterField(fm: string, key: string, value: string): string {
+  const re = new RegExp(`^${key}:\\s*.*$`, "m");
+  if (re.test(fm)) return fm.replace(re, `${key}: ${value}`);
+  // Insert before the closing `---\n`. fm ends with `\n---\n`.
+  return fm.replace(/\n---\n$/, `\n${key}: ${value}\n---\n`);
+}
+
+/** Render Notion's icon object as a frontmatter-friendly scalar.
+ *  Returns null for unknown shapes (custom_emoji, file uploads — out of scope). */
+function notionIconToFrontmatter(icon: any): string | null {
+  if (!icon) return null;
+  if (icon.type === "emoji" && typeof icon.emoji === "string") return icon.emoji;
+  if (icon.type === "external" && icon.external?.url) return icon.external.url;
+  if (icon.type === "file" && icon.file?.url) return icon.file.url;
+  return null;
+}
+
+/** Render Notion's cover object as a frontmatter-friendly URL. */
+function notionCoverToFrontmatter(cover: any): string | null {
+  if (!cover) return null;
+  if (cover.type === "external" && cover.external?.url) return cover.external.url;
+  if (cover.type === "file" && cover.file?.url) return cover.file.url;
+  return null;
 }
 
 /** Returns true if `git status --porcelain <localPath>` is empty AND the path
@@ -350,12 +413,49 @@ async function pullPageToLocal(args: PullArgs): Promise<{ localAbsPath: string; 
     );
   }
 
-  // 5. Transform: strip our footer/banner, convert mention tags, merge frontmatter.
+  // 5. Transform: strip our footer/banner, convert mention tags.
   let body = result.markdown;
   body = stripSyncFooter(body);
   body = stripBreadcrumbAndBanner(body);
   body = convertMentionTagsToLinks(body);
-  const merged = mergeWithLocalFrontmatter(localAbsPath, body);
+
+  // 5b. Frontmatter merge with optional icon/cover prompt.
+  //
+  // Notion stores icon and cover as page metadata, not in the markdown
+  // body. If the local file's frontmatter has a different icon/cover
+  // than what's currently on the Notion page (e.g. a teammate set a
+  // new emoji in the UI), prompt before silently discarding the human's
+  // change. Default keeps local — matches existing v1.3 behavior; the
+  // prompt only fires when there's a real divergence.
+  let fm = readLocalFrontmatterBlock(localAbsPath);
+  const pageMetaForFm: any = await notion.pages.retrieve({ page_id: pageId }).catch(() => null);
+  if (fm && pageMetaForFm) {
+    const notionIcon = notionIconToFrontmatter(pageMetaForFm.icon);
+    const notionCover = notionCoverToFrontmatter(pageMetaForFm.cover);
+    const localIcon = getFrontmatterField(fm, "icon");
+    const localCover = getFrontmatterField(fm, "cover");
+    if (notionIcon && notionIcon !== localIcon) {
+      console.log(c.dim(`       Frontmatter divergence — icon: ${c.yellow(localIcon ?? "(none)")} (local) vs ${c.yellow(notionIcon)} (Notion)`));
+      const useNotion = await confirmYN(`       Use Notion's icon "${notionIcon}"?`, false);
+      if (useNotion) {
+        fm = setFrontmatterField(fm, "icon", notionIcon);
+        console.log(c.green(`       ✓ icon updated to Notion's value`));
+      }
+    }
+    if (notionCover && notionCover !== localCover) {
+      console.log(c.dim(`       Frontmatter divergence — cover: ${c.yellow(localCover ?? "(none)")} (local) vs ${c.yellow(notionCover)} (Notion)`));
+      const useNotion = await confirmYN(`       Use Notion's cover URL?`, false);
+      if (useNotion) {
+        fm = setFrontmatterField(fm, "cover", notionCover);
+        console.log(c.green(`       ✓ cover updated to Notion's value`));
+      }
+    }
+  }
+
+  // 5c. Stitch frontmatter onto the pulled body.
+  const merged = fm
+    ? fm + "\n" + body.replace(/^\n+/, "")
+    : body;
 
   // 6. Atomic write: tmp + rename.
   if (!fs.existsSync(path.dirname(localAbsPath))) {
@@ -367,11 +467,12 @@ async function pullPageToLocal(args: PullArgs): Promise<{ localAbsPath: string; 
 
   // 7. Post-pull baseline refresh — close the concurrent-edit window. Notion's
   //    last_edited_time may have advanced between our retrieveMarkdown and now;
-  //    record what's on the page right now as the new baseline.
+  //    record what's on the page right now as the new baseline. Reuses
+  //    pageMetaForFm if step 5b fetched it; otherwise re-fetches.
   let baselineRefreshed = false;
   try {
-    const meta: any = await notion.pages.retrieve({ page_id: pageId });
-    if (state.pages[page.path]) {
+    const meta: any = pageMetaForFm ?? await notion.pages.retrieve({ page_id: pageId });
+    if (meta && state.pages[page.path]) {
       state.pages[page.path].last_pushed_edited_time = meta.last_edited_time;
       state.pages[page.path].last_pushed_at = new Date().toISOString();
       saveState(state);
@@ -483,18 +584,41 @@ async function applyResolution(
   }
 
   if (choice === "accept-archive") {
-    // Drop the doc from sync-state. The local file is left alone — the user
-    // can `git rm` it explicitly. (PR 4 polish: prompt to remove local file.)
+    // Drop the doc from sync-state, then optionally drop the local file too.
+    // Default keeps the local file (safe — git history recovers it) but
+    // offers the prompt so users don't have to break out of the flow.
     if (!state.pages[page.path]) {
       return { ...empty, warning: `No baseline recorded for ${page.path} — accept-archive has no effect` };
     }
-    if (dryRun) return { ...empty, warning: "[dry-run] would drop baseline + leave local file (use `git rm` to remove)" };
+    if (dryRun) return { ...empty, warning: "[dry-run] would drop baseline + (with confirmation) delete local file" };
     delete state.pages[page.path];
     saveState(state);
+
+    const docsDir = process.env.DOCS_DIR ?? path.join(__dirname, "docs");
+    const localAbsPath = path.join(docsDir, page.path);
+    let deletedLocal = false;
+    if (fs.existsSync(localAbsPath)) {
+      const wantDelete = await confirmYN(
+        `       Notion page archived. Also delete the local file (docs/${page.path})?`,
+        false,
+      );
+      if (wantDelete) {
+        try {
+          fs.unlinkSync(localAbsPath);
+          deletedLocal = true;
+          console.log(c.green(`       ✓ Deleted ${path.relative(process.cwd(), localAbsPath)}`));
+        } catch (err: any) {
+          console.error(c.yellow(`       ⚠ Could not delete local file: ${err.message?.slice(0, 80)}`));
+        }
+      }
+    }
+
     return {
       ...empty,
       mutatedState: true,
-      warning: `Local file ${page.path} preserved. Run \`git rm docs/${page.path}\` to remove it from the repo.`,
+      warning: deletedLocal
+        ? `Baseline dropped and local file deleted. Commit the deletion when ready.`
+        : `Baseline dropped. Local file ${page.path} preserved. Run \`git rm docs/${page.path}\` to remove it later.`,
     };
   }
 
