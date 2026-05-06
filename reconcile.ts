@@ -1109,15 +1109,22 @@ async function main(): Promise<void> {
             chosenTool = "inline"; // no local file to diff against
           } else {
             const tools = await detectDiffTools();
+            // Build labels with ANSI dim'd hints, but resolve the user's
+            // pick by matching against the plain label prefix — gum strips
+            // ANSI codes from its echoed selection, so labels.indexOf(pick)
+            // can't find the original string.
             const labels = tools.map(t => `${t.label}  ${c.dim("· " + t.hint)}`);
+            const stripAnsi = (s: string) => s.replace(/\x1b\[[0-9;]*m/g, "");
             const useGum = await gumAvailable();
             const pick = useGum
               ? await gumChoose("       View diff with:", labels)
               : await readlineChoose("       View diff with:", labels);
-            if (pick === null) { chosenTool = "git"; }
-            else {
-              const idx = labels.indexOf(pick);
-              chosenTool = idx >= 0 ? tools[idx].tool : "git";
+            if (pick === null) {
+              chosenTool = "git";
+            } else {
+              const pickPlain = stripAnsi(pick).trim();
+              const matched = tools.find(t => pickPlain.startsWith(t.label));
+              chosenTool = matched ? matched.tool : "git";
             }
           }
           await renderDiffWith(chosenTool, localAbsPath, tmp, merged);
