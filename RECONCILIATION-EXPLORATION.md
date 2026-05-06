@@ -1,6 +1,14 @@
 # Reconciliation Flow — Design Exploration
 
-> **Status:** v2 — all four PRs done (2026-05-06). PR 1 ✓, PR 2 ✓, PR 3 ✓ pull path, PR 4 ✓ auto-prompt + `/sync-all` integration + USAGE.md tutorial.
+> **Status:** v2 — all four PRs done (2026-05-06). PR 1 ✓, PR 2 ✓, PR 3 ✓ pull path, PR 4 ✓ auto-prompt + `/sync-all` integration + USAGE.md tutorial. Plus follow-up polish (frontmatter merge prompt + accept-archive delete-local prompt) shipped same day.
+
+## Outstanding — todo for later
+
+| # | Item | Why deferred | Cost |
+|---|---|---|---|
+| 1 | **Live interactive smoke-test** of the auto-prompt + frontmatter-merge prompt + accept-archive delete-local prompt against a real human-edit on a Notion page | Type-checks pass and helpers were unit-tested individually, but the gum widget rendering, `[Y/n]` default behavior, and ctrl-c handling haven't been confirmed visually end-to-end. Needs an actual divergence to fire (or the bot-id tampering trick from `scripts/simulate-human-edit.ts`). | ~5 min interactive |
+| 2 | **Duplicate-from-archive recovery** | Open question #7. v1 just pushes again; the duplicate stays. Future mini-spec needed to design the cleanup flow. | Medium — needs its own design |
+| 3 | **`mode_dashboard` `\|\|` chain + index-db inclusion** | ✓ Shipped 2026-05-06 (separate from reconcile but same line of work). |
 > **Builds on:** [OVERWRITE-GUARDRAILS-EXPLORATION.md](OVERWRITE-GUARDRAILS-EXPLORATION.md) — guardrails ship the divergence detection; this spec ships what the user does about it.
 > **Verdict:** Approved post-review (see §"Review Outcome" below).
 

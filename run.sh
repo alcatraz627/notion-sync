@@ -133,6 +133,11 @@ phase_health() {
   bash list.sh health
 }
 
+phase_index_db() {
+  _h "▶ Doc Index DB (list.sh index-db)"
+  bash list.sh index-db
+}
+
 phase_prune_dry() {
   _h "▶ Prune orphans — DRY RUN (list.sh prune)"
   bash list.sh prune
@@ -174,13 +179,29 @@ mode_check() {
 }
 
 mode_dashboard() {
-  phase_sitemap
-  phase_tag_index
-  phase_backlinks
-  phase_recent_feed
-  phase_health
+  # Chain phases with || so one failure doesn't strand the rest. Notion 504s
+  # on a large tag-index wipe used to abort the whole dashboard run, leaving
+  # backlinks / recent-feed / health unrun. Now each phase reports
+  # independently and the mode finishes with a list of any that failed.
+  #
+  # index-db is included here (was previously only callable via
+  # `bash list.sh index-db` — the SKILL.md description claimed all 6
+  # dashboards ran, but the actual mode skipped index-db).
+  local failed=()
+  phase_sitemap     || failed+=("sitemap")
+  phase_tag_index   || failed+=("tag-index")
+  phase_index_db    || failed+=("index-db")
+  phase_backlinks   || failed+=("backlinks")
+  phase_recent_feed || failed+=("recent-feed")
+  phase_health      || failed+=("health")
   echo ""
-  _h "✓ dashboard complete"
+  if [ ${#failed[@]} -eq 0 ]; then
+    _h "✓ dashboard complete (6/6)"
+  else
+    _h "⚠ dashboard partial — failed: ${failed[*]}"
+    echo "    retry individually: bash list.sh ${failed[0]}${failed[1]:+ # then $(printf '%s ' "${failed[@]:1}")}" >&2
+    return 1
+  fi
 }
 
 mode_prune() {

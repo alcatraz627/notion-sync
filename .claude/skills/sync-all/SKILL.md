@@ -67,17 +67,23 @@ The bring-up sequence is:
 
 ---
 
-## Phase 2 — Run remaining dashboards (~3-5 min)
+## Phase 2 — Run remaining dashboards (~5-8 min)
 
-`bring-up` doesn't include backlinks, recent-feed, or health. Run them with:
+`bring-up` covers sitemap + tag-index. `dashboard` mode runs all six
+dashboards (sitemap + tag-index + index-db + backlinks + recent-feed + health),
+chaining phases via `||` so one failure doesn't strand the rest. Run with:
 
 ```bash
 bash run.sh dashboard 2>&1 | tee /tmp/sync-all-dashboard.log
 ```
 
-(`dashboard` mode runs sitemap + tag-index again, but they're idempotent and
-fast to re-render — the cost is paid for the three new ones: backlinks,
-recent-feed, health.)
+`sitemap` and `tag-index` re-run from `bring-up` but they're idempotent and
+fast to re-render. The real cost is paid for index-db (heavy DB upsert),
+backlinks (graph walk), recent-feed, and health.
+
+If `bash run.sh dashboard` reports "⚠ dashboard partial — failed: …",
+those phases need individual retry via `bash list.sh <phase>`. Don't
+re-run the whole dashboard mode for a single failure.
 
 If the user has signaled "skip dashboards" or "just push", skip this phase.
 

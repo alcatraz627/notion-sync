@@ -16,7 +16,7 @@ bash run.sh push              # = bash sync.sh
 bash run.sh push:full         # push + fetch + diff + recent-errors + sitemap
 bash run.sh fix               # fix-mentions + recent-errors
 bash run.sh check             # read-only verification
-bash run.sh dashboard         # refresh sitemap + tag-index + backlinks + recent-feed + health
+bash run.sh dashboard         # refresh sitemap + tag-index + index-db + backlinks + recent-feed + health (phases chain via || — one failure won't strand the rest)
 bash run.sh bring-up          # full first-time bring-up sequence
 bash run.sh prune             # list orphan Notion pages (dry run; --apply to archive)
 ```
