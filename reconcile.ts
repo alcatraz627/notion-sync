@@ -268,7 +268,13 @@ async function xcodeFullInstalled(): Promise<boolean> {
 
 /** Render the diff between local and pulled-tempfile using the chosen tool.
  *  Tool dispatcher — each branch self-contained. */
-async function renderDiffWith(tool: DiffTool, localPath: string, tmpPath: string, mergedContent: string): Promise<void> {
+interface DiffResult {
+  /** Browser merge mode wrote the local file. Caller should refresh baseline +
+   *  treat the page as resolved (skip the menu re-prompt). */
+  savedMerge?: boolean;
+}
+
+async function renderDiffWith(tool: DiffTool, localPath: string, tmpPath: string, mergedContent: string): Promise<DiffResult> {
   switch (tool) {
     case "git": {
       const proc = Bun.spawn(
@@ -277,7 +283,7 @@ async function renderDiffWith(tool: DiffTool, localPath: string, tmpPath: string
       );
       await proc.exited;
       // git diff exits 1 when files differ — normal.
-      return;
+      return {};
     }
     case "code": {
       // VS Code returns immediately after opening; we don't await the user's
@@ -287,7 +293,7 @@ async function renderDiffWith(tool: DiffTool, localPath: string, tmpPath: string
       });
       console.log(c.dim(`       Opened in VS Code (close the diff tab to continue)…`));
       await proc.exited;
-      return;
+      return {};
     }
     case "opendiff": {
       const proc = Bun.spawn(["opendiff", localPath, tmpPath], {
@@ -295,14 +301,13 @@ async function renderDiffWith(tool: DiffTool, localPath: string, tmpPath: string
       });
       console.log(c.dim(`       Opened in FileMerge (close the window to continue)…`));
       await proc.exited;
-      return;
+      return {};
     }
     case "browser": {
-      // Generate a unified diff with word-level markers via:
-      //   git diff --no-color --no-index --word-diff=plain -U99999
-      // -U99999 = full file context (no skipped hunks); --word-diff=plain
-      // emits inline [-removed-]{+added+} markers within changed lines.
-      // Parse, render as HTML with theme toggle + line/char highlights.
+      // Generate diff via git, render rich HTML with three views (unified,
+      // side-by-side, merge). Serve from a tiny Bun.serve on a random port
+      // so the merge editor's Save button can POST back to /save without
+      // CORS hassles. Server stops once the user saves or cancels.
       let diffOutput = "";
       const proc = Bun.spawn(
         ["git", "--no-pager", "diff", "--no-color", "--no-index", "--word-diff=plain", "-U99999", localPath, tmpPath],
@@ -310,15 +315,22 @@ async function renderDiffWith(tool: DiffTool, localPath: string, tmpPath: string
       );
       diffOutput = await new Response(proc.stdout).text();
       await proc.exited;
-      // git diff exits 1 when files differ — that's normal here.
-      const html = renderDiffHtml(localPath, diffOutput, mergedContent);
-      const out = `/tmp/notion-sync-diff-${Date.now()}.html`;
-      fs.writeFileSync(out, html, "utf-8");
-      const opener = (await binAvailable("open")) ? "open" : "xdg-open";
-      const open = Bun.spawn([opener, out], { stdin: "ignore", stdout: "ignore", stderr: "ignore" });
-      await open.exited;
-      console.log(c.dim(`       Opened ${out} in your default browser.`));
-      return;
+      const localContent = fs.existsSync(localPath) ? fs.readFileSync(localPath, "utf-8") : "";
+      const result = await runBrowserDiffServer({
+        localPath,
+        localContent,
+        notionContent: mergedContent,
+        diffOutput,
+      });
+      if (result === "saved") {
+        console.log(c.green(`       ✓ Merged content saved to ${path.relative(process.cwd(), localPath)}`));
+        return { savedMerge: true };
+      } else if (result === "cancelled") {
+        console.log(c.dim(`       (browser session cancelled — local file unchanged)`));
+      } else {
+        console.log(c.dim(`       (browser session timed out — local file unchanged)`));
+      }
+      return {};
     }
     case "inline": {
       const a = fs.existsSync(localPath) ? fs.readFileSync(localPath, "utf-8").split("\n") : [];
@@ -329,9 +341,76 @@ async function renderDiffWith(tool: DiffTool, localPath: string, tmpPath: string
         if (a[k] !== undefined) console.log(c.red(`- ${a[k]}`));
         if (b[k] !== undefined) console.log(c.green(`+ ${b[k]}`));
       }
-      return;
+      return {};
     }
   }
+}
+
+// ── Browser-diff server ─────────────────────────────────────────────────────
+//
+// When the user picks the "Browser" diff tool, reconcile starts a tiny
+// Bun.serve on a random port that serves the diff HTML AND handles the
+// merge editor's save button. The same-origin POST avoids CORS headaches.
+// Server stops as soon as the user saves, cancels, or hits the timeout.
+
+interface BrowserDiffArgs {
+  localPath: string;
+  localContent: string;
+  notionContent: string;
+  diffOutput: string;
+}
+
+const BROWSER_DIFF_TIMEOUT_MS = 30 * 60 * 1000; // 30 minutes
+
+async function runBrowserDiffServer(args: BrowserDiffArgs): Promise<"saved" | "cancelled" | "timeout"> {
+  const { localPath, localContent, notionContent, diffOutput } = args;
+  let outcome: "saved" | "cancelled" | "timeout" | null = null;
+
+  const server = Bun.serve({
+    port: 0,
+    hostname: "127.0.0.1",
+    fetch: async (req) => {
+      const url = new URL(req.url);
+      if (url.pathname === "/" || url.pathname === "/index.html") {
+        const html = renderDiffHtml(localPath, diffOutput, localContent, notionContent);
+        return new Response(html, { headers: { "content-type": "text/html; charset=utf-8" } });
+      }
+      if (url.pathname === "/save" && req.method === "POST") {
+        try {
+          const text = await req.text();
+          const tmp = `${localPath}.merge.${process.pid}.tmp`;
+          fs.writeFileSync(tmp, text, "utf-8");
+          fs.renameSync(tmp, localPath);
+          outcome = "saved";
+          return new Response("saved", { status: 200 });
+        } catch (err: any) {
+          return new Response(`save failed: ${err.message}`, { status: 500 });
+        }
+      }
+      if (url.pathname === "/cancel") {
+        outcome = "cancelled";
+        return new Response("cancelled", { status: 200 });
+      }
+      return new Response("not found", { status: 404 });
+    },
+  });
+
+  const url = `http://127.0.0.1:${server.port}/`;
+  const opener = (await binAvailable("open")) ? "open" : "xdg-open";
+  Bun.spawn([opener, url], { stdin: "ignore", stdout: "ignore", stderr: "ignore" });
+  console.log(c.dim(`       Opened ${url} — choose Unified / Side-by-side / Merge in the browser.`));
+  console.log(c.dim(`       Reconcile is paused; will resume after you click Save or Cancel (timeout 30 min).`));
+
+  // Poll for outcome with bounded wait. Avoids hanging reconcile if user
+  // closes the browser without clicking anything.
+  const deadline = Date.now() + BROWSER_DIFF_TIMEOUT_MS;
+  while (outcome === null && Date.now() < deadline) {
+    await new Promise(r => setTimeout(r, 200));
+  }
+  // Give the response a moment to flush before stopping the server.
+  await new Promise(r => setTimeout(r, 100));
+  server.stop(true);
+  return outcome ?? "timeout";
 }
 
 /** Parse `git diff --word-diff=plain` output into a renderable structure.
@@ -343,92 +422,144 @@ async function renderDiffWith(tool: DiffTool, localPath: string, tmpPath: string
  *    - removed:  starts with "-" (full-line removal)
  *  We render each as an HTML row with line-level color + inline <ins>/<del>
  *  for the word-level highlights. */
-function renderDiffHtml(localName: string, diffOutput: string, notionContent: string): string {
+type DiffRow = { kind: "context" | "added" | "removed" | "changed" | "hunk" | "header"; html: string; raw: string };
+
+/** Parse word-diff output into typed rows shared by all three views. */
+function parseDiffOutput(diffOutput: string): DiffRow[] {
   const escape = (s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
-  const title = `Reconcile diff — ${path.basename(localName)}`;
-
-  type Row = { kind: "context" | "added" | "removed" | "changed" | "hunk" | "header"; html: string };
-  const rows: Row[] = [];
-
-  const lines = diffOutput.split("\n");
+  const rows: DiffRow[] = [];
   let inHeader = true;
-  for (const raw of lines) {
+  for (const raw of diffOutput.split("\n")) {
     if (raw.length === 0) continue;
     if (inHeader) {
-      // git emits headers like:  diff --git ..., index ..., --- a/..., +++ b/...
-      if (raw.startsWith("@@")) {
-        inHeader = false;
-        rows.push({ kind: "hunk", html: escape(raw) });
-        continue;
-      }
+      if (raw.startsWith("@@")) { inHeader = false; rows.push({ kind: "hunk", html: escape(raw), raw }); continue; }
       if (raw.startsWith("diff ") || raw.startsWith("index ") || raw.startsWith("--- ") || raw.startsWith("+++ ")) {
-        rows.push({ kind: "header", html: escape(raw) });
+        rows.push({ kind: "header", html: escape(raw), raw });
         continue;
       }
-      // Stray pre-hunk noise — skip
       continue;
     }
-    if (raw.startsWith("@@")) { rows.push({ kind: "hunk", html: escape(raw) }); continue; }
-
-    // Word-diff format: each line either has [-...-]/{+...+} markers (changed),
-    // or a leading + (added line), or leading - (removed line), or a leading
-    // space / no marker (context).
+    if (raw.startsWith("@@")) { rows.push({ kind: "hunk", html: escape(raw), raw }); continue; }
     const hasDel = raw.includes("[-");
     const hasIns = raw.includes("{+");
-    const startsWithPlus  = raw.startsWith("+");
-    const startsWithMinus = raw.startsWith("-");
-
     if (hasDel || hasIns) {
-      // Inline word-level changes within a context line. Render with
-      // <del>/<ins> highlights.
-      const renderInline = (s: string): string => {
-        // Replace markers with HTML. Need to escape OUTSIDE the markers
-        // separately from inside, since inside should also be escaped but
-        // wrapped in tags.
-        let out = "";
-        let i = 0;
-        while (i < s.length) {
-          if (s.startsWith("[-", i)) {
-            const end = s.indexOf("-]", i + 2);
-            if (end < 0) { out += escape(s.slice(i)); break; }
-            out += `<del>${escape(s.slice(i + 2, end))}</del>`;
-            i = end + 2;
-          } else if (s.startsWith("{+", i)) {
-            const end = s.indexOf("+}", i + 2);
-            if (end < 0) { out += escape(s.slice(i)); break; }
-            out += `<ins>${escape(s.slice(i + 2, end))}</ins>`;
-            i = end + 2;
-          } else {
-            // Find next marker
-            const nextDel = s.indexOf("[-", i);
-            const nextIns = s.indexOf("{+", i);
-            const next = [nextDel, nextIns].filter(n => n >= 0).sort((a,b) => a - b)[0] ?? s.length;
-            out += escape(s.slice(i, next));
-            i = next;
-          }
+      let out = "";
+      let i = 0;
+      while (i < raw.length) {
+        if (raw.startsWith("[-", i)) {
+          const end = raw.indexOf("-]", i + 2);
+          if (end < 0) { out += escape(raw.slice(i)); break; }
+          out += `<del>${escape(raw.slice(i + 2, end))}</del>`;
+          i = end + 2;
+        } else if (raw.startsWith("{+", i)) {
+          const end = raw.indexOf("+}", i + 2);
+          if (end < 0) { out += escape(raw.slice(i)); break; }
+          out += `<ins>${escape(raw.slice(i + 2, end))}</ins>`;
+          i = end + 2;
+        } else {
+          const nextDel = raw.indexOf("[-", i);
+          const nextIns = raw.indexOf("{+", i);
+          const next = [nextDel, nextIns].filter(n => n >= 0).sort((a, b) => a - b)[0] ?? raw.length;
+          out += escape(raw.slice(i, next));
+          i = next;
         }
-        return out;
-      };
-      rows.push({ kind: "changed", html: renderInline(raw) });
+      }
+      rows.push({ kind: "changed", html: out, raw });
       continue;
     }
-    if (startsWithPlus)  { rows.push({ kind: "added",   html: escape(raw.slice(1)) }); continue; }
-    if (startsWithMinus) { rows.push({ kind: "removed", html: escape(raw.slice(1)) }); continue; }
-    // Context line — strip leading space if present
-    rows.push({ kind: "context", html: escape(raw.startsWith(" ") ? raw.slice(1) : raw) });
+    if (raw.startsWith("+")) { rows.push({ kind: "added",   html: escape(raw.slice(1)), raw }); continue; }
+    if (raw.startsWith("-")) { rows.push({ kind: "removed", html: escape(raw.slice(1)), raw }); continue; }
+    rows.push({ kind: "context", html: escape(raw.startsWith(" ") ? raw.slice(1) : raw), raw });
   }
+  return rows;
+}
 
-  const body = rows.map(r => `<tr class="${r.kind}"><td class="gutter"></td><td class="line">${r.html || "&nbsp;"}</td></tr>`).join("\n");
+/** Build the unified-view <tr> rows. */
+function buildUnifiedBody(rows: DiffRow[]): string {
+  return rows.map(r => `<tr class="${r.kind}"><td class="gutter"></td><td class="line">${r.html || "&nbsp;"}</td></tr>`).join("\n");
+}
 
-  // Stats for the header
-  const stats = {
-    added: rows.filter(r => r.kind === "added").length,
-    removed: rows.filter(r => r.kind === "removed").length,
-    changed: rows.filter(r => r.kind === "changed").length,
+/** Build side-by-side <tr> rows. Each logical row spans two columns. For
+ *  word-changed lines, left shows del-only (deletions visible, insertions
+ *  stripped); right shows ins-only. For pure-add: empty left, content right.
+ *  For pure-remove: content left, empty right. */
+function buildSideBySideBody(rows: DiffRow[]): string {
+  const escape = (s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  const stripIns = (raw: string) => raw.replace(/\{\+([^]*?)\+\}/g, "");
+  const stripDel = (raw: string) => raw.replace(/\[-([^]*?)-\]/g, "");
+  const renderSide = (raw: string, side: "left" | "right"): string => {
+    // For changed lines, render only the markers relevant to this side.
+    let out = "";
+    let i = 0;
+    while (i < raw.length) {
+      if (raw.startsWith("[-", i)) {
+        const end = raw.indexOf("-]", i + 2);
+        if (end < 0) break;
+        if (side === "left") out += `<del>${escape(raw.slice(i + 2, end))}</del>`;
+        i = end + 2;
+      } else if (raw.startsWith("{+", i)) {
+        const end = raw.indexOf("+}", i + 2);
+        if (end < 0) break;
+        if (side === "right") out += `<ins>${escape(raw.slice(i + 2, end))}</ins>`;
+        i = end + 2;
+      } else {
+        const nextDel = raw.indexOf("[-", i);
+        const nextIns = raw.indexOf("{+", i);
+        const next = [nextDel, nextIns].filter(n => n >= 0).sort((a, b) => a - b)[0] ?? raw.length;
+        out += escape(raw.slice(i, next));
+        i = next;
+      }
+    }
+    return out || "&nbsp;";
   };
+  return rows.map(r => {
+    if (r.kind === "header") return ""; // hidden
+    if (r.kind === "hunk") return `<tr class="hunk"><td colspan="2">${r.html}</td></tr>`;
+    if (r.kind === "context") {
+      return `<tr class="context"><td class="line left">${r.html || "&nbsp;"}</td><td class="line right">${r.html || "&nbsp;"}</td></tr>`;
+    }
+    if (r.kind === "added") {
+      return `<tr><td class="line empty"></td><td class="line right added">${r.html || "&nbsp;"}</td></tr>`;
+    }
+    if (r.kind === "removed") {
+      return `<tr><td class="line left removed">${r.html || "&nbsp;"}</td><td class="line empty"></td></tr>`;
+    }
+    if (r.kind === "changed") {
+      // Pure-add lines (`{+full line+}`) render as empty-left/added-right.
+      // Pure-remove lines (`[-full line-]`) render as removed-left/empty-right.
+      // Mixed: both sides show same line with appropriate inline highlights.
+      const stripped = stripIns(stripDel(r.raw));
+      if (stripped.trim() === "") {
+        const isPureAdd = !r.raw.includes("[-");
+        const isPureRem = !r.raw.includes("{+");
+        if (isPureAdd) return `<tr><td class="line empty"></td><td class="line right added">${renderSide(r.raw, "right")}</td></tr>`;
+        if (isPureRem) return `<tr><td class="line left removed">${renderSide(r.raw, "left")}</td><td class="line empty"></td></tr>`;
+      }
+      return `<tr class="changed"><td class="line left">${renderSide(r.raw, "left")}</td><td class="line right">${renderSide(r.raw, "right")}</td></tr>`;
+    }
+    return "";
+  }).join("\n");
+}
+
+function renderDiffHtml(localName: string, diffOutput: string, localContent: string, notionContent: string): string {
+  const escape = (s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  const title = `Reconcile — ${path.basename(localName)}`;
+
+  const rows = parseDiffOutput(diffOutput);
+  const unifiedBody = buildUnifiedBody(rows);
+  const sxsBody = buildSideBySideBody(rows);
+  const stats = {
+    added:   rows.filter(r => r.kind === "added").length   + rows.filter(r => r.kind === "changed" && r.raw.includes("{+") && !r.raw.includes("[-")).length,
+    removed: rows.filter(r => r.kind === "removed").length + rows.filter(r => r.kind === "changed" && r.raw.includes("[-") && !r.raw.includes("{+")).length,
+    changed: rows.filter(r => r.kind === "changed" && r.raw.includes("[-") && r.raw.includes("{+")).length,
+  };
+  // The merge view starts pre-populated with local content. User edits toward
+  // their desired final state, then clicks Save.
+  const localJsonSafe = JSON.stringify(localContent);
+  const notionJsonSafe = JSON.stringify(notionContent);
 
   return `<!doctype html>
-<html lang="en" data-theme="dark"><head><meta charset="utf-8"><title>${escape(title)}</title>
+<html lang="en" data-theme="dark" data-mode="unified"><head><meta charset="utf-8"><title>${escape(title)}</title>
 <style>
   :root[data-theme="dark"] {
     --bg: #0e1116; --fg: #d0d6e0; --fg-dim: #5c6675;
@@ -439,6 +570,11 @@ function renderDiffHtml(localName: string, diffOutput: string, notionContent: st
     --del-inline-bg: #6b2a2a; --del-inline-fg: #ffffff;
     --header-bg: #161a22; --gutter-bg: #161a22;
     --button-bg: #1f2530; --button-fg: #d0d6e0; --button-border: #2a2f3a;
+    --button-active-bg: #2a3344; --button-active-fg: #a8c8f0;
+    --pane-label-bg: #1a1f2a; --pane-label-fg: #8aa8d6;
+    --textarea-bg: #0e1116; --textarea-fg: #d0d6e0;
+    --save-bg: #1a7f37; --save-fg: #ffffff; --save-hover: #2ea043;
+    --cancel-bg: #1f2530; --cancel-fg: #f99090;
   }
   :root[data-theme="light"] {
     --bg: #ffffff; --fg: #24292f; --fg-dim: #6e7781;
@@ -449,59 +585,176 @@ function renderDiffHtml(localName: string, diffOutput: string, notionContent: st
     --del-inline-bg: #ffaba8; --del-inline-fg: #82071e;
     --header-bg: #f6f8fa; --gutter-bg: #f6f8fa;
     --button-bg: #f6f8fa; --button-fg: #24292f; --button-border: #d0d7de;
+    --button-active-bg: #ddf4ff; --button-active-fg: #0969da;
+    --pane-label-bg: #f6f8fa; --pane-label-fg: #57606a;
+    --textarea-bg: #ffffff; --textarea-fg: #24292f;
+    --save-bg: #1a7f37; --save-fg: #ffffff; --save-hover: #116329;
+    --cancel-bg: #f6f8fa; --cancel-fg: #cf222e;
   }
-  body { font: 13px/1.45 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; margin: 0; padding: 0; background: var(--bg); color: var(--fg); }
-  header { display: flex; justify-content: space-between; align-items: center; padding: 10px 16px; background: var(--header-bg); border-bottom: 1px solid var(--border); }
+  html, body { height: 100%; }
+  body { font: 13px/1.45 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; margin: 0; padding: 0; background: var(--bg); color: var(--fg); display: flex; flex-direction: column; }
+  header { display: flex; justify-content: space-between; align-items: center; padding: 10px 16px; background: var(--header-bg); border-bottom: 1px solid var(--border); flex-shrink: 0; }
   h1 { font-size: 13px; margin: 0; font-weight: 600; }
   h1 .file { color: var(--fg-dim); font-weight: 400; }
+  .controls { display: flex; gap: 16px; align-items: center; }
   .stats { display: flex; gap: 12px; font-size: 11px; }
   .stats .added { color: var(--add-marker); }
   .stats .removed { color: var(--del-marker); }
   .stats .changed { color: var(--hunk-fg); }
-  button#theme { background: var(--button-bg); color: var(--button-fg); border: 1px solid var(--button-border); padding: 4px 10px; border-radius: 4px; font: inherit; cursor: pointer; }
-  button#theme:hover { background: var(--border); }
-  .diff { padding: 0; }
+  .modes { display: flex; gap: 0; border: 1px solid var(--button-border); border-radius: 4px; overflow: hidden; }
+  .modes button { background: var(--button-bg); color: var(--button-fg); border: 0; border-right: 1px solid var(--button-border); padding: 4px 12px; font: inherit; cursor: pointer; }
+  .modes button:last-child { border-right: 0; }
+  .modes button.active { background: var(--button-active-bg); color: var(--button-active-fg); }
+  .modes button:hover:not(.active) { background: var(--border); }
+  button.theme { background: var(--button-bg); color: var(--button-fg); border: 1px solid var(--button-border); padding: 4px 10px; border-radius: 4px; font: inherit; cursor: pointer; }
+  button.theme:hover { background: var(--border); }
+
+  /* Views — only one visible based on data-mode */
+  .view { display: none; flex: 1; min-height: 0; overflow: auto; }
+  :root[data-mode="unified"] .view-unified { display: block; }
+  :root[data-mode="sxs"] .view-sxs { display: block; }
+  :root[data-mode="merge"] .view-merge { display: flex; }
+
+  /* Tables (unified + sxs) */
   table { border-collapse: collapse; width: 100%; font: 12px/1.5 ui-monospace, "SF Mono", Menlo, monospace; }
   td.gutter { width: 40px; padding: 0 8px; text-align: right; color: var(--fg-dim); user-select: none; background: var(--gutter-bg); border-right: 1px solid var(--border); }
-  td.line { padding: 0 12px; white-space: pre-wrap; word-break: break-word; }
-  tr.context { background: var(--bg); }
-  tr.added { background: var(--add-bg); color: var(--add-fg); }
-  tr.added td.gutter::after { content: "+"; color: var(--add-marker); }
-  tr.removed { background: var(--del-bg); color: var(--del-fg); }
-  tr.removed td.gutter::after { content: "−"; color: var(--del-marker); }
-  tr.changed { background: var(--bg); }
-  tr.changed td.gutter::after { content: "~"; color: var(--hunk-fg); }
-  tr.hunk { background: var(--hunk-bg); color: var(--hunk-fg); }
-  tr.hunk td { padding: 6px 12px; font-weight: 600; }
-  tr.header { display: none; }
+  td.line { padding: 0 12px; white-space: pre-wrap; word-break: break-word; vertical-align: top; }
+  td.line.empty { background: var(--gutter-bg); }
+  td.line.left.removed, td.line.right.added, tr.added > td, tr.removed > td { /* see specific rules below */ }
+  /* Unified view */
+  .view-unified tr.context { background: var(--bg); }
+  .view-unified tr.added { background: var(--add-bg); color: var(--add-fg); }
+  .view-unified tr.added td.gutter::after { content: "+"; color: var(--add-marker); }
+  .view-unified tr.removed { background: var(--del-bg); color: var(--del-fg); }
+  .view-unified tr.removed td.gutter::after { content: "−"; color: var(--del-marker); }
+  .view-unified tr.changed { background: var(--bg); }
+  .view-unified tr.changed td.gutter::after { content: "~"; color: var(--hunk-fg); }
+  .view-unified tr.hunk { background: var(--hunk-bg); color: var(--hunk-fg); }
+  .view-unified tr.hunk td { padding: 6px 12px; font-weight: 600; }
+  .view-unified tr.header { display: none; }
+  /* Side-by-side */
+  .view-sxs td.line { width: 50%; border-right: 1px solid var(--border); }
+  .view-sxs td.line.right { border-right: 0; }
+  .view-sxs td.line.left.removed { background: var(--del-bg); color: var(--del-fg); }
+  .view-sxs td.line.right.added  { background: var(--add-bg); color: var(--add-fg); }
+  .view-sxs tr.changed td.line.left  { background: color-mix(in srgb, var(--del-bg) 50%, var(--bg) 50%); }
+  .view-sxs tr.changed td.line.right { background: color-mix(in srgb, var(--add-bg) 50%, var(--bg) 50%); }
+  .view-sxs tr.hunk { background: var(--hunk-bg); color: var(--hunk-fg); }
+  .view-sxs tr.hunk td { padding: 6px 12px; font-weight: 600; }
+  /* Merge view */
+  .view-merge { padding: 12px; gap: 12px; }
+  .pane { flex: 1; display: flex; flex-direction: column; min-width: 0; min-height: 0; border: 1px solid var(--border); border-radius: 6px; overflow: hidden; }
+  .pane h2 { font-size: 11px; margin: 0; padding: 8px 12px; background: var(--pane-label-bg); color: var(--pane-label-fg); border-bottom: 1px solid var(--border); font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; }
+  .pane.local h2  { color: var(--del-marker); }
+  .pane.merge h2  { color: var(--hunk-fg); }
+  .pane.notion h2 { color: var(--add-marker); }
+  .pane textarea { flex: 1; border: 0; resize: none; padding: 12px; font: 12px/1.5 ui-monospace, "SF Mono", Menlo, monospace; background: var(--textarea-bg); color: var(--textarea-fg); }
+  .pane textarea:focus { outline: none; box-shadow: inset 0 0 0 2px var(--hunk-fg); }
+  .pane.merge textarea { background: var(--bg); }
+  .merge-actions { display: flex; gap: 8px; padding: 8px 12px; background: var(--pane-label-bg); border-top: 1px solid var(--border); }
+  .merge-actions button { padding: 6px 14px; border: 0; border-radius: 4px; font: inherit; cursor: pointer; }
+  .merge-actions button.save { background: var(--save-bg); color: var(--save-fg); font-weight: 600; }
+  .merge-actions button.save:hover { background: var(--save-hover); }
+  .merge-actions button.cancel { background: var(--cancel-bg); color: var(--cancel-fg); border: 1px solid var(--button-border); }
+  .merge-actions .hint { margin-left: auto; align-self: center; font-size: 11px; color: var(--fg-dim); }
+
   ins { background: var(--ins-bg); color: var(--ins-fg); text-decoration: none; padding: 1px 2px; border-radius: 2px; }
   del { background: var(--del-inline-bg); color: var(--del-inline-fg); text-decoration: line-through; padding: 1px 2px; border-radius: 2px; }
-  footer { padding: 12px 16px; font-size: 11px; color: var(--fg-dim); border-top: 1px solid var(--border); }
+  footer { padding: 10px 16px; font-size: 11px; color: var(--fg-dim); border-top: 1px solid var(--border); flex-shrink: 0; }
+  .toast { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); padding: 10px 16px; border-radius: 6px; background: var(--save-bg); color: var(--save-fg); font-weight: 600; opacity: 0; transition: opacity 0.2s; pointer-events: none; }
+  .toast.show { opacity: 1; }
+  .toast.error { background: var(--del-bg); color: var(--del-fg); }
 </style>
 </head><body>
 <header>
-  <h1>Reconcile diff <span class="file">${escape(path.basename(localName))}</span></h1>
-  <div style="display:flex;gap:16px;align-items:center;">
+  <h1>Reconcile <span class="file">${escape(path.basename(localName))}</span></h1>
+  <div class="controls">
     <div class="stats">
       <span class="added">+${stats.added} added</span>
       <span class="removed">−${stats.removed} removed</span>
       <span class="changed">~${stats.changed} changed</span>
     </div>
-    <button id="theme" type="button" title="Toggle light/dark">🌓 theme</button>
+    <div class="modes" role="tablist">
+      <button data-mode="unified" class="active">Unified</button>
+      <button data-mode="sxs">Side-by-side</button>
+      <button data-mode="merge">Merge ✏️</button>
+    </div>
+    <button class="theme" type="button" title="Toggle light/dark">🌓</button>
   </div>
 </header>
-<div class="diff"><table>${body}</table></div>
-<footer>Local (red −) vs Notion's current state (green +). Inline <del>red</del> / <ins>green</ins> highlights show word-level changes within mixed lines. After deciding, return to the reconcile prompt and pick <strong>Pull Notion → local</strong> or <strong>Keep local — overwrite Notion</strong>.</footer>
+<div class="view view-unified"><table>${unifiedBody}</table></div>
+<div class="view view-sxs"><table>${sxsBody}</table></div>
+<div class="view view-merge">
+  <div class="pane local">
+    <h2>Local — your file (read-only)</h2>
+    <textarea readonly id="local-text"></textarea>
+  </div>
+  <div class="pane merge">
+    <h2>Merge target — edit, then save</h2>
+    <textarea id="merge-text"></textarea>
+    <div class="merge-actions">
+      <button class="save" id="save">💾 Save merged → local file</button>
+      <button class="cancel" id="cancel">✗ Cancel (don't write)</button>
+      <span class="hint">Saving overwrites the local doc and resolves the page.</span>
+    </div>
+  </div>
+  <div class="pane notion">
+    <h2>Notion — current page state (read-only)</h2>
+    <textarea readonly id="notion-text"></textarea>
+  </div>
+</div>
+<footer>Local (red −) vs Notion (green +). Inline <del>red</del>/<ins>green</ins> show word-level changes within mixed lines. <strong>Merge</strong> mode lets you build the final version by hand and save it directly to the local file.</footer>
+<div class="toast" id="toast"></div>
 <script>
   (function() {
     const root = document.documentElement;
-    const stored = localStorage.getItem("notion-sync-diff-theme");
-    if (stored) root.setAttribute("data-theme", stored);
-    const btn = document.getElementById("theme");
-    btn.addEventListener("click", function() {
+    // Theme persistence
+    const storedTheme = localStorage.getItem("notion-sync-diff-theme");
+    if (storedTheme) root.setAttribute("data-theme", storedTheme);
+    document.querySelector("button.theme").addEventListener("click", function() {
       const cur = root.getAttribute("data-theme") === "light" ? "dark" : "light";
       root.setAttribute("data-theme", cur);
       localStorage.setItem("notion-sync-diff-theme", cur);
+    });
+    // Mode switching
+    const modeButtons = document.querySelectorAll(".modes button");
+    modeButtons.forEach(btn => btn.addEventListener("click", function() {
+      const mode = btn.dataset.mode;
+      root.setAttribute("data-mode", mode);
+      modeButtons.forEach(b => b.classList.toggle("active", b === btn));
+    }));
+    // Populate textareas (avoids HTML-escape issues with content containing tags)
+    const localContent = ${localJsonSafe};
+    const notionContent = ${notionJsonSafe};
+    document.getElementById("local-text").value = localContent;
+    document.getElementById("notion-text").value = notionContent;
+    document.getElementById("merge-text").value = localContent;
+    // Toast
+    const toast = document.getElementById("toast");
+    function showToast(msg, isError) {
+      toast.textContent = msg;
+      toast.className = "toast show" + (isError ? " error" : "");
+      setTimeout(() => { toast.className = "toast" + (isError ? " error" : ""); }, 2400);
+    }
+    // Save / cancel
+    document.getElementById("save").addEventListener("click", async function() {
+      const merged = document.getElementById("merge-text").value;
+      try {
+        const res = await fetch("/save", { method: "POST", headers: { "content-type": "text/plain; charset=utf-8" }, body: merged });
+        if (res.ok) {
+          showToast("✓ Saved. Switch back to your terminal — reconcile has resumed.");
+          setTimeout(() => { window.close(); }, 1500);
+        } else {
+          showToast("Save failed: HTTP " + res.status, true);
+        }
+      } catch (err) {
+        showToast("Save failed: " + err.message, true);
+      }
+    });
+    document.getElementById("cancel").addEventListener("click", async function() {
+      try { await fetch("/cancel"); } catch (_) {}
+      showToast("Cancelled — local file unchanged.");
+      setTimeout(() => { window.close(); }, 1200);
     });
   })();
 </script>
@@ -1340,7 +1593,28 @@ async function main(): Promise<void> {
               chosenTool = matched ? matched.tool : "git";
             }
           }
-          await renderDiffWith(chosenTool, localAbsPath, tmp, merged);
+          const diffResult = await renderDiffWith(chosenTool, localAbsPath, tmp, merged);
+          // If browser merge mode wrote the local file, treat as a full
+          // resolution: refresh the baseline so the next sync sees no
+          // divergence, record as a "pull"-equivalent resolution, and
+          // advance to the next page (skip the menu re-prompt).
+          if (diffResult.savedMerge) {
+            try {
+              const baseline = state.pages[page.path];
+              if (baseline) {
+                const meta: any = await notion.pages.retrieve({ page_id: page_id_from(page) });
+                baseline.last_pushed_edited_time = meta.last_edited_time;
+                baseline.last_pushed_at = new Date().toISOString();
+                saveState(state);
+                console.log(c.green(`       ✓ Baseline refreshed; page resolved.`));
+              }
+            } catch (err: any) {
+              console.error(c.yellow(`       ⚠ Could not refresh baseline: ${err.message?.slice(0, 80)}. Next sync will re-flag.`));
+            }
+            resolutions[i] = { page, choice: "pull", applied: true };
+            i++;
+            continue;
+          }
         } finally {
           if (fs.existsSync(tmp)) fs.unlinkSync(tmp);
         }
