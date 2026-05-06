@@ -233,8 +233,9 @@ async function detectDiffTools(): Promise<DiffToolDetected[]> {
   if (await binAvailable("code")) {
     tools.push({ tool: "code",  label: "VS Code (side-by-side, syntax)",      hint: "opens as a tab" });
   }
-  // macOS FileMerge
-  if (await binAvailable("opendiff")) {
+  // macOS FileMerge — `opendiff` is a wrapper that requires Xcode (not just
+  // CLT). Skip if `xcode-select -p` points at the CLT-only path.
+  if (await binAvailable("opendiff") && await xcodeFullInstalled()) {
     tools.push({ tool: "opendiff", label: "FileMerge (macOS GUI, three-pane)", hint: "left/right/merge" });
   }
   // Browser HTML — needs `open` (macOS) or `xdg-open` (linux)
@@ -251,6 +252,17 @@ async function binAvailable(bin: string): Promise<boolean> {
     const proc = Bun.spawn(["which", bin], { stdin: "ignore", stdout: "pipe", stderr: "ignore" });
     await proc.exited;
     return proc.exitCode === 0;
+  } catch { return false; }
+}
+
+/** Returns true if Xcode (not just CLT) is installed — `xcode-select -p`
+ *  pointing at /Applications/Xcode.app/... rather than CommandLineTools. */
+async function xcodeFullInstalled(): Promise<boolean> {
+  try {
+    const proc = Bun.spawn(["xcode-select", "-p"], { stdin: "ignore", stdout: "pipe", stderr: "ignore" });
+    const out = (await new Response(proc.stdout).text()).trim();
+    await proc.exited;
+    return proc.exitCode === 0 && !/CommandLineTools/i.test(out);
   } catch { return false; }
 }
 
@@ -286,15 +298,25 @@ async function renderDiffWith(tool: DiffTool, localPath: string, tmpPath: string
       return;
     }
     case "browser": {
-      // Render side-by-side HTML and open it. Self-contained — no JS, no
-      // diff library; just two <pre> columns wrapped in styled divs.
-      const local = fs.existsSync(localPath) ? fs.readFileSync(localPath, "utf-8") : "";
-      const html = renderSideBySideHtml(localPath, local, mergedContent);
+      // Generate a unified diff with word-level markers via:
+      //   git diff --no-color --no-index --word-diff=plain -U99999
+      // -U99999 = full file context (no skipped hunks); --word-diff=plain
+      // emits inline [-removed-]{+added+} markers within changed lines.
+      // Parse, render as HTML with theme toggle + line/char highlights.
+      let diffOutput = "";
+      const proc = Bun.spawn(
+        ["git", "--no-pager", "diff", "--no-color", "--no-index", "--word-diff=plain", "-U99999", localPath, tmpPath],
+        { stdin: "ignore", stdout: "pipe", stderr: "ignore" },
+      );
+      diffOutput = await new Response(proc.stdout).text();
+      await proc.exited;
+      // git diff exits 1 when files differ — that's normal here.
+      const html = renderDiffHtml(localPath, diffOutput, mergedContent);
       const out = `/tmp/notion-sync-diff-${Date.now()}.html`;
       fs.writeFileSync(out, html, "utf-8");
       const opener = (await binAvailable("open")) ? "open" : "xdg-open";
-      const proc = Bun.spawn([opener, out], { stdin: "ignore", stdout: "ignore", stderr: "ignore" });
-      await proc.exited;
+      const open = Bun.spawn([opener, out], { stdin: "ignore", stdout: "ignore", stderr: "ignore" });
+      await open.exited;
       console.log(c.dim(`       Opened ${out} in your default browser.`));
       return;
     }
@@ -312,30 +334,177 @@ async function renderDiffWith(tool: DiffTool, localPath: string, tmpPath: string
   }
 }
 
-function renderSideBySideHtml(localName: string, localContent: string, notionContent: string): string {
+/** Parse `git diff --word-diff=plain` output into a renderable structure.
+ *  Each non-header line falls into one of:
+ *    - context:  starts with " " (or no prefix, depending on git mode)
+ *    - hunk:     `@@ -... +... @@`
+ *    - changed:  contains `[-...-]` and/or `{+...+}` markers
+ *    - added:    starts with "+" (full-line addition without word markers)
+ *    - removed:  starts with "-" (full-line removal)
+ *  We render each as an HTML row with line-level color + inline <ins>/<del>
+ *  for the word-level highlights. */
+function renderDiffHtml(localName: string, diffOutput: string, notionContent: string): string {
   const escape = (s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
   const title = `Reconcile diff — ${path.basename(localName)}`;
+
+  type Row = { kind: "context" | "added" | "removed" | "changed" | "hunk" | "header"; html: string };
+  const rows: Row[] = [];
+
+  const lines = diffOutput.split("\n");
+  let inHeader = true;
+  for (const raw of lines) {
+    if (raw.length === 0) continue;
+    if (inHeader) {
+      // git emits headers like:  diff --git ..., index ..., --- a/..., +++ b/...
+      if (raw.startsWith("@@")) {
+        inHeader = false;
+        rows.push({ kind: "hunk", html: escape(raw) });
+        continue;
+      }
+      if (raw.startsWith("diff ") || raw.startsWith("index ") || raw.startsWith("--- ") || raw.startsWith("+++ ")) {
+        rows.push({ kind: "header", html: escape(raw) });
+        continue;
+      }
+      // Stray pre-hunk noise — skip
+      continue;
+    }
+    if (raw.startsWith("@@")) { rows.push({ kind: "hunk", html: escape(raw) }); continue; }
+
+    // Word-diff format: each line either has [-...-]/{+...+} markers (changed),
+    // or a leading + (added line), or leading - (removed line), or a leading
+    // space / no marker (context).
+    const hasDel = raw.includes("[-");
+    const hasIns = raw.includes("{+");
+    const startsWithPlus  = raw.startsWith("+");
+    const startsWithMinus = raw.startsWith("-");
+
+    if (hasDel || hasIns) {
+      // Inline word-level changes within a context line. Render with
+      // <del>/<ins> highlights.
+      const renderInline = (s: string): string => {
+        // Replace markers with HTML. Need to escape OUTSIDE the markers
+        // separately from inside, since inside should also be escaped but
+        // wrapped in tags.
+        let out = "";
+        let i = 0;
+        while (i < s.length) {
+          if (s.startsWith("[-", i)) {
+            const end = s.indexOf("-]", i + 2);
+            if (end < 0) { out += escape(s.slice(i)); break; }
+            out += `<del>${escape(s.slice(i + 2, end))}</del>`;
+            i = end + 2;
+          } else if (s.startsWith("{+", i)) {
+            const end = s.indexOf("+}", i + 2);
+            if (end < 0) { out += escape(s.slice(i)); break; }
+            out += `<ins>${escape(s.slice(i + 2, end))}</ins>`;
+            i = end + 2;
+          } else {
+            // Find next marker
+            const nextDel = s.indexOf("[-", i);
+            const nextIns = s.indexOf("{+", i);
+            const next = [nextDel, nextIns].filter(n => n >= 0).sort((a,b) => a - b)[0] ?? s.length;
+            out += escape(s.slice(i, next));
+            i = next;
+          }
+        }
+        return out;
+      };
+      rows.push({ kind: "changed", html: renderInline(raw) });
+      continue;
+    }
+    if (startsWithPlus)  { rows.push({ kind: "added",   html: escape(raw.slice(1)) }); continue; }
+    if (startsWithMinus) { rows.push({ kind: "removed", html: escape(raw.slice(1)) }); continue; }
+    // Context line — strip leading space if present
+    rows.push({ kind: "context", html: escape(raw.startsWith(" ") ? raw.slice(1) : raw) });
+  }
+
+  const body = rows.map(r => `<tr class="${r.kind}"><td class="gutter"></td><td class="line">${r.html || "&nbsp;"}</td></tr>`).join("\n");
+
+  // Stats for the header
+  const stats = {
+    added: rows.filter(r => r.kind === "added").length,
+    removed: rows.filter(r => r.kind === "removed").length,
+    changed: rows.filter(r => r.kind === "changed").length,
+  };
+
   return `<!doctype html>
-<html lang="en"><head><meta charset="utf-8"><title>${escape(title)}</title>
+<html lang="en" data-theme="dark"><head><meta charset="utf-8"><title>${escape(title)}</title>
 <style>
-  :root { color-scheme: light dark; }
-  body { font: 13px/1.45 -apple-system, BlinkMacSystemFont, sans-serif; margin: 0; padding: 16px; background: #0e1116; color: #d0d6e0; }
-  h1 { font-size: 14px; margin: 0 0 12px; color: #8aa8d6; }
-  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; height: calc(100vh - 80px); }
-  .pane { display: flex; flex-direction: column; min-height: 0; border-radius: 6px; overflow: hidden; border: 1px solid #2a2f3a; }
-  .pane h2 { font-size: 12px; margin: 0; padding: 8px 12px; background: #1a1f2a; color: #8aa8d6; border-bottom: 1px solid #2a2f3a; }
-  .pane.local h2 { color: #f99090; }
-  .pane.notion h2 { color: #90f9a8; }
-  pre { flex: 1; margin: 0; padding: 12px; overflow: auto; white-space: pre-wrap; word-break: break-word; font: 12px/1.5 ui-monospace, monospace; background: #0e1116; }
-  .footer { margin-top: 12px; font-size: 11px; color: #5c6675; }
+  :root[data-theme="dark"] {
+    --bg: #0e1116; --fg: #d0d6e0; --fg-dim: #5c6675;
+    --border: #2a2f3a; --hunk-bg: #1a1f2a; --hunk-fg: #8aa8d6;
+    --add-bg: #163d2a; --add-fg: #a8e8b8; --add-marker: #4ec9b0;
+    --del-bg: #4a1a1a; --del-fg: #f99090; --del-marker: #f78787;
+    --ins-bg: #2d6a3f; --ins-fg: #ffffff;
+    --del-inline-bg: #6b2a2a; --del-inline-fg: #ffffff;
+    --header-bg: #161a22; --gutter-bg: #161a22;
+    --button-bg: #1f2530; --button-fg: #d0d6e0; --button-border: #2a2f3a;
+  }
+  :root[data-theme="light"] {
+    --bg: #ffffff; --fg: #24292f; --fg-dim: #6e7781;
+    --border: #d0d7de; --hunk-bg: #ddf4ff; --hunk-fg: #0969da;
+    --add-bg: #ddffdd; --add-fg: #1a7f37; --add-marker: #1a7f37;
+    --del-bg: #ffdddd; --del-fg: #cf222e; --del-marker: #cf222e;
+    --ins-bg: #aceebb; --ins-fg: #1a7f37;
+    --del-inline-bg: #ffaba8; --del-inline-fg: #82071e;
+    --header-bg: #f6f8fa; --gutter-bg: #f6f8fa;
+    --button-bg: #f6f8fa; --button-fg: #24292f; --button-border: #d0d7de;
+  }
+  body { font: 13px/1.45 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; margin: 0; padding: 0; background: var(--bg); color: var(--fg); }
+  header { display: flex; justify-content: space-between; align-items: center; padding: 10px 16px; background: var(--header-bg); border-bottom: 1px solid var(--border); }
+  h1 { font-size: 13px; margin: 0; font-weight: 600; }
+  h1 .file { color: var(--fg-dim); font-weight: 400; }
+  .stats { display: flex; gap: 12px; font-size: 11px; }
+  .stats .added { color: var(--add-marker); }
+  .stats .removed { color: var(--del-marker); }
+  .stats .changed { color: var(--hunk-fg); }
+  button#theme { background: var(--button-bg); color: var(--button-fg); border: 1px solid var(--button-border); padding: 4px 10px; border-radius: 4px; font: inherit; cursor: pointer; }
+  button#theme:hover { background: var(--border); }
+  .diff { padding: 0; }
+  table { border-collapse: collapse; width: 100%; font: 12px/1.5 ui-monospace, "SF Mono", Menlo, monospace; }
+  td.gutter { width: 40px; padding: 0 8px; text-align: right; color: var(--fg-dim); user-select: none; background: var(--gutter-bg); border-right: 1px solid var(--border); }
+  td.line { padding: 0 12px; white-space: pre-wrap; word-break: break-word; }
+  tr.context { background: var(--bg); }
+  tr.added { background: var(--add-bg); color: var(--add-fg); }
+  tr.added td.gutter::after { content: "+"; color: var(--add-marker); }
+  tr.removed { background: var(--del-bg); color: var(--del-fg); }
+  tr.removed td.gutter::after { content: "−"; color: var(--del-marker); }
+  tr.changed { background: var(--bg); }
+  tr.changed td.gutter::after { content: "~"; color: var(--hunk-fg); }
+  tr.hunk { background: var(--hunk-bg); color: var(--hunk-fg); }
+  tr.hunk td { padding: 6px 12px; font-weight: 600; }
+  tr.header { display: none; }
+  ins { background: var(--ins-bg); color: var(--ins-fg); text-decoration: none; padding: 1px 2px; border-radius: 2px; }
+  del { background: var(--del-inline-bg); color: var(--del-inline-fg); text-decoration: line-through; padding: 1px 2px; border-radius: 2px; }
+  footer { padding: 12px 16px; font-size: 11px; color: var(--fg-dim); border-top: 1px solid var(--border); }
 </style>
 </head><body>
-<h1>Reconcile diff — ${escape(localName)}</h1>
-<div class="grid">
-  <div class="pane local"><h2>Local (your file on disk)</h2><pre>${escape(localContent)}</pre></div>
-  <div class="pane notion"><h2>Notion (current page state)</h2><pre>${escape(notionContent)}</pre></div>
-</div>
-<div class="footer">After deciding, return to the reconcile prompt and pick "Pull Notion → local" or "Keep local — overwrite Notion".</div>
+<header>
+  <h1>Reconcile diff <span class="file">${escape(path.basename(localName))}</span></h1>
+  <div style="display:flex;gap:16px;align-items:center;">
+    <div class="stats">
+      <span class="added">+${stats.added} added</span>
+      <span class="removed">−${stats.removed} removed</span>
+      <span class="changed">~${stats.changed} changed</span>
+    </div>
+    <button id="theme" type="button" title="Toggle light/dark">🌓 theme</button>
+  </div>
+</header>
+<div class="diff"><table>${body}</table></div>
+<footer>Local (red −) vs Notion's current state (green +). Inline <del>red</del> / <ins>green</ins> highlights show word-level changes within mixed lines. After deciding, return to the reconcile prompt and pick <strong>Pull Notion → local</strong> or <strong>Keep local — overwrite Notion</strong>.</footer>
+<script>
+  (function() {
+    const root = document.documentElement;
+    const stored = localStorage.getItem("notion-sync-diff-theme");
+    if (stored) root.setAttribute("data-theme", stored);
+    const btn = document.getElementById("theme");
+    btn.addEventListener("click", function() {
+      const cur = root.getAttribute("data-theme") === "light" ? "dark" : "light";
+      root.setAttribute("data-theme", cur);
+      localStorage.setItem("notion-sync-diff-theme", cur);
+    });
+  })();
+</script>
 </body></html>`;
 }
 
@@ -415,6 +584,49 @@ function convertMentionTagsToLinks(md: string): string {
     /<mention-page url="([^"]+)">([^<]*)<\/mention-page>/g,
     (_, url, label) => `[${label}](${url})`,
   );
+}
+
+/** Notion converts markdown pipe-tables to native `table` blocks the moment
+ *  a user edits a cell in the UI. The retrieveMarkdown export then returns
+ *  them as HTML `<table><tr><td>...` rather than pipe-tables. Convert back
+ *  so the pulled local file matches the project's markdown convention.
+ *
+ *  Handles the format Notion emits: `<table header-row="true">` (or false),
+ *  `<tr><td>cell</td>...</tr>`. Doesn't try to handle nested tables, complex
+ *  block content inside cells (just inlines whatever's there), or thead/tbody
+ *  wrappers (Notion doesn't emit them). */
+function convertHtmlTablesToMarkdown(md: string): string {
+  return md.replace(/<table([^>]*)>([\s\S]*?)<\/table>/g, (_full, attrs, inner) => {
+    // header-row="true" means first row is the header. If absent or false,
+    // we still treat the first row as header (markdown tables require one).
+    const trMatches = [...inner.matchAll(/<tr[^>]*>([\s\S]*?)<\/tr>/g)];
+    const rows: string[][] = [];
+    for (const tr of trMatches) {
+      const cells: string[] = [];
+      for (const td of tr[1].matchAll(/<t[dh][^>]*>([\s\S]*?)<\/t[dh]>/g)) {
+        let content = td[1].trim();
+        // Unescape Notion's escapes for chars that have meaning in markdown
+        content = content.replace(/\\([>|`*_])/g, "$1");
+        // Pipes inside cells must be escaped in markdown
+        content = content.replace(/\|/g, "\\|");
+        // Newlines inside cells become <br> (markdown tables are single-line)
+        content = content.replace(/\n+/g, "<br>");
+        cells.push(content);
+      }
+      if (cells.length > 0) rows.push(cells);
+    }
+    if (rows.length === 0) return "";
+    const headerCount = rows[0].length;
+    const out: string[] = [];
+    out.push("| " + rows[0].join(" | ") + " |");
+    out.push("|" + " --- |".repeat(headerCount));
+    for (let i = 1; i < rows.length; i++) {
+      const cells = rows[i].slice(0, headerCount);
+      while (cells.length < headerCount) cells.push("");
+      out.push("| " + cells.join(" | ") + " |");
+    }
+    return out.join("\n");
+  });
 }
 
 /** Read local frontmatter (between `---\n` and `\n---\n`) and stitch it onto
@@ -546,6 +758,7 @@ async function pullPageToLocal(args: PullArgs): Promise<{ localAbsPath: string; 
   body = stripSyncFooter(body);
   body = stripBreadcrumbAndBanner(body);
   body = convertMentionTagsToLinks(body);
+  body = convertHtmlTablesToMarkdown(body);
 
   // 5b. Frontmatter merge with optional icon/cover prompt.
   //
