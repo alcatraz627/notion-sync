@@ -9,8 +9,8 @@ triggers:
   - skill:sync-all
 tier: 2
 category: features
-related: [PIPELINE.md, SUSPICION-RULES.md, RCA-ARCHIVED-PAGES.md, run-notes.md]
-updated: 2026-05-02
+related: [PIPELINE.md, SUSPICION-RULES.md, RCA-ARCHIVED-PAGES.md, run-notes.md, OVERWRITE-GUARDRAILS-EXPLORATION.md, RECONCILIATION-EXPLORATION.md]
+updated: 2026-05-06
 ---
 
 # /sync-all — orchestrate full notion-sync run + diagnose + report
@@ -106,6 +106,31 @@ For each entry in `error_summary[]`:
 
 ---
 
+## Phase 3.5 — Surface guardrail-protected pages (v1.3+)
+
+Before retrying anything, check whether `runs.jsonl`'s most recent entry
+recorded any **protected pages** — pages skipped because of `NOTION_GUARDRAILS=strict` detecting human edits / moves / archival in Notion since the last sync.
+
+```bash
+tail -n 1 runs.jsonl | python3 -c '
+import sys, json
+d = json.loads(sys.stdin.read())
+pp = d.get("protected_pages") or []
+if pp:
+    print(f"⚠ {len(pp)} page(s) protected from overwrite:")
+    for p in pp:
+        kinds = ", ".join(p.get("kinds") or [p.get("kind","unknown")])
+        print(f"  {p[\"path\"]}  [{kinds}]")
+'
+```
+
+Treat protected pages as a **distinct class from errors**:
+- They are NOT retry candidates. Retrying with the same flags will be skipped again.
+- They are NOT failure conditions. The sync exited 0 because guardrails are working as designed.
+- They DO require the user's input — recommend `bash sync.sh reconcile` as the next action.
+
+Surface them in the summary report (Phase 5) under their own block, separate from the failure list. Do not retry. Do not pass `--force-overwrite` on the user's behalf — that's a destructive action that needs explicit per-page consent.
+
 ## Phase 4 — Targeted retry (timeouts only)
 
 If failures are pure timeouts (no WAF or validation errors), retry **once** with
@@ -135,18 +160,23 @@ print plain text) to render a fixed-width report:
 ║                    run_id: YYYYMMDD-HHmmss                           ║
 ╠══════════════════════════════════════════════════════════════════════╣
 ║  ✓ pages          N created · M updated · K unchanged                ║
+║  🛡  protected     P (skipped — needs reconcile)                     ║
 ║  ✗ errors         X (after retries)                                  ║
 ║  ⏱  timing         Phase 1 Xs · Phase 2 Ys · total Zs                ║
 ║  📸 images         A uploaded · B cache hits · C in cache            ║
 ║  📊 dashboards     ✓ sitemap ✓ tag-index ✓ index-db ✓ recent ✓ ...  ║
+╠══════════════════════════════════════════════════════════════════════╣
+║  Protected pages (if any):                                           ║
+║    🛡  path/to/file.md  [moved, user-edited]                          ║
+║       resolve: bash sync.sh reconcile path/to/file.md                ║
 ╠══════════════════════════════════════════════════════════════════════╣
 ║  Failures (if any):                                                  ║
 ║    • path/to/file.md                                                 ║
 ║      cause: <human-readable diagnosis from suspicion rules>          ║
 ║      fix:   <one-line suggested action>                              ║
 ╠══════════════════════════════════════════════════════════════════════╣
-║  Next: <one suggested action — e.g. "review prune dry-run" or       ║
-║         "split create-upload.md before next sync">                  ║
+║  Next: <one suggested action — e.g. "bash sync.sh reconcile" if     ║
+║         protected_pages > 0; else "review prune dry-run", etc.>     ║
 ╚══════════════════════════════════════════════════════════════════════╝
 ```
 
@@ -182,6 +212,13 @@ Print counts only. NEVER pass `--apply`.
 - ❌ Don't report success based on the bash exit code alone — `run.sh` may exit
   0 even when the inner `sync.sh` had per-file failures. Always cross-check
   `runs.jsonl` `stats.errors` and `error_summary` length.
+- ❌ Don't conflate `protected_pages[]` with `error_summary[]`. Protected
+  pages are an expected output of guardrails working correctly; they need
+  user-driven reconciliation, not retries. Surface them in their own report
+  block.
+- ❌ Don't pass `--force-overwrite`, `--accept-move`, or `--accept-archive`
+  on the user's behalf. Those are destructive overrides that need explicit
+  per-page consent — direct the user to `bash sync.sh reconcile` instead.
 
 ## Notes for future invocations
 

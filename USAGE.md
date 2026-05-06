@@ -539,6 +539,89 @@ tail -1 runs.jsonl | jq '.protected_pages'
 jq -c 'select(.protected_pages and (.protected_pages | length > 0)) | {run_id, count: (.protected_pages | length)}' runs.jsonl
 ```
 
+### End-to-end walkthrough — a real human edit
+
+The full reconcile workflow looks like this in practice. Suppose a teammate edits `product/jobs/create-upload.md` directly in Notion, fixing a typo and reordering a paragraph. They don't tell you. Days later you `bash sync.sh` to push some unrelated changes:
+
+**Step 1 — sync detects the divergence**
+
+```
+Phase 1.7: checking for human-edited Notion pages...
+
+🛡  Overwrite guardrails — 1 page protected
+
+  product/jobs/create-upload.md
+    ↳ Edited by human  edited at 2026-05-08T14:32:00Z by user 9a4f… (baseline: 2026-05-05T22:09:00Z)
+    ↳ Resolve: bash sync.sh --force-overwrite product/jobs/create-upload.md
+    ↳       OR: pull human edits back to local first
+    ↳ View: https://www.notion.so/352bacd2…
+
+  Continuing with 247 unprotected page(s).
+
+Phase 2: writing content...
+[normal sync continues for the other 247 pages]
+
+Sync complete — ↺ 247 updated   🛡  1 protected
+
+🛡  1 page is protected. Reconcile now? [Y/n]
+```
+
+**Step 2 — auto-prompt fires; you accept**
+
+The reconcile flow opens. The page card shows the divergence. Pick "View diff first":
+
+```
+[1/1] product/jobs/create-upload.md
+       ✎ edited by human   edited at 2026-05-08T14:32:00Z by user 9a4f… (baseline: 2026-05-05T22:09:00Z)
+       View: https://www.notion.so/352bacd2…
+
+       What would you like to do?
+       ▸ View diff first
+         Pull Notion → local (preserve human edits)
+         Keep local — overwrite Notion
+         Skip — leave protected, decide later
+         ✗ Cancel reconciliation
+```
+
+The diff output (via `git diff --no-index`) shows the teammate's typo fix and paragraph reorder, plus some lossy artifacts (Notion replaced your local image path with an S3 presigned URL).
+
+**Step 3 — pick "Pull Notion → local"**
+
+```
+       ✓ Pulled to docs/product/jobs/create-upload.md (1 block(s) couldn't
+         be serialized — content may be incomplete). Inspect with
+         `git diff -- docs/product/jobs/create-upload.md` before re-running sync.
+```
+
+Your local file is now overwritten with Notion's current content. The baseline is refreshed (no benign-drift on the next run).
+
+**Step 4 — review locally + commit**
+
+```bash
+git diff -- docs/product/jobs/create-upload.md   # see what got pulled in
+# Maybe revert the S3 image URL back to the local path manually
+git add docs/product/jobs/create-upload.md
+git commit -m "docs: pull human edits to create-upload from Notion"
+```
+
+**Step 5 — re-sync to push the merged version**
+
+```bash
+bash sync.sh --no-wizard --only create-upload
+```
+
+This time Phase 1.7 sees the page as in-sync (you just refreshed the baseline during pull), and Phase 2 pushes your local-with-merged-edits over Notion. The teammate's edits are now in both places, you've reviewed the lossy artifacts, and the next sync runs clean.
+
+### Common gotchas
+
+| Symptom | Cause | Fix |
+|---|---|---|
+| "Truncated export — pull is not safe" | Page exceeded Notion's markdown export size limit | Resolve in Notion's UI; don't pull |
+| "N block(s) couldn't be serialized" | Notion has block types (e.g. embeds, complex columns) that don't round-trip cleanly to markdown | Pass `--accept-lossy-pull` if you accept the loss, or resolve in Notion's UI |
+| "Local file has uncommitted changes" | Working tree dirty for the file you're pulling | Commit/stash first, or `--force-pull` |
+| Reconcile shows "0 still diverged, N already resolved" | You already accepted-move / accepted-archive / pulled / etc. | Nothing to do — you're done |
+| Sync runs in CI flag protected pages but nothing happens | CI is non-TTY; auto-prompt skips and prints a hint | Run `bash sync.sh reconcile` interactively from your machine |
+
 ---
 
 ## 12. Recipes & full command reference

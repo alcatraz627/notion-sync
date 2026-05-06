@@ -2799,6 +2799,31 @@ async function main(): Promise<void> {
     });
   }
 
+  // Auto-prompt: if guardrails skipped any pages, offer to walk the user
+  // through reconciliation immediately. Non-TTY (CI / GitHub Action) gets the
+  // hint as text only — interactive resolution requires gum + stdin.
+  if (!DRY_RUN && protectedResults.length > 0) {
+    const n = protectedResults.length;
+    if (process.stdin.isTTY && process.stdout.isTTY) {
+      console.log(""); // spacer
+      const accepted = await askConfirm(
+        `🛡  ${n} page${n === 1 ? " is" : "s are"} protected. Reconcile now? ${clr.dim("[Y/n]")} `,
+      );
+      if (accepted) {
+        // Inherit stdio so gum can drive its own TTY interaction, and stdout
+        // streams directly to the user's terminal.
+        const proc = Bun.spawn(["bun", path.join(__dirname, "reconcile.ts")], {
+          stdin: "inherit", stdout: "inherit", stderr: "inherit",
+        });
+        await proc.exited;
+      } else {
+        console.log(clr.dim(`  Resolve later with: bash sync.sh reconcile`));
+      }
+    } else {
+      console.log(clr.dim(`\n  Run \`bash sync.sh reconcile\` (interactive) to resolve the ${n} protected page(s).`));
+    }
+  }
+
   if (errors.length > 0) process.exit(1);
 }
 

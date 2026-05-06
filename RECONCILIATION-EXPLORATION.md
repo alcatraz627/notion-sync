@@ -1,6 +1,6 @@
 # Reconciliation Flow — Design Exploration
 
-> **Status:** v2 — PR 1 ✓ done, PR 2 ✓ done, PR 3 (pull path) in progress, PR 4 (auto-prompt + docs) pending.
+> **Status:** v2 — all four PRs done (2026-05-06). PR 1 ✓, PR 2 ✓, PR 3 ✓ pull path, PR 4 ✓ auto-prompt + `/sync-all` integration + USAGE.md tutorial.
 > **Builds on:** [OVERWRITE-GUARDRAILS-EXPLORATION.md](OVERWRITE-GUARDRAILS-EXPLORATION.md) — guardrails ship the divergence detection; this spec ships what the user does about it.
 > **Verdict:** Approved post-review (see §"Review Outcome" below).
 
