@@ -156,10 +156,13 @@ export async function checkDivergence(args: CheckArgs): Promise<Divergence[]> {
   }
 
   // 2. Moved to a parent we don't expect (skip if archived — parent_id of an
-  // archived page is unreliable and the archived divergence already covers it)
+  // archived page is unreliable and the archived divergence already covers it).
+  // Compare NORMALIZED ids — Notion's API returns dashed UUIDs but our
+  // baseline may have stored undashed slugs (e.g. extracted from the
+  // NOTION_ROOT_PAGE_ID URL). Same page, different string.
   if (!divergences.some((d) => d.kind === "archived")) {
     const currentParent = meta.parent?.page_id;
-    if (currentParent && currentParent !== expectedParentId) {
+    if (currentParent && normalizeId(currentParent) !== normalizeId(expectedParentId)) {
       divergences.push({
         rel_path: relPath,
         page_id: pageId,
@@ -280,6 +283,12 @@ async function countBlocks(notion: Client, pageId: string): Promise<number> {
 function shortId(id: string | undefined): string {
   if (!id) return "(unknown)";
   return id.replace(/-/g, "").slice(0, 8);
+}
+
+/** Strip dashes + lowercase. Notion's API returns dashed UUIDs, but URL slugs
+ *  + page IDs extracted from URLs are typically undashed. Compare normalized. */
+function normalizeId(id: string | undefined): string {
+  return (id ?? "").replace(/-/g, "").toLowerCase();
 }
 
 export function getStatePath(): string {

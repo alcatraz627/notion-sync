@@ -18,6 +18,7 @@ yarn-debug.log*
 .env
 .env.*
 !.env.example
+!.env.test.example
 
 # Runtime data
 *.pid
@@ -52,6 +53,7 @@ metrics.jsonl
 .notion-cache.json
 .notion-image-cache.json
 .notion-sync-state.json
+# .env.test handled by .env.* rule above; .env.test.example is the committed template
 # .claude — track skills/SKILL.md, ignore session/runtime state
 /.claude/wal.jsonl
 /.claude/wal.*

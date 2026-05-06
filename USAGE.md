@@ -668,6 +668,9 @@ for p in d.get('pages',[])[:5]:
 | `--accept-archive <path>` | Per-page: drop from sync state |
 | `--seed-state` | After upgrade: record baselines for every existing page without writing content |
 | `--refresh-bot-id` | Force re-fetch of `notion.users.me().id` (cached 7 days) |
+| `--env <path>` | Source a different env file (e.g. `--env .env.test` for sandbox runs). Default `.env`. |
+| `--inline-diff` | Force the inline `+`/`-` line diff instead of the diff-tool sub-menu |
+| `RECONCILE_DIFF_TOOL=<x>` (env var) | Pre-select diff tool, skip sub-menu. Values: `git` \| `code` \| `opendiff` \| `browser` \| `inline` |
 
 ### `list.sh` subcommands
 

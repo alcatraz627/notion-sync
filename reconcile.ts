@@ -211,6 +211,134 @@ async function readStdinLine(): Promise<string | null> {
   return r.done ? null : r.value;
 }
 
+// ── Diff tool sub-menu ──────────────────────────────────────────────────────
+//
+// When the user picks "View diff first", offer a tool sub-menu. Auto-detects
+// what's installed; only shows tools that are actually available. Default
+// (terminal git diff) always present.
+
+type DiffTool = "git" | "code" | "opendiff" | "browser" | "inline";
+
+interface DiffToolDetected {
+  tool: DiffTool;
+  label: string;
+  hint: string;
+}
+
+async function detectDiffTools(): Promise<DiffToolDetected[]> {
+  const tools: DiffToolDetected[] = [];
+  // Always available
+  tools.push({ tool: "git",     label: "Terminal — git diff",                 hint: "default; pager + colors" });
+  // VS Code: `code` on PATH
+  if (await binAvailable("code")) {
+    tools.push({ tool: "code",  label: "VS Code (side-by-side, syntax)",      hint: "opens as a tab" });
+  }
+  // macOS FileMerge
+  if (await binAvailable("opendiff")) {
+    tools.push({ tool: "opendiff", label: "FileMerge (macOS GUI, three-pane)", hint: "left/right/merge" });
+  }
+  // Browser HTML — needs `open` (macOS) or `xdg-open` (linux)
+  if (await binAvailable("open") || await binAvailable("xdg-open")) {
+    tools.push({ tool: "browser", label: "Browser — HTML side-by-side",        hint: "renders to /tmp + opens" });
+  }
+  // Inline (no external tool, fallback)
+  tools.push({ tool: "inline",  label: "Inline (no external tool)",           hint: "+/- lines in terminal" });
+  return tools;
+}
+
+async function binAvailable(bin: string): Promise<boolean> {
+  try {
+    const proc = Bun.spawn(["which", bin], { stdin: "ignore", stdout: "pipe", stderr: "ignore" });
+    await proc.exited;
+    return proc.exitCode === 0;
+  } catch { return false; }
+}
+
+/** Render the diff between local and pulled-tempfile using the chosen tool.
+ *  Tool dispatcher — each branch self-contained. */
+async function renderDiffWith(tool: DiffTool, localPath: string, tmpPath: string, mergedContent: string): Promise<void> {
+  switch (tool) {
+    case "git": {
+      const proc = Bun.spawn(
+        ["git", "--no-pager", "diff", "--no-index", "--color=always", localPath, tmpPath],
+        { stdin: "ignore", stdout: "inherit", stderr: "inherit" },
+      );
+      await proc.exited;
+      // git diff exits 1 when files differ — normal.
+      return;
+    }
+    case "code": {
+      // VS Code returns immediately after opening; we don't await the user's
+      // viewing time. The reconcile loop re-renders the menu after this.
+      const proc = Bun.spawn(["code", "--diff", localPath, tmpPath, "--wait"], {
+        stdin: "ignore", stdout: "inherit", stderr: "inherit",
+      });
+      console.log(c.dim(`       Opened in VS Code (close the diff tab to continue)…`));
+      await proc.exited;
+      return;
+    }
+    case "opendiff": {
+      const proc = Bun.spawn(["opendiff", localPath, tmpPath], {
+        stdin: "ignore", stdout: "inherit", stderr: "inherit",
+      });
+      console.log(c.dim(`       Opened in FileMerge (close the window to continue)…`));
+      await proc.exited;
+      return;
+    }
+    case "browser": {
+      // Render side-by-side HTML and open it. Self-contained — no JS, no
+      // diff library; just two <pre> columns wrapped in styled divs.
+      const local = fs.existsSync(localPath) ? fs.readFileSync(localPath, "utf-8") : "";
+      const html = renderSideBySideHtml(localPath, local, mergedContent);
+      const out = `/tmp/notion-sync-diff-${Date.now()}.html`;
+      fs.writeFileSync(out, html, "utf-8");
+      const opener = (await binAvailable("open")) ? "open" : "xdg-open";
+      const proc = Bun.spawn([opener, out], { stdin: "ignore", stdout: "ignore", stderr: "ignore" });
+      await proc.exited;
+      console.log(c.dim(`       Opened ${out} in your default browser.`));
+      return;
+    }
+    case "inline": {
+      const a = fs.existsSync(localPath) ? fs.readFileSync(localPath, "utf-8").split("\n") : [];
+      const b = mergedContent.split("\n");
+      const max = Math.max(a.length, b.length);
+      for (let k = 0; k < max; k++) {
+        if (a[k] === b[k]) continue;
+        if (a[k] !== undefined) console.log(c.red(`- ${a[k]}`));
+        if (b[k] !== undefined) console.log(c.green(`+ ${b[k]}`));
+      }
+      return;
+    }
+  }
+}
+
+function renderSideBySideHtml(localName: string, localContent: string, notionContent: string): string {
+  const escape = (s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  const title = `Reconcile diff — ${path.basename(localName)}`;
+  return `<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><title>${escape(title)}</title>
+<style>
+  :root { color-scheme: light dark; }
+  body { font: 13px/1.45 -apple-system, BlinkMacSystemFont, sans-serif; margin: 0; padding: 16px; background: #0e1116; color: #d0d6e0; }
+  h1 { font-size: 14px; margin: 0 0 12px; color: #8aa8d6; }
+  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; height: calc(100vh - 80px); }
+  .pane { display: flex; flex-direction: column; min-height: 0; border-radius: 6px; overflow: hidden; border: 1px solid #2a2f3a; }
+  .pane h2 { font-size: 12px; margin: 0; padding: 8px 12px; background: #1a1f2a; color: #8aa8d6; border-bottom: 1px solid #2a2f3a; }
+  .pane.local h2 { color: #f99090; }
+  .pane.notion h2 { color: #90f9a8; }
+  pre { flex: 1; margin: 0; padding: 12px; overflow: auto; white-space: pre-wrap; word-break: break-word; font: 12px/1.5 ui-monospace, monospace; background: #0e1116; }
+  .footer { margin-top: 12px; font-size: 11px; color: #5c6675; }
+</style>
+</head><body>
+<h1>Reconcile diff — ${escape(localName)}</h1>
+<div class="grid">
+  <div class="pane local"><h2>Local (your file on disk)</h2><pre>${escape(localContent)}</pre></div>
+  <div class="pane notion"><h2>Notion (current page state)</h2><pre>${escape(notionContent)}</pre></div>
+</div>
+<div class="footer">After deciding, return to the reconcile prompt and pick "Pull Notion → local" or "Keep local — overwrite Notion".</div>
+</body></html>`;
+}
+
 /** Yes/no confirm. Default applies on empty input or non-TTY. Uses gum if
  *  available + interactive; otherwise falls back to readline. */
 async function confirmYN(prompt: string, defaultYes: boolean): Promise<boolean> {
@@ -965,25 +1093,34 @@ async function main(): Promise<void> {
         const merged = mergeWithLocalFrontmatter(localAbsPath, body);
         const tmp = `${localAbsPath}.notion-preview.tmp`;
         fs.writeFileSync(tmp, merged, "utf-8");
+
+        // Pick which diff tool to use. Auto-detect what's installed; show
+        // a sub-menu when interactive. CLI flags pre-select:
+        //   --inline-diff → "inline"  (legacy)
+        //   RECONCILE_DIFF_TOOL=<x>   (env var; bypasses sub-menu)
         try {
-          if (inlineDiff || !fs.existsSync(localAbsPath)) {
-            // Inline (no git). Quick line diff.
-            const a = fs.existsSync(localAbsPath) ? fs.readFileSync(localAbsPath, "utf-8").split("\n") : [];
-            const b = merged.split("\n");
-            const max = Math.max(a.length, b.length);
-            for (let k = 0; k < max; k++) {
-              if (a[k] === b[k]) continue;
-              if (a[k] !== undefined) console.log(c.red(`- ${a[k]}`));
-              if (b[k] !== undefined) console.log(c.green(`+ ${b[k]}`));
-            }
+          const envChoice = (process.env.RECONCILE_DIFF_TOOL ?? "").toLowerCase();
+          let chosenTool: DiffTool;
+          if (inlineDiff) {
+            chosenTool = "inline";
+          } else if (envChoice === "git" || envChoice === "code" || envChoice === "opendiff" || envChoice === "browser" || envChoice === "inline") {
+            chosenTool = envChoice;
+          } else if (!fs.existsSync(localAbsPath)) {
+            chosenTool = "inline"; // no local file to diff against
           } else {
-            const proc = Bun.spawn(
-              ["git", "--no-pager", "diff", "--no-index", "--color=always", localAbsPath, tmp],
-              { stdin: "ignore", stdout: "inherit", stderr: "inherit" },
-            );
-            await proc.exited;
-            // git diff exits 1 when files differ — that's normal.
+            const tools = await detectDiffTools();
+            const labels = tools.map(t => `${t.label}  ${c.dim("· " + t.hint)}`);
+            const useGum = await gumAvailable();
+            const pick = useGum
+              ? await gumChoose("       View diff with:", labels)
+              : await readlineChoose("       View diff with:", labels);
+            if (pick === null) { chosenTool = "git"; }
+            else {
+              const idx = labels.indexOf(pick);
+              chosenTool = idx >= 0 ? tools[idx].tool : "git";
+            }
           }
+          await renderDiffWith(chosenTool, localAbsPath, tmp, merged);
         } finally {
           if (fs.existsSync(tmp)) fs.unlinkSync(tmp);
         }

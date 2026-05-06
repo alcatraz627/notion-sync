@@ -8,6 +8,31 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ENV_FILE="$SCRIPT_DIR/.env"
 DEFAULTS_FILE="$SCRIPT_DIR/.sync-defaults.json"
 
+# ── Parse --env <path> early ───────────────────────────────────────────────────
+# Lets test runs source a different env file (e.g. .env.test pointing at a
+# sandbox Notion root) without mutating the main .env. Other flags are parsed
+# later by the wizard / mode dispatcher.
+_parsed_args=()
+while [ $# -gt 0 ]; do
+  case "$1" in
+    --env)
+      ENV_FILE="$2"
+      if [[ "$ENV_FILE" != /* ]]; then ENV_FILE="$SCRIPT_DIR/$ENV_FILE"; fi
+      shift 2
+      ;;
+    --env=*)
+      ENV_FILE="${1#--env=}"
+      if [[ "$ENV_FILE" != /* ]]; then ENV_FILE="$SCRIPT_DIR/$ENV_FILE"; fi
+      shift
+      ;;
+    *)
+      _parsed_args+=("$1")
+      shift
+      ;;
+  esac
+done
+set -- "${_parsed_args[@]+"${_parsed_args[@]}"}"
+
 # ── Shared helpers ────────────────────────────────────────────────────────────
 
 # Print a styled or plain section header (used in both help and wizard)
@@ -140,10 +165,10 @@ done
 # entirely (it has its own gum prompts) and runs a separate TS entrypoint.
 if [ "${1:-}" = "reconcile" ]; then
   shift
-  # Load .env so the TS script has NOTION_TOKEN / NOTION_ROOT_PAGE_ID for
-  # any future Notion calls (PR 3's pull path will need them).
-  if [ -f "$SCRIPT_DIR/.env" ]; then
-    set -a; source "$SCRIPT_DIR/.env"; set +a
+  # Load env so the TS script has NOTION_TOKEN / NOTION_ROOT_PAGE_ID. Honors
+  # --env <path> from earlier in argv (e.g. --env .env.test for sandbox runs).
+  if [ -f "$ENV_FILE" ]; then
+    set -a; source "$ENV_FILE"; set +a
   fi
   exec bun "$SCRIPT_DIR/reconcile.ts" "$@"
 fi
@@ -575,10 +600,22 @@ else
   fi
 
   CHOSEN_MODE=sync
-  CHOSEN_DRY_RUN="${OVERRIDE_DRY_RUN:-$DEF_DRY_RUN}"
+  # Precedence: CLI flag > env file (DRY_RUN, VERBOSE) > saved defaults.
+  # Without this, an env-file `DRY_RUN=0` was silently overridden by a stale
+  # `dry_run: true` in .sync-defaults.json — biting test runs that re-source
+  # .env.test expecting it to be authoritative.
+  _env_dry_run=""
+  if [ "${DRY_RUN:-}" = "1" ]; then _env_dry_run="true"
+  elif [ "${DRY_RUN:-}" = "0" ]; then _env_dry_run="false"
+  fi
+  _env_verbose=""
+  if [ "${VERBOSE:-}" = "1" ]; then _env_verbose="true"
+  elif [ "${VERBOSE:-}" = "0" ]; then _env_verbose="false"
+  fi
+  CHOSEN_DRY_RUN="${OVERRIDE_DRY_RUN:-${_env_dry_run:-$DEF_DRY_RUN}}"
   CHOSEN_FILTER="${OVERRIDE_FILTER:-$DEF_FILTER}"
   CHOSEN_ABORT_POLICY="$DEF_ABORT_POLICY"
-  CHOSEN_VERBOSE="${OVERRIDE_VERBOSE:-$DEF_VERBOSE}"
+  CHOSEN_VERBOSE="${OVERRIDE_VERBOSE:-${_env_verbose:-$DEF_VERBOSE}}"
   CHOSEN_LINK_MODE="$DEF_LINK_MODE"
   CHOSEN_SHOW_META="$DEF_SHOW_META"
   CHOSEN_UPLOAD_IMAGES="$DEF_UPLOAD_IMAGES"
