@@ -300,9 +300,18 @@ Free benefits:
 
 Cost on first full sync: ~2 API calls × N new images. For ~50 images that's ~70 seconds extra. Subsequent runs: 0 extra calls (all cache hits).
 
-### Orphan cleanup (TODO)
+### Orphan cleanup
 
-Edited images leave their old `file_upload_id` orphaned on Notion's CDN. A scheduled remote agent at `2026-05-14T09:00:00Z` (routine `trig_01APt3L4CvbXfbrKCSboqVKW`) will add a `bash list.sh prune-images` command to clean them up. Until then, orphans accumulate harmlessly (Notion Pro has unlimited storage).
+Edited images leave their old `file_upload_id` orphaned in the Notion workspace. Run the following to review and optionally delete them:
+
+```bash
+bash list.sh prune-images           # dry-run: list orphaned uploads
+bash list.sh prune-images --apply   # delete (requires y/N confirmation)
+```
+
+An upload is considered an orphan if its `file_upload_id` does not appear in `.notion-image-cache.json`. This catches images that were edited (new sha256 → new upload, old one orphaned), files that were deleted from docs, or uploads from failed test runs.
+
+> **SDK note:** `@notionhq/client` v5 has no `fileUploads.delete` method. Deletion falls back to `DELETE /v1/file_uploads/{id}` via `fetch` with `NOTION_TOKEN`. If the endpoint is unavailable the command will fail gracefully and report how many deletions failed.
 
 ---
 
@@ -692,6 +701,7 @@ for p in d.get('pages',[])[:5]:
 | `recent-feed` | Push a `📣 Recently Synced` page rendered from `runs.jsonl`. Last 50 unique pages (newest first, deduplicated by page_id). `--limit N` widens the window. Honours `NOTION_RECENT_FEED_PAGE_ID`. |
 | `health` | Push a `🩺 Sync Status` page summarizing the latest run (callout color-coded by health), key stats, last 10 errors with retry hint, and a strip of the last 6 runs. Honours `NOTION_HEALTH_PAGE_ID`. |
 | `prune` | Dry-run: list orphan Notion pages (no matching local doc title). Add `--apply` to archive them via `pages.update({archived: true})` — pages move to Notion's Trash, restorable for ~30 days. |
+| `prune-images` | Dry-run: list orphaned Notion file uploads — workspace uploads whose `file_upload_id` is not in `.notion-image-cache.json`. Add `--apply` to delete them (requires explicit y/N confirmation). Does not require a local cache; calls the Notion API directly. |
 
 ### `.env` essentials
 

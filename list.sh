@@ -17,6 +17,7 @@
 #   bash list.sh backlinks           # append "🔗 Linked from" callout to each page listing other docs that reference it
 #   bash list.sh recent-feed         # push 📣 Recently Synced page (last 50 unique syncs from runs.jsonl; --limit N to widen)
 #   bash list.sh prune               # list orphan Notion pages (no matching local doc); add --apply to archive them
+#   bash list.sh prune-images        # list orphaned Notion file uploads (not in .notion-image-cache.json); add --apply to delete them
 #   bash list.sh health              # push 🩺 Sync Status page summarizing latest run + recent run history
 
 set -e
@@ -67,7 +68,7 @@ ELAPSED=$((END_TS - START_TS))
 # Notify only for long-running subcommands (fetch, fix-mentions). show/diff
 # usually finish in under 1s — a notification banner is more annoying than
 # helpful at that pace.
-if [ "$SUBCMD" = "fetch" ] || [ "$SUBCMD" = "fix-mentions" ] || [ "$SUBCMD" = "sitemap" ] || [ "$SUBCMD" = "tag-index" ] || [ "$SUBCMD" = "index-db" ] || [ "$SUBCMD" = "backlinks" ] || [ "$SUBCMD" = "recent-feed" ] || [ "$SUBCMD" = "health" ]; then
+if [ "$SUBCMD" = "fetch" ] || [ "$SUBCMD" = "fix-mentions" ] || [ "$SUBCMD" = "sitemap" ] || [ "$SUBCMD" = "tag-index" ] || [ "$SUBCMD" = "index-db" ] || [ "$SUBCMD" = "backlinks" ] || [ "$SUBCMD" = "recent-feed" ] || [ "$SUBCMD" = "health" ] || [ "$SUBCMD" = "prune-images" ]; then
   if [ "$EXIT_CODE" -eq 0 ]; then
     _notify "notion-list ✓" "$SUBCMD complete" "${ELAPSED}s"
   else

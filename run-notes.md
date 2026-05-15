@@ -18,6 +18,20 @@ Claude should:
 
 <!-- entries below, newest first -->
 
+## 2026-05-15 — `prune-images` subcommand added
+
+Implemented `bash list.sh prune-images` to list (and optionally delete) orphaned Notion file uploads — workspace uploads not referenced by any entry in `.notion-image-cache.json`. Orphans accumulate when images are edited (new sha256 → new upload, old one orphaned) or files are deleted from the docs tree.
+
+**Key implementation notes:**
+- `@notionhq/client` v5 has no `fileUploads.delete` method. The delete path falls back to `DELETE /v1/file_uploads/{id}` via `fetch` with `NOTION_TOKEN` and `Notion-Version: 2025-09-03`.
+- If the REST delete endpoint is not supported by Notion (returns 405 or 404), the `--apply` path will report `0 deleted, N failed` rather than crashing. The dry-run path is unaffected.
+- Dry-run is the default; `--apply` requires an explicit `y/N` prompt before any deletion.
+- The command runs without needing `bash list.sh fetch` first — it reads the image cache directly and calls `fileUploads.list` (status: uploaded) from the API.
+
+**Dry-run was not tested against the real workspace** in this session (no `.env` available in the remote execution environment). Test before first production use.
+
+---
+
 ## 2026-05-02 — `tag-index` 504 on wipe — existing page too large to read in one shot
 
 **Run IDs:** 20260502-051846 (bring-up) succeeded for tag-index inside `bring-up`'s flow when it was a fresh build. The follow-up `dashboard` mode invocation later the same day FAILED tag-index after 1192s. Aborted before backlinks/recent-feed/health, requiring the orchestrator to invoke each remaining dashboard manually.
