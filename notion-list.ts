@@ -523,6 +523,124 @@ function saveCache(cache: Cache): void {
     return;
   }
 
+  if (cmd === "prune-images") {
+    // Walk fileUploads.list() and identify uploads in the workspace that are
+    // not referenced by any entry in .notion-image-cache.json (orphans from
+    // edited/replaced/deleted images or dead test runs).
+    // Dry-run by default. Pass --apply to delete; requires explicit y/N confirm.
+    //
+    // Note: @notionhq/client v5 has no fileUploads.delete — deletion falls back
+    // to DELETE /v1/file_uploads/{id} via fetch with NOTION_TOKEN.
+    const apply = args.includes("--apply");
+    const imageCachePath = path.join(__dirname, ".notion-image-cache.json");
+
+    // Build the set of file_upload_ids currently referenced in the local cache
+    const cachedIds = new Set<string>();
+    if (fs.existsSync(imageCachePath)) {
+      try {
+        const raw: Record<string, any> = JSON.parse(fs.readFileSync(imageCachePath, "utf8"));
+        for (const entry of Object.values(raw)) {
+          if (entry?.file_upload_id) cachedIds.add(entry.file_upload_id);
+        }
+      } catch {
+        console.error(red("Warning: failed to parse .notion-image-cache.json — treating cache as empty"));
+      }
+    } else {
+      console.log(dim("(no .notion-image-cache.json found — treating all workspace uploads as orphans)"));
+    }
+
+    // Fetch all successfully-uploaded file uploads from Notion (paginated)
+    console.log(bold("\nFetching file uploads from Notion…"));
+    const allUploads: any[] = [];
+    let uploadCursor: string | undefined;
+    let uploadPage = 0;
+    do {
+      const res: any = await withRetry("list-uploads", () =>
+        (notion as any).fileUploads.list({
+          status: "uploaded",
+          page_size: 100,
+          ...(uploadCursor ? { start_cursor: uploadCursor } : {}),
+        }),
+      );
+      allUploads.push(...res.results);
+      uploadCursor = res.has_more ? res.next_cursor : undefined;
+      uploadPage++;
+      process.stdout.write(`\r  ${dim(`page ${uploadPage} — ${allUploads.length} upload${allUploads.length === 1 ? "" : "s"} fetched…`)}`);
+      await sleep(RATE_LIMIT_MS);
+    } while (uploadCursor);
+    clearLine();
+
+    // Orphans: workspace uploads not referenced by any image-cache entry
+    const orphans = allUploads.filter((u) => !cachedIds.has(u.id));
+
+    if (orphans.length === 0) {
+      console.log(dim(`No orphaned uploads — all ${allUploads.length} workspace upload${allUploads.length === 1 ? "" : "s"} are in the local cache.`));
+      return;
+    }
+
+    const fmtBytes = (n: number | null): string => {
+      if (n == null) return dim("—");
+      if (n < 1024) return `${n} B`;
+      if (n < 1024 * 1024) return `${(n / 1024).toFixed(1)} KB`;
+      return `${(n / (1024 * 1024)).toFixed(2)} MB`;
+    };
+
+    console.log(`\n${bold(red(`${orphans.length} orphaned upload${orphans.length === 1 ? "" : "s"}`))}  ${dim(`(${allUploads.length} total in workspace · ${cachedIds.size} in local cache)`)}\n`);
+    for (const u of orphans) {
+      const name = u.filename ? cyan(u.filename) : dim("(no filename)");
+      const size = fmtBytes(u.content_length);
+      console.log(`  ${name}  ${dim(u.id)}  ${dim(u.created_time)}  ${size}`);
+    }
+
+    if (!apply) {
+      console.log(`\n${dim("Dry-run. To delete these uploads:")}  ${bold("bash list.sh prune-images --apply")}`);
+      console.log(dim("  You will be asked to confirm before any deletion."));
+      return;
+    }
+
+    // --apply: require explicit y/N confirmation before deleting anything
+    const { createInterface } = await import("readline");
+    const rl = createInterface({ input: process.stdin, output: process.stdout });
+    const answer = await new Promise<string>((resolve) => {
+      rl.question(
+        `\n${yellow(`Delete ${orphans.length} orphaned upload${orphans.length === 1 ? "" : "s"}?`)} [y/N] `,
+        (ans) => { rl.close(); resolve(ans.trim().toLowerCase()); },
+      );
+    });
+    if (answer !== "y" && answer !== "yes") {
+      console.log(dim("Aborted — no uploads deleted."));
+      return;
+    }
+
+    // Delete via REST: SDK v5 exposes no fileUploads.delete method
+    console.log(`\n${yellow("Deleting…")}  (${RATE_LIMIT_MS}ms between calls)`);
+    let deleted = 0;
+    let deleteFailed = 0;
+    for (const u of orphans) {
+      try {
+        const res = await fetch(`https://api.notion.com/v1/file_uploads/${u.id}`, {
+          method: "DELETE",
+          headers: {
+            Authorization: `Bearer ${NOTION_TOKEN}`,
+            "Notion-Version": "2025-09-03",
+          },
+        });
+        if (!res.ok) {
+          const body = await res.text();
+          throw new Error(`HTTP ${res.status}: ${body.slice(0, 120)}`);
+        }
+        deleted++;
+        console.log(`  ${green("✓")} ${u.filename ?? u.id}`);
+      } catch (err: any) {
+        deleteFailed++;
+        console.error(`  ${red("✗")} ${u.filename ?? u.id} — ${(err.message as string).slice(0, 80)}`);
+      }
+      await sleep(RATE_LIMIT_MS);
+    }
+    console.log(`\n${green("Done.")} ${deleted} deleted${deleteFailed > 0 ? `, ${red(String(deleteFailed))} failed` : ""}.`);
+    return;
+  }
+
   if (cmd === "fetch" || (cmd === "auto" && !loadCache())) {
     console.log(bold(`\nFetching Notion tree from root ${ROOT_ID}…`));
     if (!fetchIcons) console.log(dim("  (--no-icons: skipping per-page metadata fetch)"));

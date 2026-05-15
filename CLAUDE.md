@@ -42,6 +42,7 @@ bash list.sh backlinks        # append 🔗 Linked from callouts to each page
 bash list.sh recent-feed      # push 📣 Recently Synced page (last 50 unique)
 bash list.sh health           # push 🩺 Sync Status page from latest run
 bash list.sh prune            # list orphan pages; --apply to archive
+bash list.sh prune-images     # list orphaned file uploads (not in .notion-image-cache.json); --apply to delete
 bash list.sh recent-errors    # local-log failure scan
 bash list.sh empty-paths      # paths of empty remote pages
 ```

@@ -108,6 +108,7 @@ Two scripts cover everything. Each row links to the relevant USAGE section.
 | `bash list.sh diff` | Title-based comparison vs local docs | [§5 Comparing](USAGE.md#5-comparing-local-vs-remote) |
 | `bash list.sh empty-paths` | Print local paths whose remote page is empty | [§5](USAGE.md#5-comparing-local-vs-remote) |
 | `bash list.sh fix-mentions` | Standalone: rewrite links → mentions on every cached page | [§8 Mentions](USAGE.md#8-internal-links--page-mentions) |
+| `bash list.sh prune-images` | Dry-run: list orphaned file uploads not in `.notion-image-cache.json`; `--apply` to delete (y/N confirm) | [§7 Images](USAGE.md#7-image-uploads-for-private-repos) |
 
 ### Common workflows
 
