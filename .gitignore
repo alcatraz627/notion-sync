@@ -51,9 +51,18 @@ runs.jsonl
 metrics.jsonl
 .sync-defaults.json
 .notion-cache.json
+.notion-cache.*.json
 .notion-image-cache.json
 .notion-sync-state.json
+.notion-sync-state.*.json
+.notion-snapshots/
+.notion-snapshots.*/
+.notion-diff-cache.json
+.notion-diff-cache.*.json
 # .env.test handled by .env.* rule above; .env.test.example is the committed template
+# Scratch artifacts from dev sessions (playwright screenshots, review reports)
+*.png
+/.claude/output/
 # .claude — track skills/SKILL.md, ignore session/runtime state
 /.claude/wal.jsonl
 /.claude/wal.*

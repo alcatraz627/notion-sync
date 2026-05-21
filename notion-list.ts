@@ -15,6 +15,7 @@ import * as fs from "fs";
 import * as path from "path";
 import { convertPageLinksToMentions } from "./mention-converter";
 import { generateSitemap } from "./sitemap";
+import { titleVariants, buildVariantIndex, findMatches } from "./title-match";
 import { generateTagIndex } from "./tag-index";
 import { generateIndexDb } from "./index-db";
 import { generateBacklinks } from "./backlinks";
@@ -32,7 +33,23 @@ const NOTION_TOKEN = process.env.NOTION_TOKEN!;
 const RAW_ROOT = process.env.NOTION_ROOT_PAGE_ID!;
 const DOCS_DIR = process.env.DOCS_DIR ?? path.join(__dirname, "docs");
 const RATE_LIMIT_MS = 350;
-const CACHE_PATH = path.join(__dirname, ".notion-cache.json");
+// Cache file is keyed by NOTION_ROOT_PAGE_ID so swapping root targets
+// (V2, sandbox) auto-isolates the cache. Legacy unkeyed file is auto-
+// migrated on first read.
+import { getCacheKey } from "./sync-state";
+const LEGACY_CACHE_PATH = path.join(__dirname, ".notion-cache.json");
+const cachePath = () => path.join(__dirname, `.notion-cache.${getCacheKey()}.json`);
+function migrateLegacyCacheIfNeeded(): void {
+  try {
+    const cur = cachePath();
+    if (fs.existsSync(LEGACY_CACHE_PATH) && !fs.existsSync(cur)) {
+      fs.renameSync(LEGACY_CACHE_PATH, cur);
+      console.error(`\x1b[2m  ℹ migrated legacy .notion-cache.json → ${path.basename(cur)} (root ${getCacheKey()})\x1b[0m`);
+    }
+  } catch (err: any) {
+    console.error(`\x1b[33m  ⚠ legacy cache migration failed: ${err.message?.slice(0, 80)}\x1b[0m`);
+  }
+}
 
 if (!NOTION_TOKEN || !RAW_ROOT) {
   console.error("notion-list: NOTION_TOKEN and NOTION_ROOT_PAGE_ID must be set in .env");
@@ -215,7 +232,7 @@ function savePartial(reason: string): void {
   (cache as any).partial = true;
   (cache as any).partial_reason = reason;
   saveCache(cache);
-  console.error(yellow(`\n⚠ Partial cache saved (${cache.pages.length} pages, ${reason}) → ${path.relative(process.cwd(), CACHE_PATH)}`));
+  console.error(yellow(`\n⚠ Partial cache saved (${cache.pages.length} pages, ${reason}) → ${path.relative(process.cwd(), cachePath())}`));
 }
 process.on("SIGINT", () => { savePartial("SIGINT"); process.exit(130); });
 process.on("uncaughtException", (e) => { savePartial(`uncaught: ${e?.message?.slice(0,60) ?? "err"}`); process.exit(1); });
@@ -225,6 +242,22 @@ async function walk(opts: { fetchIcons: boolean }): Promise<Cache> {
   const pages: CachedPage[] = [];
   let apiCalls = 0;
   walkProgress = { pages, apiCalls: 0, start, fetchIcons: opts.fetchIcons };
+
+  // Milestone cadence — print a newline-anchored line every N pages so the
+  // user sees activity accumulate, not just a single self-overwriting line.
+  // Without milestones, large fetches on slow networks look frozen even when
+  // they're making progress.
+  const MILESTONE_EVERY = 25;
+  let lastMilestone = 0;
+  // Heartbeat — re-arm the live status line every few seconds even if no
+  // new pages have arrived (e.g. stuck in a Notion 502 retry backoff). Some
+  // terminals stop showing \r updates entirely if writes are too infrequent.
+  const HEARTBEAT_MS = 5000;
+  const heartbeat = setInterval(() => {
+    if (pages.length > 0) {
+      process.stdout.write(`\r  ${unboundedStatus(pages.length, `(heartbeat — still fetching)`, start)}`);
+    }
+  }, HEARTBEAT_MS);
 
   // Root page metadata
   const rootMeta: any = await withRetry("root", () => notion.pages.retrieve({ page_id: ROOT_ID }));
@@ -239,6 +272,15 @@ async function walk(opts: { fetchIcons: boolean }): Promise<Cache> {
     // Unbounded progress (total unknown during fetch — depth-first discovery).
     // Shows: elapsed time, pages so far, throughput, current title.
     process.stdout.write(`\r  ${unboundedStatus(pages.length, `[d${depth}] ${title}`, start)}`);
+
+    if (pages.length >= lastMilestone + MILESTONE_EVERY) {
+      // Stamp a permanent milestone line, then re-arm the live cursor below.
+      const elapsedMs = Date.now() - start;
+      const rate = pages.length / Math.max(1, elapsedMs / 1000);
+      process.stdout.write("\r" + " ".repeat(120) + "\r");
+      console.log(`  ${dim(`[${fmtElapsedShort(elapsedMs)}]`)} ${green("✓")} ${pages.length} pages fetched  ${dim(`(${rate.toFixed(1)}/s, ${apiCalls} API calls)`)}`);
+      lastMilestone = pages.length;
+    }
 
     const { blocks, apiCalls: ac } = await listChildren(pageId);
     apiCalls += ac; walkProgress!.apiCalls = apiCalls;
@@ -273,8 +315,17 @@ async function walk(opts: { fetchIcons: boolean }): Promise<Cache> {
     }
   }
 
-  await visit(ROOT_ID, null, 0, rootTitle, rootIcon);
+  try {
+    await visit(ROOT_ID, null, 0, rootTitle, rootIcon);
+  } finally {
+    clearInterval(heartbeat);
+  }
   process.stdout.write("\r" + " ".repeat(120) + "\r");
+  // Final summary line so the user has a permanent record after the
+  // self-overwriting status line clears.
+  const totalElapsed = Date.now() - start;
+  const finalRate = pages.length / Math.max(1, totalElapsed / 1000);
+  console.log(`  ${dim(`[${fmtElapsedShort(totalElapsed)}]`)} ${green("✓")} fetch complete  ${dim(`(${pages.length} pages, ${finalRate.toFixed(1)}/s, ${apiCalls} API calls)`)}`);
 
   return {
     fetched_at: new Date().toISOString(),
@@ -416,16 +467,85 @@ function scanLocalDocs(): { titles: Set<string>; pathByTitle: Map<string, string
 
 function runDiff(cache: Cache): void {
   const local = scanLocalDocs();
-  const remoteTitles = new Set(cache.pages.map((p) => p.title));
 
-  const onlyRemote = cache.pages.filter((p) => p.parent_id !== null && !local.titles.has(p.title));
-  const onlyLocal = [...local.titles].filter((t) => !remoteTitles.has(t));
+  // Variant-aware matching: a remote page is "covered" if any of its title
+  // variants matches any local title variant (and vice versa). Catches
+  // drift like "Forms" ↔ "UI Widgets — Forms", "Auth (Frontend)" ↔ "Auth",
+  // hyphen-vs-space, etc. without hard-coding qualifier prefixes.
+  const localVariantIndex  = buildVariantIndex(local.titles);
+  const remotePages = cache.pages.filter((p) => p.parent_id !== null);
+  const remoteTitlesArr = remotePages.map((p) => p.title);
+  const remoteVariantIndex = buildVariantIndex(remoteTitlesArr);
+
+  // Buckets: still-orphan + newly-rescued pairs.
+  interface Pair { remoteTitle: string; remoteUrl: string; localTitle: string; localPath: string; ambiguous: number }
+  const matchedPairs: Pair[] = [];
+  const onlyRemote: typeof remotePages = [];
+  const matchedRemoteTitles = new Set<string>();
+  const matchedLocalTitles  = new Set<string>();
+
+  // Rank a local hit when multiple match a single remote. Two-axis scoring:
+  //   (1) variant overlap length — longer shared variant = more specific match
+  //   (2) section-page affinity — if the Notion page has child pages (i.e. is
+  //       a folder/section), strongly prefer local _index.md files
+  // The combination disambiguates the common case where a generic Notion
+  // section name like "Admin" could match many local leaf titles like
+  // "Admin — Debug Tools" AND a folder `_index.md` titled "Product — Admin".
+  // The _index bonus pushes the folder match to the top.
+  const pickBestLocal = (remoteTitle: string, locals: Set<string>, remoteIsSection: boolean): string => {
+    const remoteV = new Set(titleVariants(remoteTitle));
+    let best: { local: string; score: number } | null = null;
+    for (const lt of locals) {
+      const lpath = local.pathByTitle.get(lt) ?? "";
+      let score = 0;
+      for (const v of titleVariants(lt)) {
+        if (remoteV.has(v)) score = Math.max(score, v.length);
+      }
+      // _index.md is the section/folder representative — strongly prefer it
+      // when the remote page itself is a section (has Notion-side children).
+      if (remoteIsSection && lpath.endsWith("/_index.md")) score += 1000;
+      // Symmetric mild bonus: when remote is NOT a section, prefer non-_index
+      // locals so a folder _index doesn't grab a leaf-titled remote page.
+      if (!remoteIsSection && !lpath.endsWith("/_index.md")) score += 50;
+      // Tie-breaker for section matches: prefer SHORTER paths (higher in the
+      // tree). When `Improvements` matches both `product/improvements/_index.md`
+      // and `product/improvements/admin-panel/_index.md`, the former is the
+      // parent and the right pick.
+      if (remoteIsSection && lpath.endsWith("/_index.md")) {
+        const depth = lpath.split("/").length;
+        score -= depth; // shorter path wins
+      }
+      if (!best || score > best.score) best = { local: lt, score };
+    }
+    return best ? best.local : [...locals][0];
+  };
+
+  for (const p of remotePages) {
+    const localHits = findMatches(p.title, localVariantIndex);
+    if (localHits.size === 0) {
+      onlyRemote.push(p);
+      continue;
+    }
+    matchedRemoteTitles.add(p.title);
+    const bestLocal = pickBestLocal(p.title, localHits, p.child_page_count > 0);
+    matchedLocalTitles.add(bestLocal);
+    matchedPairs.push({
+      remoteTitle: p.title,
+      remoteUrl: p.url,
+      localTitle: bestLocal,
+      localPath: local.pathByTitle.get(bestLocal) ?? "",
+      ambiguous: localHits.size,
+    });
+  }
+
+  const onlyLocal = [...local.titles].filter((t) => !matchedLocalTitles.has(t));
   const emptyRemote = cache.pages.filter((p) => p.parent_id !== null && p.block_count === 0);
 
   console.log(bold("\nDiff: remote vs local"));
   console.log(dim("─".repeat(72)));
   console.log(`${dim("Local docs:")}    ${local.titles.size}`);
   console.log(`${dim("Remote pages:")}  ${cache.pages.length - 1}  ${dim("(excluding root)")}`);
+  console.log(`${dim("Matched:")}       ${matchedRemoteTitles.size} remote ↔ ${matchedLocalTitles.size} local  ${dim("(via title-variant pairing)")}`);
   console.log(dim("─".repeat(72)));
 
   console.log(`\n${bold(red(`✗ Remote-only (${onlyRemote.length})`))}  ${dim("— pages on Notion with no matching local title")}`);
@@ -436,8 +556,9 @@ function runDiff(cache: Cache): void {
 
   console.log(`\n${bold(yellow(`⚠ Empty remote pages (${emptyRemote.length})`))}  ${dim("— page exists but has 0 blocks")}`);
   for (const p of emptyRemote.slice(0, 50)) {
-    const localHint = local.pathByTitle.get(p.title);
-    console.log(`    ${cyan(p.title)}  ${dim(p.url)}${localHint ? `  ${dim("↳ " + localHint)}` : ""}`);
+    const localHits = findMatches(p.title, localVariantIndex);
+    const hint = localHits.size > 0 ? local.pathByTitle.get([...localHits][0]) : undefined;
+    console.log(`    ${cyan(p.title)}  ${dim(p.url)}${hint ? `  ${dim("↳ " + hint)}` : ""}`);
   }
   if (emptyRemote.length > 50) console.log(dim(`    … +${emptyRemote.length - 50} more`));
 
@@ -447,25 +568,51 @@ function runDiff(cache: Cache): void {
   }
   if (onlyLocal.length > 50) console.log(dim(`    … +${onlyLocal.length - 50} more`));
 
+  // Rescued pairs. Split into "exact" (titles identical or trivially equal)
+  // vs "renamed" (titles differ — the interesting case where the user might
+  // want to verify the pairing). Show only renames in detail; collapse the
+  // exact bucket to a count.
+  const exactMatches = matchedPairs.filter(p => p.remoteTitle === p.localTitle);
+  const renamedMatches = matchedPairs.filter(p => p.remoteTitle !== p.localTitle);
+  const ambiguous = matchedPairs.filter(p => p.ambiguous > 1);
+
+  if (renamedMatches.length > 0) {
+    console.log(`\n${bold(cyan(`◆ Renamed pairs (${renamedMatches.length})`))}  ${dim("— matched via title-variant overlap (verify these)")}`);
+    const shown = renamedMatches.slice(0, 80);
+    for (const pair of shown) {
+      const ambig = pair.ambiguous > 1 ? dim(`  [${pair.ambiguous} candidates]`) : "";
+      console.log(`    ${cyan(pair.remoteTitle)} ${dim("→")} ${green(pair.localTitle)}${ambig}  ${dim("↳ " + pair.localPath)}`);
+    }
+    if (renamedMatches.length > 80) console.log(dim(`    … +${renamedMatches.length - 80} more`));
+  }
+  if (exactMatches.length > 0) {
+    console.log(`\n${dim(`◆ Exact title matches: ${exactMatches.length}  (titles identical on both sides — no rename)`)}`);
+  }
+  if (ambiguous.length > 0) {
+    console.log(`\n${dim(`⚠ ${ambiguous.length} remote pages had multiple plausible local pairings. The most-specific match was picked (longest shared variant). Run with --verbose for the alternatives.`)}`);
+  }
+
   console.log("");
   console.log(dim("─".repeat(72)));
-  console.log(`Tip: title-based match is brittle — a follow-up will compare by parent path.`);
+  console.log(`${dim("Match strategy:")} verbatim title + lenient-normalize + dash-tail + paren-strip.`);
+  console.log(`${dim("Still brittle for:")} renamed-file-AND-renamed-H1 (no overlapping variant). Content-fingerprint pass would catch those.`);
   console.log("");
 }
 
 // ── Cache I/O ────────────────────────────────────────────────────────────────
 
 function loadCache(): Cache | null {
-  if (!fs.existsSync(CACHE_PATH)) return null;
+  migrateLegacyCacheIfNeeded();
+  if (!fs.existsSync(cachePath())) return null;
   try {
-    return JSON.parse(fs.readFileSync(CACHE_PATH, "utf8"));
+    return JSON.parse(fs.readFileSync(cachePath(), "utf8"));
   } catch (e: any) {
     console.error(red(`cache parse failed: ${e.message}`));
     return null;
   }
 }
 function saveCache(cache: Cache): void {
-  fs.writeFileSync(CACHE_PATH, JSON.stringify(cache, null, 2));
+  fs.writeFileSync(cachePath(), JSON.stringify(cache, null, 2));
 }
 
 // ── Entrypoint ───────────────────────────────────────────────────────────────
@@ -479,6 +626,21 @@ function saveCache(cache: Cache): void {
   const emptyOnly = flags.has("--empty-only");
   const maxDepthArg = args[args.indexOf("--max-depth") + 1];
   const maxDepth = args.includes("--max-depth") ? parseInt(maxDepthArg, 10) : undefined;
+
+  if (cmd === "diff-content") {
+    // Three-way diff report: BASE (snapshot) vs LOCAL (file on disk) vs
+    // REMOTE (Notion right now, normalized via the pull pipeline). Read-only.
+    // Default scope = protected_pages from the latest live run; pass --all
+    // to walk every baselined page, or --paths a,b for a custom subset.
+    // Delegates to diff-content.ts so the heavy HTML/server logic stays in
+    // one place and this dispatcher stays a thin router.
+    const passThrough = process.argv.slice(3);
+    const proc = Bun.spawn(["bun", path.join(__dirname, "diff-content.ts"), ...passThrough], {
+      stdio: ["inherit", "inherit", "inherit"],
+    });
+    const code = await proc.exited;
+    process.exit(code);
+  }
 
   if (cmd === "recent-errors") {
     // Surface failed paths from recent runs.jsonl entries. No Notion fetch
@@ -529,7 +691,7 @@ function saveCache(cache: Cache): void {
     try {
       const cache = await walk({ fetchIcons });
       saveCache(cache);
-      console.log(green(`✓ Cached ${cache.pages.length} pages → ${path.relative(process.cwd(), CACHE_PATH)}`));
+      console.log(green(`✓ Cached ${cache.pages.length} pages → ${path.relative(process.cwd(), cachePath())}`));
     } catch (err: any) {
       // walk() crashed even after withRetry exhausted attempts. Save what we
       // collected so the user doesn't lose minutes of fetching.
@@ -556,31 +718,59 @@ function saveCache(cache: Cache): void {
     let totalUpdated = 0;
     let pagesProcessed = 0;
     let pagesWithChanges = 0;
+    let totalApiCalls = 0;
     const startTs = Date.now();
+    // Per-page slowness inspection: track the slowest page seen so we can
+    // surface it at the end (useful for diagnosing "why so slow?" questions).
+    let slowest: { title: string; ms: number; apiCalls: number } | null = null;
     for (const p of cache.pages) {
       pagesProcessed++;
-      process.stdout.write(`\r  ${progressBar(pagesProcessed, cache.pages.length, p.title, startTs)}`);
+      // liveProgress is mutated inside convertPageLinksToMentions after every
+      // API call — the heartbeat below polls it to keep the progress line
+      // moving even when one slow page would otherwise freeze the bar.
+      const live = { blocks_inspected: 0, blocks_updated: 0, links_converted: 0, api_calls: 0 };
+      const pageStart = Date.now();
+      const repaint = () => {
+        const pageElapsed = Math.floor((Date.now() - pageStart) / 1000);
+        const live_str = dim(`  · ${live.blocks_inspected}b / ${live.api_calls}api / ${pageElapsed}s`);
+        process.stdout.write(`\r  ${progressBar(pagesProcessed, cache.pages.length, p.title + live_str, startTs)}`);
+      };
+      repaint();
+      // Repaint every 1s — catches the case where convertPageLinksToMentions
+      // is stuck on a deeply-nested page making sequential rate-limited API
+      // calls. Without the heartbeat the line shows the same N/total + page
+      // title for minutes; with it, the user sees blocks/api counters tick.
+      const heartbeat = setInterval(repaint, 1000);
       try {
         const r = await convertPageLinksToMentions({
           notion,
           pageId: p.id,
           ourPageIds,
           rateLimitMs: RATE_LIMIT_MS,
+          liveProgress: live,
         });
+        clearInterval(heartbeat);
+        const pageMs = Date.now() - pageStart;
+        totalApiCalls += live.api_calls;
+        if (!slowest || pageMs > slowest.ms) slowest = { title: p.title, ms: pageMs, apiCalls: live.api_calls };
         if (r.links_converted > 0) {
           totalConverted += r.links_converted;
           totalUpdated += r.blocks_updated;
           pagesWithChanges++;
-          process.stdout.write(`\r${" ".repeat(120)}\r`);
-          console.log(`  ${green("✓")} ${p.title}  ${dim(`(${r.links_converted} link${r.links_converted === 1 ? "" : "s"} → mention${r.links_converted === 1 ? "" : "s"})`)}`);
+          process.stdout.write(`\r${" ".repeat(160)}\r`);
+          console.log(`  ${green("✓")} ${p.title}  ${dim(`(${r.links_converted} link${r.links_converted === 1 ? "" : "s"} → mention${r.links_converted === 1 ? "" : "s"} · ${live.api_calls} API calls · ${Math.round(pageMs / 1000)}s)`)}`);
         }
       } catch (err: any) {
-        process.stdout.write(`\r${" ".repeat(120)}\r`);
+        clearInterval(heartbeat);
+        process.stdout.write(`\r${" ".repeat(160)}\r`);
         console.error(`  ${red("✗")} ${p.title}: ${(err.message as string).slice(0, 80)}`);
       }
     }
-    process.stdout.write(`\r${" ".repeat(120)}\r`);
-    console.log(`\n${green("Done.")} Converted ${bold(String(totalConverted))} link${totalConverted === 1 ? "" : "s"} → mention${totalConverted === 1 ? "" : "s"} across ${pagesWithChanges} page${pagesWithChanges === 1 ? "" : "s"} (${totalUpdated} block update${totalUpdated === 1 ? "" : "s"}).`);
+    process.stdout.write(`\r${" ".repeat(160)}\r`);
+    console.log(`\n${green("Done.")} Converted ${bold(String(totalConverted))} link${totalConverted === 1 ? "" : "s"} → mention${totalConverted === 1 ? "" : "s"} across ${pagesWithChanges} page${pagesWithChanges === 1 ? "" : "s"} (${totalUpdated} block update${totalUpdated === 1 ? "" : "s"}, ${totalApiCalls} total API calls).`);
+    if (slowest) {
+      console.log(dim(`  Slowest page: ${slowest.title}  (${Math.round(slowest.ms / 1000)}s, ${slowest.apiCalls} API calls)`));
+    }
   } else if (cmd === "diff") {
     runDiff(cache);
   } else if (cmd === "empty-paths") {
@@ -618,10 +808,15 @@ function saveCache(cache: Cache): void {
     // section pages (titled by folder name, not H1) — those would
     // false-positive otherwise. Real leaf orphans are pages with
     // 0 children that no longer correspond to a local file.
+    //
+    // Matching is variant-aware (mirrors runDiff) so an H1 like
+    // "UI Widgets — Forms" still matches the Notion page "Forms" and
+    // doesn't get reported as orphan + archived by --apply.
+    const localVariantIndex = buildVariantIndex(local.titles);
     const orphans = cache.pages.filter(
       (p) => p.parent_id !== null
         && p.child_page_count === 0
-        && !local.titles.has(p.title),
+        && findMatches(p.title, localVariantIndex).size === 0,
     );
     if (orphans.length === 0) {
       console.log(dim("No orphaned pages found — every Notion page has a matching local doc title."));
@@ -651,6 +846,86 @@ function saveCache(cache: Cache): void {
       await sleep(RATE_LIMIT_MS);
     }
     console.log(`\n${green("Done.")} ${archived} archived${failed > 0 ? `, ${red(String(failed))} failed` : ""}.`);
+  } else if (cmd === "dashboards") {
+    // Consolidated dashboard sweep — runs all 6 generators in ONE process,
+    // reusing the already-loaded cache + notion client. Replaces run.sh's
+    // `dashboard` mode (6× `bash list.sh <cmd>` = 6 bun cold-starts + 6 cache
+    // parses) with a single in-memory pass. Each phase is isolated so one
+    // failure doesn't strand the rest (mirrors the old `|| failed+=()`).
+    //
+    // Progress: a `[N/6] <name>` prefix on a self-overwriting line, fed by
+    // each generator's `log` callback, plus a per-phase ✓/✗ summary line and
+    // a final roll-up.
+    const docsDir = process.env.DOCS_DIR;
+    const runsPath = path.join(__dirname, "runs.jsonl");
+    const limitArg = args[args.indexOf("--limit") + 1];
+    const feedLimit = args.includes("--limit") ? parseInt(limitArg, 10) : 50;
+
+    interface DashPhase { name: string; run: (log: (m: string) => void) => Promise<string> }
+    const requireDocs = (): string => {
+      if (!docsDir) throw new Error("DOCS_DIR env var not set");
+      return docsDir;
+    };
+    const phases: DashPhase[] = [
+      { name: "Sitemap", run: async (log) => {
+        const r = await generateSitemap({ notion, cache, sitemapPageId: process.env.NOTION_SITEMAP_PAGE_ID || undefined, rateLimitMs: RATE_LIMIT_MS, log });
+        return `${r.total_pages} pages · ${r.total_blocks} blocks`;
+      }},
+      { name: "Tag index", run: async (log) => {
+        const r = await generateTagIndex({ notion, cache, docsDir: requireDocs(), tagIndexPageId: process.env.NOTION_TAG_INDEX_PAGE_ID || undefined, rateLimitMs: RATE_LIMIT_MS, log });
+        return `${r.total_tags} tags · ${r.total_docs_with_tags} docs`;
+      }},
+      { name: "Index DB", run: async (log) => {
+        const r = await generateIndexDb({ notion, cache, docsDir: requireDocs(), databaseId: process.env.NOTION_INDEX_DB_ID || undefined, rateLimitMs: RATE_LIMIT_MS, log });
+        return `${r.total_docs} docs · +${r.rows_created}/~${r.rows_updated}`;
+      }},
+      { name: "Backlinks", run: async (log) => {
+        const r = await generateBacklinks({ notion, cache, docsDir: requireDocs(), rateLimitMs: RATE_LIMIT_MS, log });
+        return `${r.pages_with_backlinks} pages · ${r.callouts_added}+${r.callouts_replaced} callouts`;
+      }},
+      { name: "Recent feed", run: async (log) => {
+        const r = await generateRecentFeed({ notion, cache, runsPath, limit: feedLimit, recentFeedPageId: process.env.NOTION_RECENT_FEED_PAGE_ID || undefined, rateLimitMs: RATE_LIMIT_MS, log });
+        return `${r.total_entries_emitted} entries`;
+      }},
+      { name: "Sync Status", run: async (log) => {
+        const r = await generateHealth({ notion, cache, runsPath, healthPageId: process.env.NOTION_HEALTH_PAGE_ID || undefined, rateLimitMs: RATE_LIMIT_MS, log });
+        return `${r.blocks_pushed} blocks${r.ran_against ? ` · run ${r.ran_against}` : ""}`;
+      }},
+    ];
+
+    console.log(bold(`\nRunning ${phases.length} dashboards in one process…`));
+    const failed: string[] = [];
+    const startAll = Date.now();
+    let idx = 0;
+    for (const ph of phases) {
+      idx++;
+      const prefix = dim(`[${idx}/${phases.length}]`);
+      // Live line: each generator's log() overwrites the current status line.
+      const phaseLog = (msg: string) => {
+        const clean = msg.replace(/\n/g, " ").trim().slice(0, 70);
+        process.stdout.write(`\r${" ".repeat(120)}\r  ${prefix} ${bold(ph.name)}  ${dim(clean)}`);
+      };
+      process.stdout.write(`\r  ${prefix} ${bold(ph.name)}  ${dim("starting…")}`);
+      const t0 = Date.now();
+      try {
+        const summary = await ph.run(phaseLog);
+        const secs = Math.round((Date.now() - t0) / 1000);
+        process.stdout.write(`\r${" ".repeat(120)}\r`);
+        console.log(`  ${green("✓")} ${prefix} ${bold(ph.name)}  ${dim(`${summary} · ${secs}s`)}`);
+      } catch (err: any) {
+        process.stdout.write(`\r${" ".repeat(120)}\r`);
+        console.log(`  ${red("✗")} ${prefix} ${bold(ph.name)}  ${red((err.message ?? "failed").slice(0, 80))}`);
+        failed.push(ph.name);
+      }
+    }
+    const totalSecs = Math.round((Date.now() - startAll) / 1000);
+    console.log("");
+    if (failed.length === 0) {
+      console.log(`${green("✓ All dashboards complete")}  ${dim(`(${totalSecs}s total)`)}`);
+    } else {
+      console.log(`${yellow(`⚠ ${failed.length}/${phases.length} dashboards failed:`)} ${failed.join(", ")}  ${dim(`(${totalSecs}s total)`)}`);
+      process.exitCode = 1;
+    }
   } else if (cmd === "health") {
     // Render the latest run's stats + recent run strip + last errors
     // to a 🩺 Sync Status page. No DOCS_DIR needed; cache provides

@@ -63,6 +63,12 @@ interface ConvertOptions {
   pageId: string;
   ourPageIds: Set<string>; // dash-stripped lowercase 32-hex
   rateLimitMs?: number;
+  // Optional live-counter the caller can poll while this function is
+  // running. Mutated synchronously after each API call so a periodic
+  // repainter (e.g. setInterval in the caller) can show "N blocks, M API
+  // calls, K updates" in real time — important for slow pages where the
+  // outer progress bar would otherwise appear frozen for minutes.
+  liveProgress?: { blocks_inspected: number; blocks_updated: number; links_converted: number; api_calls: number };
 }
 
 export interface ConvertResult {
@@ -79,8 +85,9 @@ const sleep = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
  * `text.link.url` to match).
  */
 export async function convertPageLinksToMentions(opts: ConvertOptions): Promise<ConvertResult> {
-  const { notion, pageId, ourPageIds, rateLimitMs = 350 } = opts;
+  const { notion, pageId, ourPageIds, rateLimitMs = 350, liveProgress } = opts;
   const result: ConvertResult = { blocks_inspected: 0, blocks_updated: 0, links_converted: 0 };
+  const bumpApi = () => { if (liveProgress) liveProgress.api_calls++; };
 
   async function visit(blockId: string): Promise<void> {
     let cursor: string | undefined;
@@ -90,10 +97,12 @@ export async function convertPageLinksToMentions(opts: ConvertOptions): Promise<
         page_size: 100,
         ...(cursor ? { start_cursor: cursor } : {}),
       });
+      bumpApi();
       await sleep(rateLimitMs);
 
       for (const block of res.results as any[]) {
         result.blocks_inspected++;
+        if (liveProgress) liveProgress.blocks_inspected++;
         const blockType = block.type as string;
 
         // Skip child_page (subpages — the link IS the page itself, no rich_text)
@@ -110,10 +119,12 @@ export async function convertPageLinksToMentions(opts: ConvertOptions): Promise<
             if (converted.changed) {
               result.links_converted += converted.count;
               result.blocks_updated++;
+              if (liveProgress) { liveProgress.links_converted += converted.count; liveProgress.blocks_updated++; }
               await (notion.blocks as any).update({
                 block_id: block.id,
                 [blockType]: { rich_text: converted.rich_text },
               });
+              bumpApi();
               await sleep(rateLimitMs);
             }
           }
@@ -133,10 +144,12 @@ export async function convertPageLinksToMentions(opts: ConvertOptions): Promise<
             if (cellsChanged) {
               result.links_converted += cellsCount;
               result.blocks_updated++;
+              if (liveProgress) { liveProgress.links_converted += cellsCount; liveProgress.blocks_updated++; }
               await (notion.blocks as any).update({
                 block_id: block.id,
                 table_row: { cells: newCells },
               });
+              bumpApi();
               await sleep(rateLimitMs);
             }
           }

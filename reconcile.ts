@@ -20,6 +20,7 @@
 import { Client } from "@notionhq/client";
 import * as fs from "fs";
 import * as path from "path";
+import * as os from "os";
 import {
   loadState,
   saveState,
@@ -27,6 +28,7 @@ import {
   checkDivergence,
   recheckUserEdited,
   getStatePath,
+  loadSnapshot,
   type SyncStateFile,
   type Divergence,
 } from "./sync-state";
@@ -274,7 +276,7 @@ interface DiffResult {
   savedMerge?: boolean;
 }
 
-async function renderDiffWith(tool: DiffTool, localPath: string, tmpPath: string, mergedContent: string): Promise<DiffResult> {
+async function renderDiffWith(tool: DiffTool, localPath: string, tmpPath: string, mergedContent: string, baseContent: string | null = null): Promise<DiffResult> {
   switch (tool) {
     case "git": {
       const proc = Bun.spawn(
@@ -308,19 +310,45 @@ async function renderDiffWith(tool: DiffTool, localPath: string, tmpPath: string
       // side-by-side, merge). Serve from a tiny Bun.serve on a random port
       // so the merge editor's Save button can POST back to /save without
       // CORS hassles. Server stops once the user saves or cancels.
-      let diffOutput = "";
-      const proc = Bun.spawn(
-        ["git", "--no-pager", "diff", "--no-color", "--no-index", "--word-diff=plain", "-U99999", localPath, tmpPath],
-        { stdin: "ignore", stdout: "pipe", stderr: "ignore" },
-      );
-      diffOutput = await new Response(proc.stdout).text();
-      await proc.exited;
+      //
+      // When a BASE snapshot is available (post-2026-05-15 sync-state writes
+      // `.notion-snapshots/<rel>.md`), compute TWO additional diffs
+      // (BASE→LOCAL, BASE→REMOTE) so the UI can show a 3-way layout
+      // matching what `bash list.sh diff-content` displays. The 4-pane
+      // merge view (BASE | LOCAL | MERGE | REMOTE) gives the user a
+      // reference point for which side moved what.
+      const runGitDiff = async (aPath: string, bPath: string): Promise<string> => {
+        const p = Bun.spawn(
+          ["git", "--no-pager", "diff", "--no-color", "--no-index", "--word-diff=plain", "-U99999", aPath, bPath],
+          { stdin: "ignore", stdout: "pipe", stderr: "ignore" },
+        );
+        const out = await new Response(p.stdout).text();
+        await p.exited;
+        return out;
+      };
+      const diffOutput = await runGitDiff(localPath, tmpPath);
       const localContent = fs.existsSync(localPath) ? fs.readFileSync(localPath, "utf-8") : "";
+      let baseToLocalDiff = "";
+      let baseToRemoteDiff = "";
+      if (baseContent !== null) {
+        // Write BASE to a tmp file for the same git diff pipeline.
+        const baseTmp = path.join(os.tmpdir(), `recon-base-${process.pid}-${Date.now()}.md`);
+        fs.writeFileSync(baseTmp, baseContent, "utf-8");
+        try {
+          baseToLocalDiff  = await runGitDiff(baseTmp, localPath);
+          baseToRemoteDiff = await runGitDiff(baseTmp, tmpPath);
+        } finally {
+          try { fs.unlinkSync(baseTmp); } catch { /* ignore */ }
+        }
+      }
       const result = await runBrowserDiffServer({
         localPath,
         localContent,
         notionContent: mergedContent,
         diffOutput,
+        baseContent,
+        baseToLocalDiff,
+        baseToRemoteDiff,
       });
       if (result === "saved") {
         console.log(c.green(`       ✓ Merged content saved to ${path.relative(process.cwd(), localPath)}`));
@@ -358,12 +386,18 @@ interface BrowserDiffArgs {
   localContent: string;
   notionContent: string;
   diffOutput: string;
+  // Optional 3-way enrichment. When baseContent is non-null, the HTML adds
+  // a "3-way" mode tab and a BASE pane to the merge view; otherwise it
+  // renders the legacy 2-way layout unchanged.
+  baseContent?: string | null;
+  baseToLocalDiff?: string;
+  baseToRemoteDiff?: string;
 }
 
 const BROWSER_DIFF_TIMEOUT_MS = 30 * 60 * 1000; // 30 minutes
 
 async function runBrowserDiffServer(args: BrowserDiffArgs): Promise<"saved" | "cancelled" | "timeout"> {
-  const { localPath, localContent, notionContent, diffOutput } = args;
+  const { localPath, localContent, notionContent, diffOutput, baseContent, baseToLocalDiff, baseToRemoteDiff } = args;
   let outcome: "saved" | "cancelled" | "timeout" | null = null;
 
   const server = Bun.serve({
@@ -372,7 +406,7 @@ async function runBrowserDiffServer(args: BrowserDiffArgs): Promise<"saved" | "c
     fetch: async (req) => {
       const url = new URL(req.url);
       if (url.pathname === "/" || url.pathname === "/index.html") {
-        const html = renderDiffHtml(localPath, diffOutput, localContent, notionContent);
+        const html = renderDiffHtml(localPath, diffOutput, localContent, notionContent, baseContent ?? null, baseToLocalDiff ?? "", baseToRemoteDiff ?? "");
         return new Response(html, { headers: { "content-type": "text/html; charset=utf-8" } });
       }
       if (url.pathname === "/save" && req.method === "POST") {
@@ -422,10 +456,10 @@ async function runBrowserDiffServer(args: BrowserDiffArgs): Promise<"saved" | "c
  *    - removed:  starts with "-" (full-line removal)
  *  We render each as an HTML row with line-level color + inline <ins>/<del>
  *  for the word-level highlights. */
-type DiffRow = { kind: "context" | "added" | "removed" | "changed" | "hunk" | "header"; html: string; raw: string };
+export type DiffRow = { kind: "context" | "added" | "removed" | "changed" | "hunk" | "header"; html: string; raw: string };
 
 /** Parse word-diff output into typed rows shared by all three views. */
-function parseDiffOutput(diffOutput: string): DiffRow[] {
+export function parseDiffOutput(diffOutput: string): DiffRow[] {
   const escape = (s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
   const rows: DiffRow[] = [];
   let inHeader = true;
@@ -475,7 +509,7 @@ function parseDiffOutput(diffOutput: string): DiffRow[] {
 }
 
 /** Build the unified-view <tr> rows. */
-function buildUnifiedBody(rows: DiffRow[]): string {
+export function buildUnifiedBody(rows: DiffRow[]): string {
   return rows.map(r => `<tr class="${r.kind}"><td class="gutter"></td><td class="line">${r.html || "&nbsp;"}</td></tr>`).join("\n");
 }
 
@@ -541,13 +575,20 @@ function buildSideBySideBody(rows: DiffRow[]): string {
   }).join("\n");
 }
 
-function renderDiffHtml(localName: string, diffOutput: string, localContent: string, notionContent: string): string {
+function renderDiffHtml(localName: string, diffOutput: string, localContent: string, notionContent: string, baseContent: string | null = null, baseToLocalDiff = "", baseToRemoteDiff = ""): string {
   const escape = (s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
   const title = `Reconcile — ${path.basename(localName)}`;
+  const has3Way = baseContent !== null;
 
   const rows = parseDiffOutput(diffOutput);
   const unifiedBody = buildUnifiedBody(rows);
   const sxsBody = buildSideBySideBody(rows);
+  // 3-way bodies: BASE→LOCAL on one side, BASE→REMOTE on the other.
+  // Built only when BASE exists so the snapshot-less case stays untouched.
+  const baseToLocalRows  = has3Way ? parseDiffOutput(baseToLocalDiff)  : [];
+  const baseToRemoteRows = has3Way ? parseDiffOutput(baseToRemoteDiff) : [];
+  const baseToLocalBody  = has3Way ? buildUnifiedBody(baseToLocalRows)  : "";
+  const baseToRemoteBody = has3Way ? buildUnifiedBody(baseToRemoteRows) : "";
   const stats = {
     added:   rows.filter(r => r.kind === "added").length   + rows.filter(r => r.kind === "changed" && r.raw.includes("{+") && !r.raw.includes("[-")).length,
     removed: rows.filter(r => r.kind === "removed").length + rows.filter(r => r.kind === "changed" && r.raw.includes("[-") && !r.raw.includes("{+")).length,
@@ -557,6 +598,7 @@ function renderDiffHtml(localName: string, diffOutput: string, localContent: str
   // their desired final state, then clicks Save.
   const localJsonSafe = JSON.stringify(localContent);
   const notionJsonSafe = JSON.stringify(notionContent);
+  const baseJsonSafe = JSON.stringify(baseContent ?? "");
 
   return `<!doctype html>
 <html lang="en" data-theme="dark" data-mode="unified"><head><meta charset="utf-8"><title>${escape(title)}</title>
@@ -614,6 +656,16 @@ function renderDiffHtml(localName: string, diffOutput: string, localContent: str
   :root[data-mode="unified"] .view-unified { display: block; }
   :root[data-mode="sxs"] .view-sxs { display: block; }
   :root[data-mode="merge"] .view-merge { display: flex; }
+  :root[data-mode="threeway"] .view-threeway { display: grid; }
+  /* 3-way split view (only shown when BASE is available). Two unified diffs
+     side-by-side: BASE→LOCAL on the left, BASE→REMOTE on the right.
+     Mirrors the layout used by the bulk diff-content report, so the
+     per-page reconcile experience tracks what the bulk view shows. */
+  .view-threeway { grid-template-columns: 1fr 1fr; gap: 8px; padding: 8px; }
+  .view-threeway .twpane { display: flex; flex-direction: column; min-width: 0; border: 1px solid var(--border); border-radius: 6px; overflow: hidden; }
+  .view-threeway .twpane h2 { font-size: 11px; margin: 0; padding: 8px 12px; background: var(--pane-label-bg); color: var(--pane-label-fg); border-bottom: 1px solid var(--border); font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; }
+  .view-threeway .twpane > .scroll { flex: 1; overflow: auto; }
+  .view-threeway table { width: 100%; }
 
   /* Tables (unified + sxs) */
   table { border-collapse: collapse; width: 100%; font: 12px/1.5 ui-monospace, "SF Mono", Menlo, monospace; }
@@ -645,6 +697,7 @@ function renderDiffHtml(localName: string, diffOutput: string, localContent: str
   .view-merge { padding: 12px; gap: 12px; }
   .pane { flex: 1; display: flex; flex-direction: column; min-width: 0; min-height: 0; border: 1px solid var(--border); border-radius: 6px; overflow: hidden; }
   .pane h2 { font-size: 11px; margin: 0; padding: 8px 12px; background: var(--pane-label-bg); color: var(--pane-label-fg); border-bottom: 1px solid var(--border); font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; }
+  .pane.base h2   { color: var(--fg-dim); }
   .pane.local h2  { color: var(--del-marker); }
   .pane.merge h2  { color: var(--hunk-fg); }
   .pane.notion h2 { color: var(--add-marker); }
@@ -677,6 +730,7 @@ function renderDiffHtml(localName: string, diffOutput: string, localContent: str
     <div class="modes" role="tablist">
       <button data-mode="unified" class="active">Unified</button>
       <button data-mode="sxs">Side-by-side</button>
+      ${has3Way ? `<button data-mode="threeway">3-way</button>` : ""}
       <button data-mode="merge">Merge ✏️</button>
     </div>
     <button class="theme" type="button" title="Toggle light/dark">🌓</button>
@@ -684,7 +738,21 @@ function renderDiffHtml(localName: string, diffOutput: string, localContent: str
 </header>
 <div class="view view-unified"><table>${unifiedBody}</table></div>
 <div class="view view-sxs"><table>${sxsBody}</table></div>
+${has3Way ? `<div class="view view-threeway">
+  <div class="twpane">
+    <h2>BASE → LOCAL <span style="font-weight:400;text-transform:none;color:var(--fg-dim)"> (what you changed locally)</span></h2>
+    <div class="scroll"><table>${baseToLocalBody}</table></div>
+  </div>
+  <div class="twpane">
+    <h2>BASE → REMOTE <span style="font-weight:400;text-transform:none;color:var(--fg-dim)"> (what changed on Notion)</span></h2>
+    <div class="scroll"><table>${baseToRemoteBody}</table></div>
+  </div>
+</div>` : ""}
 <div class="view view-merge">
+  ${has3Way ? `<div class="pane base">
+    <h2>BASE — last push (read-only)</h2>
+    <textarea readonly id="base-text"></textarea>
+  </div>` : ""}
   <div class="pane local">
     <h2>Local — your file (read-only)</h2>
     <textarea readonly id="local-text"></textarea>
@@ -703,7 +771,7 @@ function renderDiffHtml(localName: string, diffOutput: string, localContent: str
     <textarea readonly id="notion-text"></textarea>
   </div>
 </div>
-<footer>Local (red −) vs Notion (green +). Inline <del>red</del>/<ins>green</ins> show word-level changes within mixed lines. <strong>Merge</strong> mode lets you build the final version by hand and save it directly to the local file.</footer>
+<footer>Local (red −) vs Notion (green +). Inline <del>red</del>/<ins>green</ins> show word-level changes within mixed lines. ${has3Way ? `<strong>3-way</strong> shows each side's drift from BASE (what we last pushed). ` : ""}<strong>Merge</strong> mode lets you build the final version by hand and save it directly to the local file.</footer>
 <div class="toast" id="toast"></div>
 <script>
   (function() {
@@ -726,9 +794,13 @@ function renderDiffHtml(localName: string, diffOutput: string, localContent: str
     // Populate textareas (avoids HTML-escape issues with content containing tags)
     const localContent = ${localJsonSafe};
     const notionContent = ${notionJsonSafe};
+    const baseContent = ${baseJsonSafe};
     document.getElementById("local-text").value = localContent;
     document.getElementById("notion-text").value = notionContent;
     document.getElementById("merge-text").value = localContent;
+    // BASE pane only renders when has3Way; the textarea may not exist.
+    const baseTextEl = document.getElementById("base-text");
+    if (baseTextEl) baseTextEl.value = baseContent;
     // Toast
     const toast = document.getElementById("toast");
     function showToast(msg, isError) {
@@ -801,13 +873,13 @@ function closeReadline(): void { /* iterator closes with stdin EOF */ }
 // to the local file. Used by the "Pull Notion → local" resolution for
 // user-edited divergences.
 
-interface PullResult {
+export interface PullResult {
   markdown: string;            // final body that was written (excludes frontmatter)
   truncated: boolean;          // Notion clipped the export
   unknown_block_ids: string[]; // block types Notion couldn't serialize as markdown
 }
 
-async function pullPageMarkdownRaw(notion: Client, pageId: string): Promise<PullResult> {
+export async function pullPageMarkdownRaw(notion: Client, pageId: string): Promise<PullResult> {
   const r: any = await (notion.pages as any).retrieveMarkdown({ page_id: pageId });
   return {
     markdown: r.markdown ?? "",
@@ -817,26 +889,40 @@ async function pullPageMarkdownRaw(notion: Client, pageId: string): Promise<Pull
 }
 
 /** Strip the trailing `\n\n---\n\n*Synced: <ts>*\n` footer that index.ts appends. */
-function stripSyncFooter(md: string): string {
+export function stripSyncFooter(md: string): string {
   return md.replace(/\n+---\n+\*Synced:[^\n]+\*\s*$/m, "").replace(/\s+$/, "") + "\n";
 }
 
 /** Strip the breadcrumb (`> 📍 ...`) and the meta-banner (consecutive `>` lines)
  *  from the top of the export. Cuts off everything before the first `# ` H1. */
-function stripBreadcrumbAndBanner(md: string): string {
+export function stripBreadcrumbAndBanner(md: string): string {
   const h1 = md.search(/^# /m);
   if (h1 < 0) return md; // no H1 — leave as-is, user can edit
   return md.slice(h1);
 }
 
 /** Convert Notion's custom `<mention-page url="X">Y</mention-page>` tags
- *  back to plain markdown links `[Y](X)`. The next sync's mention-converter
- *  will re-convert these to native page mentions. */
-function convertMentionTagsToLinks(md: string): string {
-  return md.replace(
+ *  back to plain markdown links `[Y](X)`. Notion emits TWO forms — the paired
+ *  form (with a label child) and a self-closing form `<mention-page url="X"/>`
+ *  when the mention has no visible label. Handle both. For the self-closing
+ *  case we use the URL itself as the label so the link is at least navigable
+ *  — the next sync's mention-converter will re-resolve it to a native page
+ *  mention pill, which then displays the target's current title.
+ *
+ *  The next sync re-converts these to native Notion page mentions. */
+export function convertMentionTagsToLinks(md: string): string {
+  // Self-closing first — its `/>` would otherwise match `[^<]*<` in the
+  // paired regex and produce garbage. Use the page URL as both label and
+  // href; Notion will rewrite to a proper mention on the next sync.
+  let out = md.replace(
+    /<mention-page url="([^"]+)"\s*\/>/g,
+    (_, url) => `[${url}](${url})`,
+  );
+  out = out.replace(
     /<mention-page url="([^"]+)">([^<]*)<\/mention-page>/g,
     (_, url, label) => `[${label}](${url})`,
   );
+  return out;
 }
 
 /** Notion converts markdown pipe-tables to native `table` blocks the moment
@@ -848,7 +934,7 @@ function convertMentionTagsToLinks(md: string): string {
  *  `<tr><td>cell</td>...</tr>`. Doesn't try to handle nested tables, complex
  *  block content inside cells (just inlines whatever's there), or thead/tbody
  *  wrappers (Notion doesn't emit them). */
-function convertHtmlTablesToMarkdown(md: string): string {
+export function convertHtmlTablesToMarkdown(md: string): string {
   return md.replace(/<table([^>]*)>([\s\S]*?)<\/table>/g, (_full, attrs, inner) => {
     // header-row="true" means first row is the header. If absent or false,
     // we still treat the first row as header (markdown tables require one).
@@ -858,9 +944,12 @@ function convertHtmlTablesToMarkdown(md: string): string {
       const cells: string[] = [];
       for (const td of tr[1].matchAll(/<t[dh][^>]*>([\s\S]*?)<\/t[dh]>/g)) {
         let content = td[1].trim();
-        // Unescape Notion's escapes for chars that have meaning in markdown
-        content = content.replace(/\\([>|`*_])/g, "$1");
-        // Pipes inside cells must be escaped in markdown
+        // Unescape Notion's escapes. Notion escapes any markdown-meaningful
+        // char inside a cell — including pipes, brackets, braces, and the
+        // backslash itself. We undo all of them; the table re-build below
+        // re-escapes ONLY the cell-separator pipe.
+        content = content.replace(/\\([\\>|`*_\[\]{}()])/g, "$1");
+        // Pipes inside cells must be escaped in markdown (cell separator)
         content = content.replace(/\|/g, "\\|");
         // Newlines inside cells become <br> (markdown tables are single-line)
         content = content.replace(/\n+/g, "<br>");
@@ -869,7 +958,14 @@ function convertHtmlTablesToMarkdown(md: string): string {
       if (cells.length > 0) rows.push(cells);
     }
     if (rows.length === 0) return "";
+    // Trim trailing empty columns from the header row. Notion's HTML emit
+    // sometimes carries trailing empty `<td>` cells when the user widened a
+    // column then narrowed it — those become ghost columns that propagate to
+    // every row. The semantic column count is the highest non-empty cell
+    // index in the header.
+    while (rows[0].length > 0 && rows[0][rows[0].length - 1] === "") rows[0].pop();
     const headerCount = rows[0].length;
+    if (headerCount === 0) return "";
     const out: string[] = [];
     out.push("| " + rows[0].join(" | ") + " |");
     out.push("|" + " --- |".repeat(headerCount));
@@ -1594,7 +1690,10 @@ async function main(): Promise<void> {
               chosenTool = matched ? matched.tool : "git";
             }
           }
-          const diffResult = await renderDiffWith(chosenTool, localAbsPath, tmp, merged);
+          // Load BASE snapshot (post-2026-05-15 sync-state writes per-page).
+          // Non-null enables the 3-way browser view; null → legacy 2-way.
+          const baseSnap = loadSnapshot(page.path);
+          const diffResult = await renderDiffWith(chosenTool, localAbsPath, tmp, merged, baseSnap);
           // If browser merge mode wrote the local file, treat as a full
           // resolution: refresh the baseline so the next sync sees no
           // divergence, record as a "pull"-equivalent resolution, and
@@ -1711,14 +1810,19 @@ async function main(): Promise<void> {
   console.log("");
 }
 
-main()
-  .then(() => closeReadline())
-  .catch((err: any) => {
-    closeReadline();
-    console.error(c.red(`\n✗ Reconcile failed: ${err.message ?? err}`));
-    if (err.stack) console.error(c.dim(err.stack));
-    process.exit(1);
-  });
+// Only run main() when this file is invoked directly. When imported by other
+// modules (e.g. diff-content.ts pulling in the pull-pipeline helpers), the
+// import alone must not start an interactive reconcile loop.
+if (import.meta.main) {
+  main()
+    .then(() => closeReadline())
+    .catch((err: any) => {
+      closeReadline();
+      console.error(c.red(`\n✗ Reconcile failed: ${err.message ?? err}`));
+      if (err.stack) console.error(c.dim(err.stack));
+      process.exit(1);
+    });
+}
 
 // TODO(future): handle the duplicate-from-archive case — when a page was
 // archived in Notion and a previous sync created a fresh duplicate. v1

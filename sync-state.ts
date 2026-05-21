@@ -54,17 +54,88 @@ export interface Divergence {
 
 // ── Constants ────────────────────────────────────────────────────────────────
 
-const STATE_PATH = path.join(__dirname, ".notion-sync-state.json");
+// ── Root-keyed paths ─────────────────────────────────────────────────────────
+//
+// State files (cache, baselines, snapshots) live alongside the project and
+// embed the NOTION_ROOT_PAGE_ID in their filename. Swapping the env to a
+// different root (V2 target, test sandbox, alternate workspace) automatically
+// gets a separate set of state files — no manual backup/restore, no risk of
+// cross-contamination. Image cache is intentionally NOT keyed because Notion
+// file uploads are workspace-scoped (one sha256 → one upload, reusable across
+// every page in the same workspace).
+//
+// Filename shape: `.notion-sync-state.<12hex>.json` etc.  Twelve hex chars
+// of the root page-id is short enough for `ls` output and unique enough that
+// two different roots in the same project won't ever collide.
+//
+// Computed on demand (not at module load) so process.env updates from the
+// entrypoint's .env parser are visible.
+
+export function getCacheKey(): string {
+  const raw = process.env.NOTION_ROOT_PAGE_ID;
+  if (!raw) return "default";
+  // Pull the page id from any documented form: bare 32-hex, dashed UUID,
+  // "Slug-<id>", or a copy-link URL with/without a `?pvs=…` query string.
+  // Match on the RAW string (dashes intact) so the dash between a slug and
+  // the id acts as a separator — stripping dashes first can fuse a slug's
+  // trailing hex char ("…Page" → "e") into the id run. Dashed-UUID and
+  // bare-32-hex are mutually exclusive for one id, so checking both and
+  // taking the last match covers every case.
+  const dashed = raw.match(/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/gi);
+  const bare = raw.match(/[0-9a-f]{32}/gi);
+  const pick = bare?.[bare.length - 1] ?? dashed?.[dashed.length - 1] ?? raw;
+  return pick.replace(/-/g, "").toLowerCase().slice(0, 12);
+}
+
+function statePath(): string {
+  return path.join(__dirname, `.notion-sync-state.${getCacheKey()}.json`);
+}
+
+function snapshotsDir(): string {
+  return path.join(__dirname, `.notion-snapshots.${getCacheKey()}`);
+}
+
+// ── Legacy-name migration ────────────────────────────────────────────────────
+//
+// Prior versions used unkeyed paths (`.notion-sync-state.json` etc). If we
+// find a legacy file but no keyed file for the current root, ASSUME the
+// legacy file belongs to the current root and rename it in place. One-time
+// migration; subsequent runs see only the keyed name.
+//
+// If BOTH legacy and keyed exist, we trust the keyed (don't overwrite).
+
+const LEGACY_STATE_PATH = path.join(__dirname, ".notion-sync-state.json");
+const LEGACY_SNAPSHOTS_DIR = path.join(__dirname, ".notion-snapshots");
+
+function migrateLegacyIfNeeded(): void {
+  try {
+    const newState = statePath();
+    if (fs.existsSync(LEGACY_STATE_PATH) && !fs.existsSync(newState)) {
+      fs.renameSync(LEGACY_STATE_PATH, newState);
+      console.error(`\x1b[2m  ℹ migrated legacy .notion-sync-state.json → ${path.basename(newState)} (root ${getCacheKey()})\x1b[0m`);
+    }
+    const newSnaps = snapshotsDir();
+    if (fs.existsSync(LEGACY_SNAPSHOTS_DIR) && !fs.existsSync(newSnaps)) {
+      fs.renameSync(LEGACY_SNAPSHOTS_DIR, newSnaps);
+      console.error(`\x1b[2m  ℹ migrated legacy .notion-snapshots/ → ${path.basename(newSnaps)}/ (root ${getCacheKey()})\x1b[0m`);
+    }
+  } catch (err: any) {
+    console.error(`\x1b[33m  ⚠ legacy state migration failed: ${err.message?.slice(0, 80)}\x1b[0m`);
+  }
+}
+
 const BOT_ID_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 
 // ── Load / save ──────────────────────────────────────────────────────────────
 
 export function loadState(): SyncStateFile {
-  if (!fs.existsSync(STATE_PATH)) {
+  migrateLegacyIfNeeded();
+  const sp = statePath();
+  if (!fs.existsSync(sp)) {
     return { version: 1, bot_id: null, bot_id_fetched_at: null, pages: {} };
   }
   try {
-    const raw = fs.readFileSync(STATE_PATH, "utf-8");
+    const raw = fs.readFileSync(sp, "utf-8");
     const parsed = JSON.parse(raw) as SyncStateFile;
     if (parsed.version !== 1) {
       throw new Error(`unsupported sync-state version: ${parsed.version}`);
@@ -80,9 +151,10 @@ export function saveState(state: SyncStateFile): void {
   // Atomic: write to a sibling tempfile, then rename. Avoids torn writes if
   // the process is killed mid-flush. Pattern matches std::claude conventions
   // for single-user JSON state files.
-  const tmp = `${STATE_PATH}.${process.pid}.tmp`;
+  const sp = statePath();
+  const tmp = `${sp}.${process.pid}.tmp`;
   fs.writeFileSync(tmp, JSON.stringify(state, null, 2), "utf-8");
-  fs.renameSync(tmp, STATE_PATH);
+  fs.renameSync(tmp, sp);
 }
 
 // ── Bot id ───────────────────────────────────────────────────────────────────
@@ -242,6 +314,7 @@ export async function recordPageBaseline(
   relPath: string,
   pageId: string,
   expectedParentId: string,
+  snapshotBody?: string,
 ): Promise<void> {
   try {
     const meta: any = await notion.pages.retrieve({ page_id: pageId });
@@ -257,10 +330,53 @@ export async function recordPageBaseline(
       last_pushed_block_count: blockCount,
       last_pushed_at: new Date().toISOString(),
     };
+    if (snapshotBody !== undefined) {
+      saveSnapshot(relPath, snapshotBody);
+    }
   } catch (err: any) {
     // Non-fatal. Surface a warning via stderr; caller continues.
     console.error(`  ⚠ baseline record failed for ${relPath}: ${err.message?.slice(0, 80)}`);
   }
+}
+
+// ── Snapshots ────────────────────────────────────────────────────────────────
+
+/**
+ * Returns the absolute path where the snapshot for a given doc lives. The
+ * snapshot is a verbatim copy of the local file at the moment we last pushed
+ * it — the BASE for three-way reconcile diffs.
+ *
+ * Storage shape mirrors the docs tree: `.notion-snapshots/<relPath>`. Same
+ * extension as the source so editors syntax-highlight it.
+ */
+export function getSnapshotPath(relPath: string): string {
+  return path.join(snapshotsDir(), relPath);
+}
+
+/** Read the stored snapshot for a doc. Returns null if missing — caller
+ *  should degrade to a 2-way diff when no BASE exists (first sync of a doc,
+ *  or pre-snapshots state file). */
+export function loadSnapshot(relPath: string): string | null {
+  const p = getSnapshotPath(relPath);
+  if (!fs.existsSync(p)) return null;
+  try {
+    return fs.readFileSync(p, "utf-8");
+  } catch {
+    return null;
+  }
+}
+
+/** Atomic write of a snapshot. Mirrors the .notion-sync-state.json strategy. */
+function saveSnapshot(relPath: string, body: string): void {
+  const dest = getSnapshotPath(relPath);
+  fs.mkdirSync(path.dirname(dest), { recursive: true });
+  const tmp = `${dest}.${process.pid}.tmp`;
+  fs.writeFileSync(tmp, body, "utf-8");
+  fs.renameSync(tmp, dest);
+}
+
+export function getSnapshotsDir(): string {
+  return snapshotsDir();
 }
 
 async function countBlocks(notion: Client, pageId: string): Promise<number> {
@@ -292,7 +408,7 @@ function normalizeId(id: string | undefined): string {
 }
 
 export function getStatePath(): string {
-  return STATE_PATH;
+  return statePath();
 }
 
 /**

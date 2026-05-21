@@ -11,6 +11,7 @@
 #   bash list.sh diff                # compare cache vs local docs
 #   bash list.sh fix-mentions        # retroactive: convert internal links → native page mentions on every cached page
 #   bash list.sh recent-errors       # surface failed paths from recent runs.jsonl entries (default last 5 runs)
+#   bash list.sh diff-content        # three-way diff report (BASE/LOCAL/REMOTE) for last run's protected pages; --all to scan every baselined page; --paths a,b to scope
 #   bash list.sh sitemap             # push 🗺️ Sitemap page summarizing every cached page (mention pills as leaves)
 #   bash list.sh tag-index           # push 🏷️ Tags page aggregating frontmatter + body tags across all docs
 #   bash list.sh index-db            # push/refresh 📇 Doc Index sidecar Notion database (filterable / sortable view of every doc)
@@ -18,6 +19,7 @@
 #   bash list.sh recent-feed         # push 📣 Recently Synced page (last 50 unique syncs from runs.jsonl; --limit N to widen)
 #   bash list.sh prune               # list orphan Notion pages (no matching local doc); add --apply to archive them
 #   bash list.sh health              # push 🩺 Sync Status page summarizing latest run + recent run history
+#   bash list.sh dashboards          # run ALL 6 dashboards in one process (sitemap+tag-index+index-db+backlinks+recent-feed+health) — faster than 6 separate calls
 
 set -e
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -67,7 +69,7 @@ ELAPSED=$((END_TS - START_TS))
 # Notify only for long-running subcommands (fetch, fix-mentions). show/diff
 # usually finish in under 1s — a notification banner is more annoying than
 # helpful at that pace.
-if [ "$SUBCMD" = "fetch" ] || [ "$SUBCMD" = "fix-mentions" ] || [ "$SUBCMD" = "sitemap" ] || [ "$SUBCMD" = "tag-index" ] || [ "$SUBCMD" = "index-db" ] || [ "$SUBCMD" = "backlinks" ] || [ "$SUBCMD" = "recent-feed" ] || [ "$SUBCMD" = "health" ]; then
+if [ "$SUBCMD" = "fetch" ] || [ "$SUBCMD" = "fix-mentions" ] || [ "$SUBCMD" = "sitemap" ] || [ "$SUBCMD" = "tag-index" ] || [ "$SUBCMD" = "index-db" ] || [ "$SUBCMD" = "backlinks" ] || [ "$SUBCMD" = "recent-feed" ] || [ "$SUBCMD" = "health" ] || [ "$SUBCMD" = "dashboards" ]; then
   if [ "$EXIT_CODE" -eq 0 ]; then
     _notify "notion-list ✓" "$SUBCMD complete" "${ELAPSED}s"
   else

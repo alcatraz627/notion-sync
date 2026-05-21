@@ -179,29 +179,13 @@ mode_check() {
 }
 
 mode_dashboard() {
-  # Chain phases with || so one failure doesn't strand the rest. Notion 504s
-  # on a large tag-index wipe used to abort the whole dashboard run, leaving
-  # backlinks / recent-feed / health unrun. Now each phase reports
-  # independently and the mode finishes with a list of any that failed.
-  #
-  # index-db is included here (was previously only callable via
-  # `bash list.sh index-db` — the SKILL.md description claimed all 6
-  # dashboards ran, but the actual mode skipped index-db).
-  local failed=()
-  phase_sitemap     || failed+=("sitemap")
-  phase_tag_index   || failed+=("tag-index")
-  phase_index_db    || failed+=("index-db")
-  phase_backlinks   || failed+=("backlinks")
-  phase_recent_feed || failed+=("recent-feed")
-  phase_health      || failed+=("health")
-  echo ""
-  if [ ${#failed[@]} -eq 0 ]; then
-    _h "✓ dashboard complete (6/6)"
-  else
-    _h "⚠ dashboard partial — failed: ${failed[*]}"
-    echo "    retry individually: bash list.sh ${failed[0]}${failed[1]:+ # then $(printf '%s ' "${failed[@]:1}")}" >&2
-    return 1
-  fi
+  # Single consolidated runner — one bun process loads cache + client once and
+  # runs all 6 generators in-memory, with per-phase progress + an isolated
+  # failure list. Replaces the old 6× `bash list.sh <cmd>` chain (6 bun
+  # cold-starts + 6 cache parses). Per-phase failure isolation now lives
+  # inside `notion-list.ts dashboards` (each phase try/caught independently).
+  _h "▶ Dashboards (list.sh dashboards — single process)"
+  bash list.sh dashboards
 }
 
 mode_prune() {

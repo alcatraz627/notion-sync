@@ -34,6 +34,7 @@ bash sync.sh --fix-mentions   # mention conversion mode
 bash list.sh                  # render cached remote tree
 bash list.sh fetch            # refresh cache from Notion
 bash list.sh diff             # title-based diff vs local docs
+bash list.sh diff-content     # three-way diff report (BASE/LOCAL/REMOTE); scans every baselined page by default, --paths a,b to scope, --protected-only for last-run subset, --show-clean to include unchanged pages
 bash list.sh fix-mentions     # standalone mention conversion
 bash list.sh sitemap          # push 🗺️ Sitemap dashboard page
 bash list.sh tag-index        # push 🏷️ Tags dashboard page

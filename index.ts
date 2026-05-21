@@ -51,6 +51,7 @@ import {
   recordPageBaseline,
   formatDivergences,
   getStatePath,
+  getCacheKey,
   type SyncStateFile,
   type Divergence,
   type GuardrailMode,
@@ -1228,7 +1229,14 @@ interface GlobalTitleEntry { id: string; parent_id: string | null }
 let globalTitleIndex: Map<string, GlobalTitleEntry> | null = null;
 
 function loadGlobalTitleIndex(): Map<string, GlobalTitleEntry> | null {
-  const cachePath = path.join(__dirname, ".notion-cache.json");
+  // Cache is root-keyed (`.notion-cache.<key>.json`) since 2026-05-21. Read
+  // the keyed path; fall back to the legacy unkeyed name only if the keyed
+  // one doesn't exist yet (pre-migration). Without this, move-detection
+  // silently goes dark after `list.sh fetch` renames the legacy file —
+  // exactly the duplicate/orphan failure class RCA-ARCHIVED-PAGES.md covers.
+  const keyedPath = path.join(__dirname, `.notion-cache.${getCacheKey()}.json`);
+  const legacyPath = path.join(__dirname, ".notion-cache.json");
+  const cachePath = fs.existsSync(keyedPath) ? keyedPath : legacyPath;
   if (!fs.existsSync(cachePath)) return null;
   try {
     const cache = JSON.parse(fs.readFileSync(cachePath, "utf8"));
@@ -1989,7 +1997,10 @@ async function writeFileContent(
     // must store the value Notion gives us, not our local clock. Failure here
     // is non-fatal — next run just treats this doc as un-baselined.
     if (syncState && expectedParentId && EFFECTIVE_GUARDRAILS !== "off") {
-      await recordPageBaseline(notion, syncState, relPath, discovery.id, expectedParentId);
+      // Snapshot = raw local file body (pre-transform). Gives reconcile a fair
+      // BASE for 3-way diffs: BASE/LOCAL are both raw markdown, REMOTE is
+      // normalized to raw markdown by the pull-pipeline transforms.
+      await recordPageBaseline(notion, syncState, relPath, discovery.id, expectedParentId, body);
     }
 
     return {
@@ -2328,7 +2339,8 @@ async function main(): Promise<void> {
       const discovery = discoveryMap.get(relPath);
       if (!discovery) continue;
       if (discovery.isNew) { skipped++; continue; } // freshly created — nothing to baseline yet
-      await recordPageBaseline(notion, syncState, relPath, discovery.id, discovery.parentId);
+      const seedDoc = getDoc(relPath);
+      await recordPageBaseline(notion, syncState, relPath, discovery.id, discovery.parentId, seedDoc?.body);
       seeded++;
       if (!VERBOSE && IS_TTY) renderProgress(seeded, allToSync.length, relPath, "seeding");
     }
