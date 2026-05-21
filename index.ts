@@ -1168,8 +1168,7 @@ function loadFolderMap(): Map<string, string> {
     const raw = JSON.parse(fs.readFileSync(absPath, "utf-8")) as Record<string, string>;
     const result = new Map<string, string>();
     for (const [folder, idOrSlug] of Object.entries(raw)) {
-      const hexMatch = idOrSlug.match(/([0-9a-f]{32})$/i);
-      result.set(folder, hexMatch ? hexMatch[1] : idOrSlug);
+      result.set(folder, extractPageId(idOrSlug) ?? idOrSlug);
     }
     console.log(clr.dim(`  Folder map: ${[...result.keys()].join(", ")}`));
     return result;

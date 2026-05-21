@@ -10,7 +10,7 @@
 // The cache stores raw structure only — page IDs, titles, parent IDs, block
 // counts, icons, URLs, fetched-at timestamp. Compare-content is a follow-up.
 
-import { getNotion } from "./lib/notion";
+import { getNotion, extractPageId } from "./lib/notion";
 import * as fs from "fs";
 import * as path from "path";
 import { convertPageLinksToMentions } from "./mention-converter";
@@ -57,7 +57,7 @@ if (!NOTION_TOKEN || !RAW_ROOT) {
   process.exit(1);
 }
 
-const ROOT_ID = (RAW_ROOT.match(/([0-9a-f]{32})$/i)?.[1] ?? RAW_ROOT).replace(/-/g, "");
+const ROOT_ID = extractPageId(RAW_ROOT) ?? RAW_ROOT.replace(/-/g, "");
 
 // timeoutMs: bumped from the SDK default (~60s) because chunked sitemap
 // pushes get slower as the page accumulates blocks — section 5+ on a
