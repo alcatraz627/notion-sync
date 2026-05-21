@@ -37,7 +37,7 @@
  *   # My Page Title
  */
 
-import { Client } from "@notionhq/client";
+import { getNotion, extractPageId } from "./lib/notion";
 import { createInterface } from "readline/promises";
 import * as fs from "fs";
 import * as path from "path";
@@ -1181,7 +1181,7 @@ function loadFolderMap(): Map<string, string> {
 
 // ── Notion API ────────────────────────────────────────────────────────────────
 
-const notion = new Client({ auth: NOTION_TOKEN });
+const notion = getNotion();
 
 const imageUploader: ImageUploader | null = UPLOAD_IMAGES
   ? new ImageUploader(notion, IMAGE_CACHE_PATH, RATE_LIMIT_MS)
@@ -1444,18 +1444,21 @@ async function preflight(): Promise<string> {
   if (!ROOT_PAGE_ID) {
     problems.push("NOTION_ROOT_PAGE_ID env var is not set");
   } else {
-    const hexMatch = ROOT_PAGE_ID.match(/([0-9a-f]{32})$/i);
-    if (hexMatch) {
-      resolvedPageId = hexMatch[1];
+    // extractPageId handles bare id / dashed UUID / "Slug-<id>" / URL ± query.
+    // The old end-anchored regex aborted the whole sync on a URL with a
+    // trailing `?pvs=4` (no match → "malformed" → abort).
+    const extracted = extractPageId(ROOT_PAGE_ID);
+    if (extracted) {
+      resolvedPageId = extracted;
       if (ROOT_PAGE_ID !== resolvedPageId)
         console.log(
           clr.dim(
             `  Note: extracted page ID "${resolvedPageId}" from "${ROOT_PAGE_ID}"`,
           ),
         );
-    } else if (!/^[0-9a-f-]{32,36}$/i.test(ROOT_PAGE_ID)) {
+    } else {
       problems.push(
-        `NOTION_ROOT_PAGE_ID looks malformed — expected 32 hex chars, got: "${ROOT_PAGE_ID}"`,
+        `NOTION_ROOT_PAGE_ID looks malformed — expected a 32-hex page id, got: "${ROOT_PAGE_ID}"`,
       );
     }
   }

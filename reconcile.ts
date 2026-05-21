@@ -18,6 +18,7 @@
  */
 
 import { Client } from "@notionhq/client";
+import { getNotion } from "./lib/notion";
 import * as fs from "fs";
 import * as path from "path";
 import * as os from "os";
@@ -1478,12 +1479,11 @@ async function main(): Promise<void> {
   // Notion client + sync state are initialized lazily — only fetched when the
   // user picks a resolution that needs them. ensureBotId is needed for the
   // user-edited re-check inside move-back/force-recreate.
-  const NOTION_TOKEN = process.env.NOTION_TOKEN;
-  if (!NOTION_TOKEN) {
+  if (!process.env.NOTION_TOKEN) {
     console.error(c.red("\n  NOTION_TOKEN is not set. Source .env first.\n"));
     process.exit(2);
   }
-  const notion = new Client({ auth: NOTION_TOKEN });
+  const notion = getNotion();
   const state = loadState();
   if (!state.bot_id) {
     try { await ensureBotId(notion, state); }

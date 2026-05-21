@@ -10,7 +10,7 @@
 // The cache stores raw structure only — page IDs, titles, parent IDs, block
 // counts, icons, URLs, fetched-at timestamp. Compare-content is a follow-up.
 
-import { Client } from "@notionhq/client";
+import { getNotion } from "./lib/notion";
 import * as fs from "fs";
 import * as path from "path";
 import { convertPageLinksToMentions } from "./mention-converter";
@@ -62,7 +62,7 @@ const ROOT_ID = (RAW_ROOT.match(/([0-9a-f]{32})$/i)?.[1] ?? RAW_ROOT).replace(/-
 // timeoutMs: bumped from the SDK default (~60s) because chunked sitemap
 // pushes get slower as the page accumulates blocks — section 5+ on a
 // 300-page tree was reliably timing out at 60s.
-const notion = new Client({ auth: NOTION_TOKEN, timeoutMs: 300_000 });
+const notion = getNotion({ timeoutMs: 300_000 });
 const sleep = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
 
 // ── Status-line helpers ───────────────────────────────────────────────────────

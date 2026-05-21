@@ -19,7 +19,7 @@
  * Spec / motivation: see CLAUDE.md and the 2026-05-15 session.
  */
 
-import { Client } from "@notionhq/client";
+import { getNotion } from "./lib/notion";
 import * as fs from "fs";
 import * as path from "path";
 import * as os from "os";
@@ -349,7 +349,7 @@ if (!NOTION_TOKEN) {
   process.exit(1);
 }
 
-const notion = new Client({ auth: NOTION_TOKEN, timeoutMs: 120_000 });
+const notion = getNotion({ timeoutMs: 120_000 });
 
 // ── Types ────────────────────────────────────────────────────────────────────
 

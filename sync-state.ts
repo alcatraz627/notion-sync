@@ -19,6 +19,7 @@
 import { Client } from "@notionhq/client";
 import * as fs from "fs";
 import * as path from "path";
+import { extractPageId } from "./lib/notion";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -72,22 +73,12 @@ export interface Divergence {
 // entrypoint's .env parser are visible.
 
 export function getCacheKey(): string {
-  const raw = process.env.NOTION_ROOT_PAGE_ID;
-  if (!raw) return "default";
-  // Pull the page id from any documented form: bare 32-hex, dashed UUID,
-  // "Slug-<id>", or a copy-link URL with/without a query string.
-  //   1. Drop the URL query/fragment first — a decoy id in `?param=<other-id>`
-  //      must not win over the real id in the path.
-  //   2. Prefer a dashed UUID if present (someone pasted a raw API id) — it's
-  //      unambiguous and can't be a slug fragment.
-  //   3. Else take the LAST bare 32-hex run in the path. The id always trails
-  //      the slug ("V2-Product-Docs-<id>") and the dash separator keeps a
-  //      slug word from fusing into the id run.
-  const noQuery = raw.split(/[?#]/)[0];
-  const dashed = noQuery.match(/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i);
-  const bare = noQuery.match(/[0-9a-f]{32}/gi);
-  const pick = dashed?.[0] ?? bare?.[bare.length - 1] ?? noQuery;
-  return pick.replace(/-/g, "").toLowerCase().slice(0, 12);
+  // First 12 hex of the root page id — short enough for `ls`, unique enough
+  // that two roots won't collide. extractPageId handles every input form
+  // (bare / dashed / slug-prefixed / URL ± query). Falls back to "default"
+  // when the env is unset or no id can be parsed.
+  const id = extractPageId(process.env.NOTION_ROOT_PAGE_ID ?? "");
+  return id ? id.slice(0, 12) : "default";
 }
 
 function statePath(): string {
