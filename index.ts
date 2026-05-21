@@ -1236,10 +1236,23 @@ function loadGlobalTitleIndex(): Map<string, GlobalTitleEntry> | null {
   // exactly the duplicate/orphan failure class RCA-ARCHIVED-PAGES.md covers.
   const keyedPath = path.join(__dirname, `.notion-cache.${getCacheKey()}.json`);
   const legacyPath = path.join(__dirname, ".notion-cache.json");
-  const cachePath = fs.existsSync(keyedPath) ? keyedPath : legacyPath;
+  const usingLegacy = !fs.existsSync(keyedPath);
+  const cachePath = usingLegacy ? legacyPath : keyedPath;
   if (!fs.existsSync(cachePath)) return null;
   try {
     const cache = JSON.parse(fs.readFileSync(cachePath, "utf8"));
+    // The keyed filename encodes the root, so a keyed cache is trusted. The
+    // unkeyed legacy file does NOT — it may belong to a previously-synced
+    // root if the user switched NOTION_ROOT_PAGE_ID. Running move-detection
+    // against another workspace's ids is the exact orphan/duplicate hazard
+    // RCA-ARCHIVED-PAGES.md warns about, so verify root_id before trusting it.
+    if (usingLegacy && cache.root_id) {
+      const norm = (s: string) => (s ?? "").replace(/-/g, "").toLowerCase();
+      const wantKey = getCacheKey();
+      if (!norm(cache.root_id).startsWith(wantKey)) {
+        return null; // legacy cache is for a different root — skip move-detection
+      }
+    }
     const seen = new Map<string, GlobalTitleEntry | "duplicate">();
     for (const p of cache.pages ?? []) {
       if (!p.title || !p.id) continue;
@@ -1415,7 +1428,7 @@ async function preflight(): Promise<string> {
   // to refresh the cache before a sync if they expect renames/moves.
   globalTitleIndex = loadGlobalTitleIndex();
   if (globalTitleIndex && globalTitleIndex.size > 0) {
-    console.log(clr.dim(`  Loaded ${globalTitleIndex.size} unique-title entries from .notion-cache.json (move-detection enabled)`));
+    console.log(clr.dim(`  Loaded ${globalTitleIndex.size} unique-title entries from the Notion cache (move-detection enabled)`));
   }
 
   const problems: string[] = [];

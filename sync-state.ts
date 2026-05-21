@@ -75,15 +75,18 @@ export function getCacheKey(): string {
   const raw = process.env.NOTION_ROOT_PAGE_ID;
   if (!raw) return "default";
   // Pull the page id from any documented form: bare 32-hex, dashed UUID,
-  // "Slug-<id>", or a copy-link URL with/without a `?pvs=…` query string.
-  // Match on the RAW string (dashes intact) so the dash between a slug and
-  // the id acts as a separator — stripping dashes first can fuse a slug's
-  // trailing hex char ("…Page" → "e") into the id run. Dashed-UUID and
-  // bare-32-hex are mutually exclusive for one id, so checking both and
-  // taking the last match covers every case.
-  const dashed = raw.match(/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/gi);
-  const bare = raw.match(/[0-9a-f]{32}/gi);
-  const pick = bare?.[bare.length - 1] ?? dashed?.[dashed.length - 1] ?? raw;
+  // "Slug-<id>", or a copy-link URL with/without a query string.
+  //   1. Drop the URL query/fragment first — a decoy id in `?param=<other-id>`
+  //      must not win over the real id in the path.
+  //   2. Prefer a dashed UUID if present (someone pasted a raw API id) — it's
+  //      unambiguous and can't be a slug fragment.
+  //   3. Else take the LAST bare 32-hex run in the path. The id always trails
+  //      the slug ("V2-Product-Docs-<id>") and the dash separator keeps a
+  //      slug word from fusing into the id run.
+  const noQuery = raw.split(/[?#]/)[0];
+  const dashed = noQuery.match(/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i);
+  const bare = noQuery.match(/[0-9a-f]{32}/gi);
+  const pick = dashed?.[0] ?? bare?.[bare.length - 1] ?? noQuery;
   return pick.replace(/-/g, "").toLowerCase().slice(0, 12);
 }
 

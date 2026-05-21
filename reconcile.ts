@@ -32,17 +32,10 @@ import {
   type SyncStateFile,
   type Divergence,
 } from "./sync-state";
+import { bold, dim, red, green, yellow, blue, url } from "./lib/colors";
 
-// ── ANSI colors (subset of index.ts's helpers, inlined to keep modules independent) ──
-const c = {
-  bold: (s: string) => `\x1b[1m${s}\x1b[0m`,
-  dim:  (s: string) => `\x1b[2m${s}\x1b[0m`,
-  red:  (s: string) => `\x1b[31m${s}\x1b[0m`,
-  green:(s: string) => `\x1b[32m${s}\x1b[0m`,
-  yellow:(s: string) => `\x1b[33m${s}\x1b[0m`,
-  blue: (s: string) => `\x1b[34m${s}\x1b[0m`,
-  url:  (s: string) => `\x1b[4;34m${s}\x1b[0m`,
-};
+// ANSI colors — `c.xxx(s)` shape preserved; helpers sourced from lib/colors.
+const c = { bold, dim, red, green, yellow, blue, url };
 
 // ── Types mirroring runs.jsonl protected_pages[] entries ─────────────────────
 // PR 2 will refactor `kind` (string) → `kinds` (string[]); for PR 1 we accept

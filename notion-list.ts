@@ -16,6 +16,7 @@ import * as path from "path";
 import { convertPageLinksToMentions } from "./mention-converter";
 import { generateSitemap } from "./sitemap";
 import { titleVariants, buildVariantIndex, findMatches } from "./title-match";
+import { dim, bold, grey, green, yellow, red, cyan } from "./lib/colors";
 import { generateTagIndex } from "./tag-index";
 import { generateIndexDb } from "./index-db";
 import { generateBacklinks } from "./backlinks";
@@ -171,16 +172,7 @@ interface Cache {
 }
 
 // ── Pretty rendering helpers ──────────────────────────────────────────────────
-
-const RESET = "\x1b[0m";
-const c = (code: string, s: string) => `${code}${s}${RESET}`;
-const dim = (s: string) => c("\x1b[2m", s);
-const bold = (s: string) => c("\x1b[1m", s);
-const grey = (s: string) => c("\x1b[38;5;245m", s);
-const green = (s: string) => c("\x1b[32m", s);
-const yellow = (s: string) => c("\x1b[33m", s);
-const red = (s: string) => c("\x1b[31m", s);
-const cyan = (s: string) => c("\x1b[36m", s);
+// Color helpers live in lib/colors.ts (shared across the toolset).
 
 function fmtSize(n: number): string {
   if (n === 0) return red("empty");
