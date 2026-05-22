@@ -1,5 +1,32 @@
 import { test, expect } from "bun:test";
-import { isRetriable, withRetry } from "./retry";
+import { isRetriable, withRetry, computeWaitMs } from "./retry";
+
+// ── computeWaitMs: backoff curves (pure, no real sleeps) ─────────────────────
+
+test("computeWaitMs — linear is 4s·attempt", () => {
+  expect(computeWaitMs(1, "linear", false, {})).toBe(4000);
+  expect(computeWaitMs(2, "linear", false, {})).toBe(8000);
+  expect(computeWaitMs(3, "linear", false, {})).toBe(12000);
+});
+
+test("computeWaitMs — exponential is min(32s, 2s·2^(n-1))", () => {
+  expect(computeWaitMs(1, "exponential", false, {})).toBe(2000);
+  expect(computeWaitMs(2, "exponential", false, {})).toBe(4000);
+  expect(computeWaitMs(3, "exponential", false, {})).toBe(8000);
+  expect(computeWaitMs(4, "exponential", false, {})).toBe(16000);
+  expect(computeWaitMs(5, "exponential", false, {})).toBe(32000);
+  expect(computeWaitMs(6, "exponential", false, {})).toBe(32000); // capped
+});
+
+test("computeWaitMs — Retry-After raises the floor only when honored", () => {
+  const err = { status: 429, headers: { "retry-after": "10" } }; // 10s
+  // exponential attempt 1 base = 2s; Retry-After 10s wins
+  expect(computeWaitMs(1, "exponential", true, err)).toBe(10000);
+  // not honored → base only
+  expect(computeWaitMs(1, "exponential", false, err)).toBe(2000);
+  // honored but base already exceeds Retry-After → base wins
+  expect(computeWaitMs(5, "exponential", true, { headers: { "retry-after": "3" } })).toBe(32000);
+});
 
 // ── isRetriable: the UNION of all six callers' conditions ────────────────────
 
@@ -63,3 +90,18 @@ test("withRetry — retriable then success: retries once (linear ~4s wait)", asy
   expect(r).toBe("recovered");
   expect(calls).toBe(2);
 }, 10_000); // allow for the 4s linear backoff
+
+test("withRetry — exhausts maxAttempts then throws last error", async () => {
+  let calls = 0;
+  await expect(
+    withRetry(async () => { calls++; throw { status: 503 }; }, { label: "t", maxAttempts: 2 }),
+  ).rejects.toEqual({ status: 503 });
+  expect(calls).toBe(2); // 2 total tries (1 retry → 1 linear 4s wait)
+}, 10_000);
+
+test("isRetriable — err.status takes precedence over message-parsed status", () => {
+  // status says retriable (503), message would parse non-retriable — status wins
+  expect(isRetriable({ status: 503, message: "status: 400 bad" })).toBe(true);
+  // no status field → falls back to message parse
+  expect(isRetriable({ message: "status: 503" })).toBe(true);
+});

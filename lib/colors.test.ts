@@ -24,3 +24,18 @@ test("makeClr(true) paints, makeClr(false) passes through plain", () => {
   // gray uses bright-black (index.ts's W), distinct from standalone grey245
   expect(on.gray("x")).toBe(`${CODES.brightBlack}x${CODES.reset}`);
 });
+
+test("makeClr composite codes (header/phase/section are bold+color)", () => {
+  const on = makeClr(true);
+  expect(on.header("x")).toBe(`${CODES.bold}${CODES.cyan}x${CODES.reset}`);
+  expect(on.phase("x")).toBe(`${CODES.bold}${CODES.blue}x${CODES.reset}`);
+  expect(on.section("x")).toBe(`${CODES.bold}${CODES.magenta}x${CODES.reset}`);
+});
+
+test("makeClr.url (cyan, index.ts shape) differs from standalone url (underline-blue)", () => {
+  // Deliberate divergence: index.ts rendered urls as plain cyan; reconcile
+  // used underline-blue. Both preserved — guard against accidental unification.
+  expect(makeClr(true).url("x")).toBe(`${CODES.cyan}x${CODES.reset}`);
+  expect(url("x")).toBe(`${CODES.underlineBlue}x${CODES.reset}`);
+  expect(makeClr(true).url("x")).not.toBe(url("x"));
+});

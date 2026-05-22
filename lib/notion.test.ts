@@ -38,11 +38,23 @@ test("extractPageId — no id present returns null", () => {
   expect(extractPageId("")).toBeNull();
 });
 
-test("getNotion — returns a client even with no token (lenient by design)", () => {
+test("getNotion — returns a usable client even with no token (lenient by design)", () => {
   const prev = process.env.NOTION_TOKEN;
   delete process.env.NOTION_TOKEN;
-  const client = getNotion();
-  expect(client).toBeDefined();
-  expect(typeof client).toBe("object");
-  if (prev !== undefined) process.env.NOTION_TOKEN = prev;
+  try {
+    const client = getNotion();
+    // Stronger than typeof-object: a real Notion Client exposes these.
+    expect(client.pages).toBeDefined();
+    expect(typeof (client.pages as any).retrieve).toBe("function");
+    expect(client.blocks).toBeDefined();
+  } finally {
+    // Restore unconditionally — Bun autoloads the repo .env, and leaking a
+    // deleted token would break any token-dependent test added later.
+    if (prev !== undefined) process.env.NOTION_TOKEN = prev;
+  }
+});
+
+test("getNotion — accepts a custom timeoutMs without throwing", () => {
+  const client = getNotion({ timeoutMs: 120_000 });
+  expect(client.pages).toBeDefined();
 });

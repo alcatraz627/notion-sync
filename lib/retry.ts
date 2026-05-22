@@ -47,6 +47,25 @@ export interface RetryOpts {
   log?: (msg: string) => void;
 }
 
+/** Wait before the Nth retry (attempt is 1-indexed: 1 = wait before 2nd try).
+ *  Pure — extracted so the backoff math is testable without real sleeps.
+ *  When `honorRetryAfter`, a 429's `Retry-After` header (seconds) raises the
+ *  floor above the computed base. */
+export function computeWaitMs(
+  attempt: number,
+  backoff: "linear" | "exponential",
+  honorRetryAfter: boolean,
+  err: any,
+): number {
+  const base = backoff === "exponential"
+    ? Math.min(32000, 2000 * Math.pow(2, attempt - 1))
+    : 4000 * attempt;
+  if (!honorRetryAfter) return base;
+  const hdr = err?.headers?.["retry-after"];
+  const retryAfterMs = hdr ? parseInt(hdr, 10) * 1000 : 0;
+  return Math.max(retryAfterMs, base);
+}
+
 export async function withRetry<T>(fn: () => Promise<T>, opts: RetryOpts): Promise<T> {
   const { label, maxAttempts = 4, backoff = "linear", honorRetryAfter = false, log = () => {} } = opts;
   let lastErr: any;
@@ -56,15 +75,7 @@ export async function withRetry<T>(fn: () => Promise<T>, opts: RetryOpts): Promi
     } catch (err: any) {
       lastErr = err;
       if (!isRetriable(err) || attempt === maxAttempts) throw err;
-      const base = backoff === "exponential"
-        ? Math.min(32000, 2000 * Math.pow(2, attempt - 1))
-        : 4000 * attempt;
-      let waitMs = base;
-      if (honorRetryAfter) {
-        const hdr = err?.headers?.["retry-after"];
-        const retryAfterMs = hdr ? parseInt(hdr, 10) * 1000 : 0;
-        waitMs = Math.max(retryAfterMs, base);
-      }
+      const waitMs = computeWaitMs(attempt, backoff, honorRetryAfter, err);
       log(`  [${label}] transient ${err?.status ?? err?.code} — retry ${attempt}/${maxAttempts - 1} in ${Math.round(waitMs / 1000)}s`);
       await sleep(waitMs);
     }
