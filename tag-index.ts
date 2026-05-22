@@ -16,6 +16,7 @@
 import { Client } from "@notionhq/client";
 import * as fs from "fs";
 import * as path from "path";
+import { withRetry } from "./lib/retry";
 
 const TAG_INDEX_TITLE = "🏷️ Tags";
 
@@ -309,39 +310,11 @@ function buildTagSectionBlocks(
   return blocks;
 }
 
-// Linear-backoff retry on transient 5xx — same pattern as sitemap.ts.
-async function withChunkRetry<T>(
-  label: string,
-  fn: () => Promise<T>,
-  log: (msg: string) => void,
-  maxAttempts = 4,
-): Promise<T> {
-  let lastErr: any;
-  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
-    try {
-      return await fn();
-    } catch (err: any) {
-      lastErr = err;
-      const status = err?.status;
-      const code = err?.code;
-      const msg: string = err?.message || "";
-      const msgStatus = msg.match(/status:\s*(\d+)/)?.[1];
-      const retriable =
-        status === 504 || status === 502 || status === 503 ||
-        status === 408 || status === 429 ||
-        msgStatus === "504" || msgStatus === "502" || msgStatus === "503" ||
-        msgStatus === "408" || msgStatus === "429" ||
-        code === "notionhq_client_request_timeout" ||
-        code === "notionhq_client_response_error" ||
-        code === "ECONNRESET" || code === "ETIMEDOUT";
-      if (!retriable || attempt === maxAttempts) throw err;
-      const waitMs = 4000 * attempt;
-      log(`    [${label}] ${status ?? code} — retry ${attempt}/${maxAttempts - 1} in ${waitMs / 1000}s`);
-      await sleep(waitMs);
-    }
-  }
-  throw lastErr;
-}
+// Linear-backoff retry (4s·n, 4 attempts) — preset binder over lib/retry.
+// (lib/retry's isRetriable also parses status from the error message text,
+// which is the msgStatus case this module used to handle inline.)
+const withChunkRetry = <T>(label: string, fn: () => Promise<T>, log: (msg: string) => void, maxAttempts = 4): Promise<T> =>
+  withRetry(fn, { label, log, maxAttempts });
 
 export interface GenerateTagIndexResult {
   tag_index_page_id: string;

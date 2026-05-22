@@ -19,6 +19,7 @@
 // API path is faster + more predictable on big trees.
 
 import { Client } from "@notionhq/client";
+import { withRetry } from "./lib/retry";
 
 const SITEMAP_TITLE = "🗺️ Sitemap";
 
@@ -44,35 +45,11 @@ export interface SitemapCache {
 
 const sleep = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
 
-// Linear-backoff retry on transient 5xx — kept local so this module has
-// no import cycle with notion-list.ts.
-async function withChunkRetry<T>(
-  label: string,
-  fn: () => Promise<T>,
-  log: (msg: string) => void,
-  maxAttempts = 4,
-): Promise<T> {
-  let lastErr: any;
-  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
-    try {
-      return await fn();
-    } catch (err: any) {
-      lastErr = err;
-      const status = err?.status;
-      const code = err?.code;
-      const retriable =
-        status === 504 || status === 502 || status === 503 ||
-        status === 408 || status === 429 ||
-        code === "notionhq_client_request_timeout" ||
-        code === "ECONNRESET" || code === "ETIMEDOUT";
-      if (!retriable || attempt === maxAttempts) throw err;
-      const waitMs = 4000 * attempt;
-      log(`    [${label}] ${status ?? code} — retry ${attempt}/${maxAttempts - 1} in ${waitMs / 1000}s`);
-      await sleep(waitMs);
-    }
-  }
-  throw lastErr;
-}
+// Linear-backoff retry (4s·n, 4 attempts) — preset binder over lib/retry.
+// Linear (not exponential) is deliberate for the chunked sitemap push: the
+// 504 wall on a large wipe needs short, predictable waits, not 32s backoffs.
+const withChunkRetry = <T>(label: string, fn: () => Promise<T>, log: (msg: string) => void, maxAttempts = 4): Promise<T> =>
+  withRetry(fn, { label, log, maxAttempts });
 
 async function findOrCreateSitemapPage(
   notion: Client,

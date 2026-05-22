@@ -23,6 +23,7 @@
 import { Client } from "@notionhq/client";
 import * as fs from "fs";
 import * as path from "path";
+import { withRetry } from "./lib/retry";
 
 const DB_TITLE = "📇 Doc Index";
 const DB_ICON_EMOJI = "📇";
@@ -316,28 +317,9 @@ async function fetchExistingRows(
 }
 
 // Linear-backoff retry for transient 5xx — same pattern as sitemap.ts.
-async function withRetry<T>(label: string, fn: () => Promise<T>, log: (msg: string) => void, maxAttempts = 4): Promise<T> {
-  let lastErr: any;
-  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
-    try {
-      return await fn();
-    } catch (err: any) {
-      lastErr = err;
-      const status = err?.status;
-      const code = err?.code;
-      const retriable =
-        status === 504 || status === 502 || status === 503 ||
-        status === 408 || status === 429 ||
-        code === "notionhq_client_request_timeout" ||
-        code === "ECONNRESET" || code === "ETIMEDOUT";
-      if (!retriable || attempt === maxAttempts) throw err;
-      const waitMs = 4000 * attempt;
-      log(`    [${label}] ${status ?? code} — retry ${attempt}/${maxAttempts - 1} in ${waitMs / 1000}s`);
-      await sleep(waitMs);
-    }
-  }
-  throw lastErr;
-}
+// Linear-backoff retry (4s·n, 4 attempts) — preset binder over lib/retry.
+const retry = <T>(label: string, fn: () => Promise<T>, log: (msg: string) => void, maxAttempts = 4): Promise<T> =>
+  withRetry(fn, { label, log, maxAttempts });
 
 export interface GenerateIndexDbResult {
   database_id: string;
@@ -396,14 +378,14 @@ export async function generateIndexDb(opts: {
     const props = buildRowProps(doc, sourcePage?.id ?? null);
     const existingRowId = existingByPath.get(doc.relPath);
     if (existingRowId) {
-      await withRetry(
+      await retry(
         `update ${doc.relPath}`,
         () => notion.pages.update({ page_id: existingRowId, properties: props }),
         log,
       );
       rowsUpdated++;
     } else {
-      await withRetry(
+      await retry(
         `create ${doc.relPath}`,
         () => notion.pages.create({
           parent: { type: "data_source_id", data_source_id: dataSourceId } as any,
@@ -424,7 +406,7 @@ export async function generateIndexDb(opts: {
   // mark stale. User can sweep manually via Notion's filter.
   for (const [orphPath, orphRowId] of existingByPath) {
     if (localPaths.has(orphPath)) continue;
-    await withRetry(
+    await retry(
       `orphan ${orphPath}`,
       () =>
         notion.pages.update({

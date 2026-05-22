@@ -20,6 +20,7 @@
 import { Client } from "@notionhq/client";
 import * as fs from "fs";
 import * as path from "path";
+import { withRetry } from "./lib/retry";
 
 const BACKLINK_EMOJI = "🔗";
 const BACKLINK_PREFIX = "Linked from "; // first text span in the callout — used as the marker on re-runs
@@ -231,28 +232,9 @@ async function findExistingBacklinkBlocks(
   return out;
 }
 
-async function withRetry<T>(label: string, fn: () => Promise<T>, log: (msg: string) => void, maxAttempts = 4): Promise<T> {
-  let lastErr: any;
-  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
-    try {
-      return await fn();
-    } catch (err: any) {
-      lastErr = err;
-      const status = err?.status;
-      const code = err?.code;
-      const retriable =
-        status === 504 || status === 502 || status === 503 ||
-        status === 408 || status === 429 ||
-        code === "notionhq_client_request_timeout" ||
-        code === "ECONNRESET" || code === "ETIMEDOUT";
-      if (!retriable || attempt === maxAttempts) throw err;
-      const waitMs = 4000 * attempt;
-      log(`    [${label}] ${status ?? code} — retry ${attempt}/${maxAttempts - 1} in ${waitMs / 1000}s`);
-      await sleep(waitMs);
-    }
-  }
-  throw lastErr;
-}
+// Linear-backoff retry (4s·n, 4 attempts) — preset binder over lib/retry.
+const retry = <T>(label: string, fn: () => Promise<T>, log: (msg: string) => void, maxAttempts = 4): Promise<T> =>
+  withRetry(fn, { label, log, maxAttempts });
 
 export interface GenerateBacklinksResult {
   total_docs_scanned: number;
@@ -320,13 +302,13 @@ export async function generateBacklinks(opts: {
     pagesWithBacklinks++;
 
     // Find existing callout (if any), delete it, then append the new one.
-    const existing = await withRetry(
+    const existing = await retry(
       `find ${targetPath}`,
       () => findExistingBacklinkBlocks(notion, targetPage.id, rateLimitMs),
       log,
     );
     for (const blockId of existing) {
-      await withRetry(
+      await retry(
         `delete ${targetPath}`,
         () => notion.blocks.delete({ block_id: blockId }),
         log,
@@ -334,7 +316,7 @@ export async function generateBacklinks(opts: {
       await sleep(rateLimitMs);
     }
 
-    await withRetry(
+    await retry(
       `append ${targetPath}`,
       () =>
         notion.blocks.children.append({

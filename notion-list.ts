@@ -11,6 +11,7 @@
 // counts, icons, URLs, fetched-at timestamp. Compare-content is a follow-up.
 
 import { getNotion, extractPageId } from "./lib/notion";
+import { withRetry } from "./lib/retry";
 import * as fs from "fs";
 import * as path from "path";
 import { convertPageLinksToMentions } from "./mention-converter";
@@ -111,39 +112,19 @@ function clearLine(): void {
   process.stdout.write("\r" + " ".repeat(120) + "\r");
 }
 
-// Retry transient Notion failures (5xx, network errors, rate-limit 429).
-// Cloudflare often returns 502 mid-walk under load. Without retry, a single
-// blip kills the whole fetch. Backoff: 2s, 4s, 8s, 16s, 32s. Honours
-// Retry-After header on 429/503 if present.
-async function withRetry<T>(label: string, fn: () => Promise<T>, maxAttempts = 5): Promise<T> {
-  let lastErr: any;
-  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
-    try {
-      return await fn();
-    } catch (err: any) {
-      lastErr = err;
-      const status = err?.status;
-      const retriable =
-        status === 429 ||
-        status === 408 ||
-        (status >= 500 && status < 600) ||
-        err?.code === "ECONNRESET" ||
-        err?.code === "ETIMEDOUT" ||
-        err?.code === "notionhq_client_request_timeout" ||
-        (err?.code === "notionhq_client_response_error" && status >= 500);
-      if (!retriable || attempt === maxAttempts) throw err;
-      const retryAfterHeader = err?.headers?.["retry-after"];
-      const retryAfterMs = retryAfterHeader ? parseInt(retryAfterHeader, 10) * 1000 : 0;
-      const backoffMs = Math.min(32000, 2000 * Math.pow(2, attempt - 1));
-      const waitMs = Math.max(retryAfterMs, backoffMs);
-      process.stdout.write(
-        `\r${" ".repeat(120)}\r${dim(`  [${label}] transient ${status ?? err.code} — retry ${attempt}/${maxAttempts - 1} in ${Math.round(waitMs / 1000)}s`)}\n`,
-      );
-      await sleep(waitMs);
-    }
-  }
-  throw lastErr;
-}
+// Retry transient Notion failures during the tree walk. Cloudflare often
+// returns 502 mid-walk under load; without retry a single blip kills the
+// whole fetch. Exponential backoff (2s→32s) + Retry-After, 5 attempts —
+// tuned for the API-hammering walk. Logic lives in lib/retry; this binder
+// fixes the preset + the progress-line-clearing log style.
+const retry = <T>(label: string, fn: () => Promise<T>, maxAttempts = 5): Promise<T> =>
+  withRetry(fn, {
+    label,
+    maxAttempts,
+    backoff: "exponential",
+    honorRetryAfter: true,
+    log: (m) => process.stdout.write(`\r${" ".repeat(120)}\r${dim(m)}\n`),
+  });
 
 // ── Cache shape ───────────────────────────────────────────────────────────────
 
@@ -188,7 +169,7 @@ async function listChildren(blockId: string): Promise<{ blocks: any[]; apiCalls:
   let cursor: string | undefined;
   let apiCalls = 0;
   do {
-    const res: any = await withRetry("list", () =>
+    const res: any = await retry("list", () =>
       notion.blocks.children.list({
         block_id: blockId,
         page_size: 100,
@@ -252,7 +233,7 @@ async function walk(opts: { fetchIcons: boolean }): Promise<Cache> {
   }, HEARTBEAT_MS);
 
   // Root page metadata
-  const rootMeta: any = await withRetry("root", () => notion.pages.retrieve({ page_id: ROOT_ID }));
+  const rootMeta: any = await retry("root", () => notion.pages.retrieve({ page_id: ROOT_ID }));
   apiCalls++; walkProgress.apiCalls = apiCalls;
   await sleep(RATE_LIMIT_MS);
   const rootTitle = extractTitle(rootMeta) ?? "(root)";
@@ -295,7 +276,7 @@ async function walk(opts: { fetchIcons: boolean }): Promise<Cache> {
       let childIcon: CachedPage["icon"] = null;
       if (opts.fetchIcons) {
         try {
-          const meta: any = await withRetry("icon", () => notion.pages.retrieve({ page_id: cp.id }), 3);
+          const meta: any = await retry("icon", () => notion.pages.retrieve({ page_id: cp.id }), 3);
           apiCalls++; walkProgress!.apiCalls = apiCalls;
           childIcon = extractIcon(meta);
           await sleep(RATE_LIMIT_MS);

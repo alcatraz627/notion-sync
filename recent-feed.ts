@@ -16,6 +16,7 @@
 import { Client } from "@notionhq/client";
 import * as fs from "fs";
 import * as path from "path";
+import { withRetry } from "./lib/retry";
 
 const RECENT_FEED_TITLE = "📣 Recently Synced";
 const DEFAULT_LIMIT = 50;
@@ -35,28 +36,9 @@ export interface RecentFeedCache {
 
 const sleep = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
 
-async function withRetry<T>(label: string, fn: () => Promise<T>, log: (msg: string) => void, maxAttempts = 4): Promise<T> {
-  let lastErr: any;
-  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
-    try {
-      return await fn();
-    } catch (err: any) {
-      lastErr = err;
-      const status = err?.status;
-      const code = err?.code;
-      const retriable =
-        status === 504 || status === 502 || status === 503 ||
-        status === 408 || status === 429 ||
-        code === "notionhq_client_request_timeout" ||
-        code === "ECONNRESET" || code === "ETIMEDOUT";
-      if (!retriable || attempt === maxAttempts) throw err;
-      const waitMs = 4000 * attempt;
-      log(`    [${label}] ${status ?? code} — retry ${attempt}/${maxAttempts - 1} in ${waitMs / 1000}s`);
-      await sleep(waitMs);
-    }
-  }
-  throw lastErr;
-}
+// Linear-backoff retry (4s·n, 4 attempts) — preset binder over lib/retry.
+const retry = <T>(label: string, fn: () => Promise<T>, log: (msg: string) => void, maxAttempts = 4): Promise<T> =>
+  withRetry(fn, { label, log, maxAttempts });
 
 interface FeedEntry {
   page_id: string;            // canonical (no dashes) for matching against cache
@@ -325,7 +307,7 @@ export async function generateRecentFeed(opts: {
   let batches = 0;
   for (let i = 0; i < blocks.length; i += BATCH_SIZE) {
     const batch = blocks.slice(i, i + BATCH_SIZE);
-    await withRetry(
+    await retry(
       `batch ${batches + 1}`,
       () => notion.blocks.children.append({ block_id: pageId, children: batch }),
       log,
