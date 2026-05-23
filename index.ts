@@ -38,6 +38,7 @@
  */
 
 import { getNotion, extractPageId } from "./lib/notion";
+import { makeClr } from "./lib/colors";
 import { createInterface } from "readline/promises";
 import * as fs from "fs";
 import * as path from "path";
@@ -251,35 +252,10 @@ let partialSnapshot: PartialSnapshot | null = null;
 
 const IS_TTY = process.stdout.isTTY === true;
 
-const A = {
-  r: "\x1b[0m",
-  b: "\x1b[1m",
-  d: "\x1b[2m",
-  R: "\x1b[31m",
-  G: "\x1b[32m",
-  Y: "\x1b[33m",
-  B: "\x1b[34m",
-  M: "\x1b[35m",
-  C: "\x1b[36m",
-  W: "\x1b[90m",
-} as const;
-
-function paint(code: string, s: string): string {
-  return IS_TTY ? `${code}${s}${A.r}` : s;
-}
-
-const clr = {
-  header: (s: string) => paint(`${A.b}${A.C}`, s),
-  phase: (s: string) => paint(`${A.b}${A.B}`, s),
-  section: (s: string) => paint(`${A.b}${A.M}`, s),
-  ok: (s: string) => paint(A.G, s),
-  warn: (s: string) => paint(A.Y, s),
-  err: (s: string) => paint(A.R, s),
-  url: (s: string) => paint(A.C, s),
-  dim: (s: string) => paint(A.d, s),
-  bold: (s: string) => paint(A.b, s),
-  gray: (s: string) => paint(A.W, s),
-};
+// Semantic palette from lib/colors — TTY-gated (no color when piped).
+// makeClr reproduces the exact shape this file used (header/phase/section/
+// ok/warn/err/url/dim/bold/gray); call sites are unchanged.
+const clr = makeClr(IS_TTY);
 
 const sym = {
   ok: "✓",
@@ -922,10 +898,10 @@ function renderTick(): void {
 
   if (s.mode === "bar") {
     const filled = Math.round((s.n / s.total) * BAR_WIDTH);
-    const bar = paint(A.G, "█".repeat(filled)) + paint(A.d, "░".repeat(BAR_WIDTH - filled));
+    const bar = clr.ok("█".repeat(filled)) + clr.dim("░".repeat(BAR_WIDTH - filled));
     const pct = String(Math.floor((s.n / s.total) * 100)).padStart(3);
     const label = s.file.length > 42 ? `…${s.file.slice(-41)}` : s.file.padEnd(42);
-    const spinner = s.status === "error" ? paint(A.R, sym.err) : ansiGrey(fg, spinChar(elapsed));
+    const spinner = s.status === "error" ? clr.err(sym.err) : ansiGrey(fg, spinChar(elapsed));
     process.stdout.write(`\r  [${bar}] ${clr.bold(`${s.n}/${s.total}`)} ${pct}%  ${spinner} ${clr.dim(label)}`);
   } else {
     const dot = ansiGrey(fg, "●");
