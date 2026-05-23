@@ -35,6 +35,7 @@ import {
 } from "./reconcile";
 import { loadState, loadSnapshot, getCacheKey } from "./sync-state";
 import { titleVariants } from "./title-match";
+import { loadEnv } from "./lib/env";
 
 // Configure marked: no GFM tables sanitization (the docs use them), no XSS
 // sanitization (we trust local content — we wrote it), but escape ALL HTML
@@ -334,11 +335,7 @@ function buildPageResolver(cache: NotionCache, docsDir: string, localPaths: stri
 
 // ── Env + config ─────────────────────────────────────────────────────────────
 
-const envContent = fs.readFileSync(path.join(__dirname, ".env"), "utf8");
-for (const line of envContent.split("\n")) {
-  const m = line.match(/^([A-Z_][A-Z0-9_]*)=(.*)$/);
-  if (m && !(m[1] in process.env)) process.env[m[1]] = m[2].replace(/^"|"$/g, "");
-}
+loadEnv(path.join(__dirname, ".env"));
 
 const NOTION_TOKEN = process.env.NOTION_TOKEN!;
 const DOCS_DIR = process.env.DOCS_DIR ?? path.join(__dirname, "docs");

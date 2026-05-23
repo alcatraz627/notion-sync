@@ -18,18 +18,15 @@ import { convertPageLinksToMentions } from "./mention-converter";
 import { generateSitemap } from "./sitemap";
 import { titleVariants, buildVariantIndex, findMatches } from "./title-match";
 import { dim, bold, grey, green, yellow, red, cyan } from "./lib/colors";
+import { loadEnv } from "./lib/env";
 import { generateTagIndex } from "./tag-index";
 import { generateIndexDb } from "./index-db";
 import { generateBacklinks } from "./backlinks";
 import { generateRecentFeed } from "./recent-feed";
 import { generateHealth } from "./health";
 
-// ── Env loading (bun --env-file would work but we mimic sync.sh's behaviour) ──
-const envContent = fs.readFileSync(path.join(__dirname, ".env"), "utf8");
-for (const line of envContent.split("\n")) {
-  const m = line.match(/^([A-Z_][A-Z0-9_]*)=(.+)/);
-  if (m && !process.env[m[1]]) process.env[m[1]] = m[2].trim();
-}
+// Load .env for direct `bun notion-list.ts` runs (shell-set vars still win).
+loadEnv(path.join(__dirname, ".env"));
 
 const NOTION_TOKEN = process.env.NOTION_TOKEN!;
 const RAW_ROOT = process.env.NOTION_ROOT_PAGE_ID!;
