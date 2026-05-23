@@ -87,7 +87,7 @@ function buildReverseOpts(cache: NotionCache, resolverIdToPath: Map<string, stri
   };
 }
 
-function reverseRemoteRewrites(body: string, relPath: string, opts: ReverseOpts): string {
+export function reverseRemoteRewrites(body: string, relPath: string, opts: ReverseOpts): string {
   const fromDir = path.dirname(relPath);
 
   // 1. Notion page URLs `[label](https://www.notion.so/<32hex>)` → relative
@@ -406,7 +406,7 @@ function readLatestLiveRun(): { protected_pages: ProtectedRow[]; run_id: string 
  * We collapse all trailing whitespace to a single trailing newline on both
  * sides — semantically equivalent, removes the most common noise source.
  */
-function normalizeForDiff(body: string): string {
+export function normalizeForDiff(body: string): string {
   return body
     // Strip code-fence language tags. Notion auto-detects the language and
     // attaches one even when local has a bare ```. We can't know whether
