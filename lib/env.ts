@@ -17,7 +17,7 @@ import * as fs from "fs";
 export function loadEnv(envPath: string): void {
   if (!fs.existsSync(envPath)) return;
   const content = fs.readFileSync(envPath, "utf8");
-  for (const line of content.split("\n")) {
+  for (const line of content.split(/\r?\n/)) { // tolerate CRLF-authored .env
     const m = line.match(/^([A-Z_][A-Z0-9_]*)=(.*)$/);
     if (!m) continue;
     if (m[1] in process.env) continue; // shell-set value wins

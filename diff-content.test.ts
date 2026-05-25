@@ -29,6 +29,13 @@ test("normalizeForDiff — collapses 3+ blank lines to one + trims trailing", ()
   expect(out).toBe("a\n\nb\n");
 });
 
+test("normalizeForDiff — adjacent table separator rows stay separate (regression)", () => {
+  // Two stacked separator rows must NOT merge into one (the \s-eats-\n bug).
+  const out = normalizeForDiff("| a | b |\n| --- | --- |\n| --- | --- |\n");
+  const sepLines = out.split("\n").filter((l) => l === "| --- | --- |");
+  expect(sepLines.length).toBe(2);
+});
+
 // ── reverseRemoteRewrites: undo the push-side rewrites for clean diffs ────────
 
 const opts = {

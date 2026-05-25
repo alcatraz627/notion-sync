@@ -325,9 +325,14 @@ async function renderDiffWith(tool: DiffTool, localPath: string, tmpPath: string
       let baseToLocalDiff = "";
       let baseToRemoteDiff = "";
       if (baseContent !== null) {
-        // Write BASE to a tmp file for the same git diff pipeline.
+        // Graft local frontmatter onto BASE before diffing. The snapshot body
+        // is stored frontmatter-stripped, but LOCAL (raw file) and REMOTE
+        // (merged, also frontmatter-grafted) both carry it — so without this
+        // every frontmatter'd doc shows its whole YAML block as spurious
+        // "added" in both 3-way panes.
+        const baseWithFm = mergeWithLocalFrontmatter(localPath, baseContent);
         const baseTmp = path.join(os.tmpdir(), `recon-base-${process.pid}-${Date.now()}.md`);
-        fs.writeFileSync(baseTmp, baseContent, "utf-8");
+        fs.writeFileSync(baseTmp, baseWithFm, "utf-8");
         try {
           baseToLocalDiff  = await runGitDiff(baseTmp, localPath);
           baseToRemoteDiff = await runGitDiff(baseTmp, tmpPath);

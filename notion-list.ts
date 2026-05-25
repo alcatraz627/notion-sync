@@ -219,15 +219,7 @@ async function walk(opts: { fetchIcons: boolean }): Promise<Cache> {
   // they're making progress.
   const MILESTONE_EVERY = 25;
   let lastMilestone = 0;
-  // Heartbeat — re-arm the live status line every few seconds even if no
-  // new pages have arrived (e.g. stuck in a Notion 502 retry backoff). Some
-  // terminals stop showing \r updates entirely if writes are too infrequent.
   const HEARTBEAT_MS = 5000;
-  const heartbeat = setInterval(() => {
-    if (pages.length > 0) {
-      process.stdout.write(`\r  ${unboundedStatus(pages.length, `(heartbeat — still fetching)`, start)}`);
-    }
-  }, HEARTBEAT_MS);
 
   // Root page metadata
   const rootMeta: any = await retry("root", () => notion.pages.retrieve({ page_id: ROOT_ID }));
@@ -285,6 +277,15 @@ async function walk(opts: { fetchIcons: boolean }): Promise<Cache> {
     }
   }
 
+  // Heartbeat — re-arm the live status line every few seconds even if no new
+  // pages have arrived (e.g. stuck in a Notion 502 retry backoff). Armed here
+  // (not before the root retrieve) so a root-retrieve throw can't leak the
+  // timer; the try/finally below is the only owner.
+  const heartbeat = setInterval(() => {
+    if (pages.length > 0) {
+      process.stdout.write(`\r  ${unboundedStatus(pages.length, `(heartbeat — still fetching)`, start)}`);
+    }
+  }, HEARTBEAT_MS);
   try {
     await visit(ROOT_ID, null, 0, rootTitle, rootIcon);
   } finally {

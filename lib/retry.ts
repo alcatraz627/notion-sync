@@ -61,8 +61,13 @@ export function computeWaitMs(
     ? Math.min(32000, 2000 * Math.pow(2, attempt - 1))
     : 4000 * attempt;
   if (!honorRetryAfter) return base;
+  // Retry-After may be a delta-seconds integer OR an HTTP-date (RFC 7231).
+  // parseInt on a date yields NaN → Math.max(NaN, base) is NaN → setTimeout
+  // fires immediately, defeating backoff exactly when a 429 wants a wait.
+  // Guard: only honor a finite, positive seconds value; else fall back to base.
   const hdr = err?.headers?.["retry-after"];
-  const retryAfterMs = hdr ? parseInt(hdr, 10) * 1000 : 0;
+  const secs = hdr ? parseInt(hdr, 10) : NaN;
+  const retryAfterMs = Number.isFinite(secs) && secs > 0 ? secs * 1000 : 0;
   return Math.max(retryAfterMs, base);
 }
 

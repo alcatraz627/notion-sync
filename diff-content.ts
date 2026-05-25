@@ -37,10 +37,10 @@ import { loadState, loadSnapshot, getCacheKey } from "./sync-state";
 import { titleVariants } from "./title-match";
 import { loadEnv } from "./lib/env";
 
-// Configure marked: no GFM tables sanitization (the docs use them), no XSS
-// sanitization (we trust local content — we wrote it), but escape ALL HTML
-// embedded in markdown so that things like `<callout>` blocks Notion adds
-// don't get interpreted as live HTML.
+// GFM on (the docs use tables). marked v5+ does NOT sanitize or escape HTML
+// itself — embedded HTML passes through raw. renderPanelsRendered escapes
+// angle brackets in the source before parsing so embedded HTML (incl Notion's
+// `<callout>` blocks) renders as literal text rather than executing.
 marked.setOptions({ gfm: true, breaks: false });
 
 // ── Reverse remote rewrites ──────────────────────────────────────────────────
@@ -420,7 +420,7 @@ export function normalizeForDiff(body: string): string {
     // width); local files typically use exactly 3 dashes. Collapse all
     // separator cells to 3 dashes while preserving alignment markers
     // (`:---`, `---:`, `:---:`).
-    .replace(/^\s*\|(?:[-:|\s]+\|)+\s*$/gm, (line) => {
+    .replace(/^[ \t]*\|(?:[-:| \t]+\|)+[ \t]*$/gm, (line) => { // [ \t] not \s — \s eats \n, merging adjacent separator rows
       const cells = line.trim().split("|").slice(1, -1).map((cell) => {
         const t = cell.trim();
         const leftAlign = t.startsWith(":");
@@ -668,8 +668,14 @@ function renderPanelsRendered(r: PageReport): string {
   }
   const renderSide = (title: string, body: string, empty: string) => {
     if (!body) return `<div class="pane"><div class="pane-title">${title}</div><div class="pane-empty">${empty}</div></div>`;
-    // marked.parse can return a Promise in async mode; we use the sync overload.
-    const html = (marked.parse(body, { async: false }) as string);
+    // Neutralize embedded HTML BEFORE parsing: marked (v5+) passes raw HTML
+    // through unescaped, so a doc or Notion page containing `<script>` would
+    // execute in the local browser. Escaping `<`/`>` in the source makes all
+    // embedded HTML (incl Notion's `<callout>` blocks) render as literal
+    // text — which is what we want in a prose preview anyway — and removes
+    // the injection vector. Markdown syntax (#, -, *, |, links) is untouched.
+    const safeBody = body.replace(/</g, "&lt;").replace(/>/g, "&gt;");
+    const html = (marked.parse(safeBody, { async: false }) as string);
     return `<div class="pane"><div class="pane-title">${title}</div><div class="pane-rendered">${html}</div></div>`;
   };
   if (!r.hasBase) {
@@ -1142,6 +1148,11 @@ async function serveAndOpen(html: string, reports: PageReport[]): Promise<void> 
   // (assigned in render order) maps to the same report on the server.
   const sortedReports = [...reports].sort((a, b) => a.relPath.localeCompare(b.relPath));
 
+  // The hold-open promise's resolver, hoisted so both SIGINT and the /quit
+  // endpoint can release it. Without this, /quit stops the listener but the
+  // await below never resolves → the process hangs.
+  let releaseHold: () => void = () => {};
+
   const server = Bun.serve({
     port: 0,
     fetch(req) {
@@ -1177,7 +1188,9 @@ async function serveAndOpen(html: string, reports: PageReport[]): Promise<void> 
         })();
       }
       if (url.pathname === "/quit") {
-        setTimeout(() => server.stop(true), 100);
+        // Flush the response, then stop the server AND release the hold so
+        // the process actually exits (server.stop alone leaves await hanging).
+        setTimeout(() => { server.stop(true); releaseHold(); }, 100);
         return new Response("bye", { headers: { "content-type": "text/plain" } });
       }
       return new Response("not found", { status: 404 });
@@ -1189,8 +1202,9 @@ async function serveAndOpen(html: string, reports: PageReport[]): Promise<void> 
   try {
     Bun.spawn(["open", url], { stdout: "ignore", stderr: "ignore" });
   } catch { /* no `open` — user clicks manually */ }
-  // Hold open until SIGINT.
+  // Hold open until SIGINT or a /quit request.
   await new Promise<void>((resolve) => {
+    releaseHold = resolve;
     process.on("SIGINT", () => { server.stop(true); resolve(); });
   });
 }

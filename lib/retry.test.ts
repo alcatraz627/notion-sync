@@ -18,6 +18,15 @@ test("computeWaitMs — exponential is min(32s, 2s·2^(n-1))", () => {
   expect(computeWaitMs(6, "exponential", false, {})).toBe(32000); // capped
 });
 
+test("computeWaitMs — HTTP-date Retry-After does NOT produce NaN (regression)", () => {
+  // RFC 7231 allows Retry-After as an HTTP-date; parseInt → NaN must not
+  // leak into the wait (NaN → setTimeout fires instantly, defeating backoff).
+  const err = { status: 429, headers: { "retry-after": "Wed, 21 Oct 2026 07:28:00 GMT" } };
+  const w = computeWaitMs(1, "exponential", true, err);
+  expect(Number.isFinite(w)).toBe(true);
+  expect(w).toBe(2000); // falls back to the exponential base
+});
+
 test("computeWaitMs — Retry-After raises the floor only when honored", () => {
   const err = { status: 429, headers: { "retry-after": "10" } }; // 10s
   // exponential attempt 1 base = 2s; Retry-After 10s wins
