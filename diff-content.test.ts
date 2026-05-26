@@ -24,9 +24,11 @@ test("normalizeForDiff — collapses image URLs to a stable placeholder (keeps a
   expect(out).toContain("![the chart](IMG)");
 });
 
-test("normalizeForDiff — collapses 3+ blank lines to one + trims trailing", () => {
-  const out = normalizeForDiff("a\n\n\n\n\nb\n\n\n");
-  expect(out).toBe("a\n\nb\n");
+test("normalizeForDiff — removes blank lines (Notion strips them; symmetric) + trims trailing", () => {
+  // Blank-line runs (any length) collapse away — base's markdown spacing vs
+  // Notion's stripped export is the biggest structural noise source.
+  expect(normalizeForDiff("a\n\n\n\n\nb\n\n\n")).toBe("a\nb\n");
+  expect(normalizeForDiff("# H\n\ntext\n\n## H2\n")).toBe("# H\ntext\n## H2\n");
 });
 
 test("normalizeForDiff — adjacent table separator rows stay separate (regression)", () => {

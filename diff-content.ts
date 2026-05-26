@@ -505,10 +505,14 @@ export function normalizeForDiff(body: string): string {
     // the URL to a stable placeholder on both sides collapses what's often
     // a 200-char per-image diff to zero. Alt text + the bang are preserved.
     .replace(/!\[([^\]]*)\]\([^)\s]+(?:\s+"[^"]*")?\)/g, "![$1](IMG)")
-    // Collapse runs of 2+ blank lines into a single blank line. Markdown
-    // treats any blank-line run as a paragraph break — local files often use
-    // doubled-blanks as visual spacing, Notion always collapses to one.
-    .replace(/\n{3,}/g, "\n\n")
+    // Drop ALL blank lines. Raw local markdown puts a blank line between every
+    // block; Notion's export strips most of them. That asymmetry is invisible to
+    // a word-diff (no token changes) yet shows as a wall of removed blank lines in
+    // the rendered diff AND flips nearly every page to "remote changed" via the
+    // line-level add/remove count. Removing blank lines on BOTH sides cancels the
+    // structural noise. Safe: symmetric (can't manufacture a diff), and joining
+    // two content lines isn't hidden — they remain distinct lines.
+    .replace(/\n[ \t]*(?:\n[ \t]*)+/g, "\n")
     // Strip trailing whitespace, then put back one terminator newline so
     // POSIX text-file convention holds.
     .replace(/\s+$/, "")
