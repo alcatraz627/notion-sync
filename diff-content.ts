@@ -407,7 +407,30 @@ function readLatestLiveRun(): { protected_pages: ProtectedRow[]; run_id: string 
  * sides — semantically equivalent, removes the most common noise source.
  */
 export function normalizeForDiff(body: string): string {
-  return body
+  let s = body;
+
+  // F1 — Strip leading YAML frontmatter. It's metadata (icon/cover/status/tags),
+  // stripped before content is ever pushed to Notion, so it must never appear in
+  // a content diff. It's also the #1 noise source on this corpus: BASE snapshots
+  // predate the docs gaining frontmatter, so the block shows as an insertion on
+  // BOTH real sides. Only matches a block at the very start of the body.
+  s = s.replace(/^---\r?\n[\s\S]*?\r?\n---\r?\n/, "");
+
+  // F7 — Strip the tool-injected "🔗 Linked from" backlinks callout. The backlinks
+  // dashboard appends it on Notion only, so it's a guaranteed false-positive on
+  // every enriched page. Key off the `**Linked from**` marker (robust to icon /
+  // wrapper variation), then mop up any bare marker line.
+  s = s.replace(/<callout[^>]*>\s*\*\*Linked from[\s\S]*?<\/callout>\n?/g, "");
+  s = s.replace(/^[ \t]*\*\*Linked from\s*\*\*.*$/gm, "");
+
+  // F6 — Strip Notion-export HTML. `<callout>`/`<aside>`/`<details>`/`<columns>`/
+  // `<span color=…>` are layout wrappers; HTML comments (`<!-- sherpa … -->`,
+  // `<!-- claude … -->`) are tool/review markers Notion drops on push. Neither
+  // round-trips, so remove comments outright and unwrap the tags (keep inner text).
+  s = s.replace(/<!--[\s\S]*?-->\n?/g, "");
+  s = s.replace(/<\/?(?:callout|aside|details|columns?|column|span)\b[^>]*>/g, "");
+
+  return s
     // Strip code-fence language tags. Notion auto-detects the language and
     // attaches one even when local has a bare ```. We can't know whether
     // the user "meant" javascript or python, so collapse both sides to
@@ -433,14 +456,48 @@ export function normalizeForDiff(body: string): string {
       return "| " + cells.join(" | ") + " |";
     })
     // Unescape backslash-escaped punctuation. Notion's exporter conservatively
-    // escapes any character that COULD be markdown-meaningful even in plain
-    // prose where it isn't — `\>`, `\-`, `\(`, `\.`, `\!`, etc. Local files
-    // don't have these escapes. Strip them on both sides so what's
-    // semantically the same word ends up the same string. Skipping `\\`
-    // itself (genuine escape sequences in code samples) and `\[`/`\]` (which
-    // we already handle inside table cells, and which CAN legitimately be
-    // intentional in prose to suppress link syntax).
-    .replace(/\\([>!\-=().,;:?])/g, "$1")
+    // escapes any character that COULD be markdown-meaningful even where it
+    // isn't — in prose, code, TS generics, unions, JSX, anchors. Local files
+    // rarely carry these escapes, so strip them on both sides. The set is broad
+    // (the scan found Notion escapes all of these): `> ! - = ( ) . , ; : ?` plus
+    // `~ $ [ ] < > { } | _ * #` (strike/approx, Mongo `$ops`, STUB tags, generics,
+    // unions, JSX, anchors). `\\` itself is left alone (genuine code escapes).
+    // Symmetric on both sides, so this can only remove noise, never add it.
+    .replace(/\\([!=().,;:?~$<>{}|_*#\[\]\-])/g, "$1")
+    // F4 — Collapse runs of 4+ `*`. Notion re-emits bold-around-inline-code with
+    // a doubled marker (`**`code`**` → `****`code`****`). Four-plus asterisks are
+    // never legitimate (the richest valid form is `***bold-italic***`), so fold
+    // them to `**`. Leaves `*`, `**`, `***` intact.
+    .replace(/\*{4,}/g, "**")
+    // F3 — Normalize internal-link noise. (a) strip backticks from any link's
+    // anchor text — Notion drops the code formatting on a converted mention; (b)
+    // for `.md` links, the mention round-trip rewrites the anchor to the target
+    // and drops `./` + `#fragment`, so canonicalize BOTH sides to `[target](target)`
+    // with `./`/`#…` stripped. (A genuinely changed path still differs, so real
+    // moves are preserved.)
+    .replace(/\[`([^`\]]*)`\]/g, "[$1]")
+    .replace(/\[[^\]]*\]\((\.?\/?[^)\s#]*?\.md)(?:#[^)\s]*)?\)/g, (_m, tgt: string) => {
+      const t = tgt.replace(/^\.\//, "");
+      return `[${t}](${t})`;
+    })
+    // F2 — Canonicalize single-`_` italic to `*`. Notion exports italic as `_x_`,
+    // local files use `*x*`; both render identically. Only matches a flanking
+    // emphasis delimiter (opener preceded by start/space/open-punct, closer
+    // followed by end/space/close-punct), so intra-word `snake_case` and
+    // identifiers are never touched. Symmetric → cannot add noise.
+    .replace(/(^|[\s([{<"'~])_(\S[^_\n]*?\S|\S)_(?=$|[\s)\]}>"'~.,;:!?])/gm, "$1*$2*")
+    // F12 — Strip `<>` autolink wrappers around a URL in a link target:
+    // `](<https://…>)` → `](https://…)`. Notion drops the angle brackets.
+    .replace(/\]\(<(https?:\/\/[^>]+)>\)/g, "]($1)")
+    // F10 — Collapse a bare-domain autolink back to the bare host. Notion turns a
+    // plain hostname in a table cell into `[host](http://host)`; fold it back when
+    // the anchor text equals the host and the URL has no path.
+    .replace(/\[([^\]\s]+)\]\(https?:\/\/([^)\/\s]+)\)/g, (m, anchor: string, host: string) => anchor === host ? anchor : m)
+    // F11 — Normalize unicode bullet glyphs to `-` at line start.
+    .replace(/^(\s*)[•‣◦·]\s+/gm, "$1- ")
+    // F14 — Canonicalize unordered-list markers `*` / `+` → `-` (bullet only: a
+    // marker char followed by whitespace at line start; `*emphasis*` has no space).
+    .replace(/^(\s*)[*+](\s)/gm, "$1-$2")
     // Image URLs → `IMG` placeholder. The local form is `./pic.png` or
     // similar relative path; Notion stores it on its CDN
     // (`prod-files-secure.s3.us-west-2.amazonaws.com/...`). Both encode the
@@ -587,7 +644,7 @@ function renderBadge(c: Side): string {
     remote:   { label: "REMOTE changed",        cls: "badge-remote" },
     both:     { label: "BOTH changed",          cls: "badge-both" },
     neither:  { label: "no detected change",    cls: "badge-clean" },
-    "no-base":{ label: "no BASE (2-way only)",  cls: "badge-warn" },
+    "no-base":{ label: "no snapshot · LOCAL↔REMOTE",  cls: "badge-warn" },
   };
   const { label, cls } = map[c];
   return `<span class="badge ${cls}">${label}</span>`;
@@ -693,7 +750,7 @@ function renderPanelsInner(r: PageReport): string {
     return `<div class="pane pane-err">Remote fetch failed: ${escape(r.fetchError)}</div>`;
   }
   if (!r.hasBase) {
-    return renderPanel("LOCAL vs REMOTE (no BASE available — first push or pre-snapshots)", r.baseToLocalDiff, "Local and remote are identical");
+    return renderPanel("LOCAL vs REMOTE — no push-time snapshot (section page, or doc synced before snapshots existed); showing a 2-way diff. Run `bash sync.sh --seed-state` for full 3-way coverage.", r.baseToLocalDiff, "Local and remote are identical");
   }
   return `${renderPanel(localLabel, r.baseToLocalDiff, "Local matches BASE — nothing changed locally")}
     ${renderPanel(remoteLabel, r.baseToRemoteDiff, "Remote matches BASE — nothing changed on Notion")}`;
