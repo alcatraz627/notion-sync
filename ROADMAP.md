@@ -7,6 +7,7 @@ Background design docs:
 - [`OVERWRITE-GUARDRAILS-EXPLORATION.md`](OVERWRITE-GUARDRAILS-EXPLORATION.md) — design + research behind the guardrails feature
 - [`RECONCILIATION-EXPLORATION.md`](RECONCILIATION-EXPLORATION.md) — design behind the reconcile flow
 - [`SHARED-LIB-EXPLORATION.md`](SHARED-LIB-EXPLORATION.md) — the `lib/` extraction plan
+- [`DIFF-NOISE-EXPLORATION.md`](DIFF-NOISE-EXPLORATION.md) — the diff-content noise catalog + normalizeForDiff rules (why each rule exists; the round-trip fidelity floor)
 - [`NAV-STRUCTURE-EXPLORATION.md`](NAV-STRUCTURE-EXPLORATION.md) — alternatives to the deep-nested page tree
 - [`RCA-ARCHIVED-PAGES.md`](RCA-ARCHIVED-PAGES.md) — post-mortem to consult before touching `getOrCreateChildPage` / `listChildPages`
 - [`SUSPICION-RULES.md`](SUSPICION-RULES.md) — full reference for WAF / size suspicion rules
