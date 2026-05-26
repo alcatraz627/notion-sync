@@ -413,9 +413,34 @@ function humanAgo(d: Date): string {
 
 // ── Diff: cache vs local docs ────────────────────────────────────────────────
 
-function scanLocalDocs(): { titles: Set<string>; pathByTitle: Map<string, string> } {
+// Does a raw markdown doc contain at least one internal-looking link — i.e. one
+// the push would rewrite toward a Notion page (and thus a candidate for mention
+// conversion)? Mirrors index.ts rewriteLinks' classification: not http(s)/mailto/
+// anchor, and either a .md target, a directory link, or a bare extension-less path.
+// Deliberately broad: a false "yes" only costs an unnecessary page walk; a false
+// "no" would skip a page that has convertible links. So we only ever skip pages
+// this returns false for.
+function hasInternalLink(raw: string): boolean {
+  const re = /\[[^\]]*\]\(([^)]*)\)/g;
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(raw))) {
+    let url = m[1].trim();
+    if (url.startsWith("<") && url.endsWith(">")) url = url.slice(1, -1);
+    if (/^(https?:\/\/|mailto:|tel:|#)/i.test(url)) continue;
+    const urlPath = url.split("#")[0];
+    if (urlPath.endsWith(".md") || urlPath.endsWith("/") || urlPath === "" || (urlPath.length > 0 && !path.extname(urlPath))) {
+      return true;
+    }
+  }
+  return false;
+}
+
+function scanLocalDocs(): { titles: Set<string>; pathByTitle: Map<string, string>; linkfree: Set<string> } {
   const titles = new Set<string>();
   const pathByTitle = new Map<string, string>();
+  // Titles whose doc has NO internal link — these pages can hold no convertible
+  // mention, so fix-mentions skips them (saves a full block-walk per page).
+  const linkfree = new Set<string>();
   function walk(absDir: string, relPrefix: string): void {
     if (!fs.existsSync(absDir)) return;
     for (const ent of fs.readdirSync(absDir, { withFileTypes: true })) {
@@ -427,13 +452,14 @@ function scanLocalDocs(): { titles: Set<string>; pathByTitle: Map<string, string
         const title = titleMatch ? titleMatch[1].trim() : path.basename(ent.name, ".md");
         titles.add(title);
         pathByTitle.set(title, rel);
+        if (!hasInternalLink(raw)) linkfree.add(title);
       } else if (ent.isDirectory()) {
         walk(path.join(absDir, ent.name), rel);
       }
     }
   }
   walk(DOCS_DIR, "");
-  return { titles, pathByTitle };
+  return { titles, pathByTitle, linkfree };
 }
 
 function runDiff(cache: Cache): void {
@@ -684,7 +710,14 @@ function saveCache(cache: Cache): void {
     // Retroactive pass — convert internal hyperlinks to native page mentions
     // on every page already in the cache. Safe to re-run (idempotent).
     const ourPageIds = new Set(cache.pages.map((p) => p.id.replace(/-/g, "").toLowerCase()));
-    console.log(bold(`\nFixing mentions on ${cache.pages.length} pages…`));
+    // Skip pages whose local source has no internal link — they can hold no
+    // convertible mention, so walking their blocks is wasted API calls. Only
+    // skip on a positive title match to a confirmed link-free local doc; pages
+    // with no local match (e.g. section pages) are still processed.
+    const local = scanLocalDocs();
+    const toProcess = cache.pages.filter((p) => !local.linkfree.has(p.title));
+    const pagesSkipped = cache.pages.length - toProcess.length;
+    console.log(bold(`\nFixing mentions on ${toProcess.length} pages…`) + (pagesSkipped > 0 ? dim(`  (${pagesSkipped} link-free pages skipped)`) : ""));
     let totalConverted = 0;
     let totalUpdated = 0;
     let pagesProcessed = 0;
@@ -694,7 +727,7 @@ function saveCache(cache: Cache): void {
     // Per-page slowness inspection: track the slowest page seen so we can
     // surface it at the end (useful for diagnosing "why so slow?" questions).
     let slowest: { title: string; ms: number; apiCalls: number } | null = null;
-    for (const p of cache.pages) {
+    for (const p of toProcess) {
       pagesProcessed++;
       // liveProgress is mutated inside convertPageLinksToMentions after every
       // API call — the heartbeat below polls it to keep the progress line
@@ -704,7 +737,7 @@ function saveCache(cache: Cache): void {
       const repaint = () => {
         const pageElapsed = Math.floor((Date.now() - pageStart) / 1000);
         const live_str = dim(`  · ${live.blocks_inspected}b / ${live.api_calls}api / ${pageElapsed}s`);
-        process.stdout.write(`\r  ${progressBar(pagesProcessed, cache.pages.length, p.title + live_str, startTs)}`);
+        process.stdout.write(`\r  ${progressBar(pagesProcessed, toProcess.length, p.title + live_str, startTs)}`);
       };
       repaint();
       // Repaint every 1s — catches the case where convertPageLinksToMentions

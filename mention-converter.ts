@@ -72,6 +72,12 @@ interface ConvertOptions {
   pageId: string;
   ourPageIds: Set<string>; // dash-stripped lowercase 32-hex
   rateLimitMs?: number;
+  // Whether to recurse into child_page (subpage) blocks. Default false: every
+  // caller iterates pages independently (fix-mentions walks the whole cache;
+  // the push converts each doc as it writes it), so descending into subpages
+  // re-walks the entire tree under each page — quadratic. Leave off unless a
+  // caller genuinely needs a one-shot whole-subtree conversion.
+  descendChildPages?: boolean;
   // Optional live-counter the caller can poll while this function is
   // running. Mutated synchronously after each API call so a periodic
   // repainter (e.g. setInterval in the caller) can show "N blocks, M API
@@ -94,7 +100,7 @@ const sleep = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
  * `text.link.url` to match).
  */
 export async function convertPageLinksToMentions(opts: ConvertOptions): Promise<ConvertResult> {
-  const { notion, pageId, ourPageIds, rateLimitMs = 350, liveProgress } = opts;
+  const { notion, pageId, ourPageIds, rateLimitMs = 350, liveProgress, descendChildPages = false } = opts;
   const result: ConvertResult = { blocks_inspected: 0, blocks_updated: 0, links_converted: 0 };
   const bumpApi = () => { if (liveProgress) liveProgress.api_calls++; };
 
@@ -114,9 +120,11 @@ export async function convertPageLinksToMentions(opts: ConvertOptions): Promise<
         if (liveProgress) liveProgress.blocks_inspected++;
         const blockType = block.type as string;
 
-        // Skip child_page (subpages — the link IS the page itself, no rich_text)
+        // Skip child_page (subpages — the link IS the page itself, no rich_text).
+        // Only descend when explicitly asked; otherwise the subpage is converted
+        // by its own top-level pass (see descendChildPages note).
         if (blockType === "child_page") {
-          if (block.has_children) await visit(block.id);
+          if (descendChildPages && block.has_children) await visit(block.id);
           continue;
         }
 
