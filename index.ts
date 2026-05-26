@@ -1532,17 +1532,20 @@ async function preRunListing(allToSync: string[]): Promise<boolean> {
   console.log(`\n${clr.bold(`Files to sync: ${allToSync.length}`)}`);
   console.log(HR);
 
-  // Group by folder (null = root files), preserving order
-  const groupOrder: Array<string | null> = [];
-  const groupMap = new Map<string | null, string[]>();
+  // Build a real nested tree (split on EVERY "/"), so the listing reflects
+  // the actual folder depth instead of collapsing everything under its
+  // top-level segment.
+  interface TreeNode { dirs: Map<string, TreeNode>; files: string[] }
+  const root: TreeNode = { dirs: new Map(), files: [] };
   for (const relPath of allToSync) {
-    const sep = relPath.indexOf("/");
-    const folder = sep === -1 ? null : relPath.slice(0, sep);
-    if (!groupMap.has(folder)) {
-      groupMap.set(folder, []);
-      groupOrder.push(folder);
+    const parts = relPath.split("/");
+    let node = root;
+    for (let i = 0; i < parts.length - 1; i++) {
+      let child = node.dirs.get(parts[i]);
+      if (!child) { child = { dirs: new Map(), files: [] }; node.dirs.set(parts[i], child); }
+      node = child;
     }
-    groupMap.get(folder)!.push(relPath);
+    node.files.push(relPath);
   }
 
   let counter = 0;
@@ -1583,24 +1586,30 @@ async function preRunListing(allToSync: string[]): Promise<boolean> {
     console.log(`${metaPrefix}  ${clr.dim(title)}   ${metaParts.join("   ")}`);
   }
 
-  for (const folder of groupOrder) {
-    const files = groupMap.get(folder)!;
-    if (folder === null) {
-      for (const relPath of files) {
-        renderFile(relPath, "  ", "  ");
-      }
-    } else {
-      console.log(`\n  ${clr.bold(folder)}/`);
-      for (let i = 0; i < files.length; i++) {
-        const isLast = i === files.length - 1;
-        renderFile(
-          files[i],
-          isLast ? "  └── " : "  ├── ",
-          isLast ? "       " : "  │    ",
-        );
-      }
+  // Render the tree depth-first. `prefix` is the running indent built from
+  // ancestors (│ for "more siblings below", spaces for "last child"). Dirs
+  // first, then files, at each level — conventional `tree` layout.
+  function renderNode(node: TreeNode, prefix: string): void {
+    const dirEntries = [...node.dirs.entries()];
+    const total = dirEntries.length + node.files.length;
+    let i = 0;
+    for (const [name, child] of dirEntries) {
+      const last = i === total - 1;
+      console.log(`\n${prefix}${last ? "└── " : "├── "}${clr.bold(name)}/`);
+      renderNode(child, prefix + (last ? "    " : "│   "));
+      i++;
+    }
+    for (const relPath of node.files) {
+      const last = i === total - 1;
+      renderFile(
+        relPath,
+        prefix + (last ? "└── " : "├── "),
+        prefix + (last ? "    " : "│   ") + "   ",
+      );
+      i++;
     }
   }
+  renderNode(root, "  ");
 
   console.log(`\n${HR}`);
   const modeLabel = DRY_RUN
