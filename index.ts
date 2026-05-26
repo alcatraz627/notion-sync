@@ -57,10 +57,18 @@ import {
   type Divergence,
   type GuardrailMode,
 } from "./sync-state";
+import {
+  loadLedger,
+  startLedger,
+  markDone,
+  clearLedger,
+  ledgerPath,
+  type ProgressLedger,
+} from "./progress-ledger";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
-type SyncStatus = "created" | "updated" | "dry_run" | "error" | "protected";
+type SyncStatus = "created" | "updated" | "dry_run" | "error" | "protected" | "skipped";
 type LinkMode = "notion" | "github" | "strip";
 type NotionIcon =
   | { type: "emoji"; emoji: string }
@@ -204,6 +212,7 @@ interface RunLogEntry {
     updated: number;
     dry_run: number;
     errors: number;
+    skipped: number; // docs skipped because a resumed run already wrote them
     sections_written: number;
     aborted: boolean;
   };
@@ -424,6 +433,7 @@ const acceptArchivePaths = new Set<string>();
 let argVerbose = false;
 let argSeedState = false;
 let argRefreshBotId = false;
+let argResume = false;
 let argGuardrailsOverride: GuardrailMode | null = null;
 
 // Multi-value flags: --only / --force-overwrite / --accept-move / --accept-archive
@@ -438,6 +448,7 @@ for (const arg of argv) {
   if (arg === "--verbose")          { argVerbose = true; listSink = null; continue; }
   if (arg === "--seed-state")       { argSeedState = true; listSink = null; continue; }
   if (arg === "--refresh-bot-id")   { argRefreshBotId = true; listSink = null; continue; }
+  if (arg === "--resume")           { argResume = true; listSink = null; continue; }
   if (arg === "--guardrails") {
     listSink = null;
     // Value is the next arg — handle inline by consuming via index. Cheap
@@ -2162,6 +2173,7 @@ function writePartialRunLog(reason: string): void {
     const updated = snap.results.filter((r) => r.status === "updated");
     const dryRun = snap.results.filter((r) => r.status === "dry_run");
     const errors = snap.results.filter((r) => r.status === "error");
+    const skipped = snap.results.filter((r) => r.status === "skipped");
     const partialEntry: RunLogEntry = {
       run_id: makeRunId(snap.runStartDate),
       version: SCRIPT_VERSION,
@@ -2180,6 +2192,7 @@ function writePartialRunLog(reason: string): void {
         updated: updated.length,
         dry_run: dryRun.length,
         errors: errors.length,
+        skipped: skipped.length,
         sections_written: snap.sectionResults.filter((s) => s.content_written).length,
         aborted: snap.aborted.value,
       },
@@ -2286,6 +2299,40 @@ async function main(): Promise<void> {
   if (!confirmed) {
     console.log(clr.warn("\nAborted."));
     process.exit(0);
+  }
+
+  // ── Resume — skip leaf docs already written in an interrupted run ──
+  // A leftover progress ledger means a prior run for this root died mid-flight.
+  // With --resume (or an interactive yes) we keep its completed[] as a skip-set
+  // for Phase 2; Phase 1 still re-runs fully below (idempotent, and pageIdMap
+  // must be complete so links in the docs we DO write still resolve). Dry-runs
+  // never touch the ledger — they push nothing.
+  let ledger: ProgressLedger | null = null;
+  const completedSet = new Set<string>();
+  if (!DRY_RUN) {
+    const existing = loadLedger();
+    const isResumable = existing && existing.completed.length > 0 && existing.completed.length < existing.doc_set.length;
+    if (isResumable) {
+      const done = existing!.completed.length, tot = existing!.doc_set.length;
+      let resume = argResume;
+      if (!resume && process.stdin.isTTY && process.stdout.isTTY) {
+        resume = await askConfirm(
+          `${clr.warn("↻")} Found an interrupted run (${done}/${tot} docs done). Resume — skip the ${done} already written? ${clr.dim("[Y/n]")} `,
+        );
+      } else if (!resume) {
+        console.log(clr.dim(`  (interrupted-run ledger found: ${done}/${tot}. Pass --resume to continue it — starting fresh.)`));
+      }
+      if (resume) {
+        ledger = existing;
+        for (const p of existing!.completed) completedSet.add(p);
+        console.log(clr.ok(`↻ Resuming — ${done} docs skipped, ${tot - done} remaining.`));
+      } else {
+        clearLedger();
+      }
+    } else if (existing) {
+      clearLedger(); // empty or already-complete ledger — stale, discard
+    }
+    if (!ledger) ledger = startLedger(makeRunId(runStartDate), allToSync);
   }
 
   // Phase 1 — ensure all pages exist, build page ID map for link rewriting
@@ -2604,12 +2651,35 @@ async function main(): Promise<void> {
       continue;
     }
 
+    // Resume: a doc already written by an interrupted run is skipped here. Its
+    // page exists and its links resolve via pageIdMap (Phase 1 ran fully), so we
+    // only avoid the expensive re-write. Recorded as "skipped" so results stays
+    // 1:1 with allToSync (the abort path slices by results.length).
+    if (completedSet.has(relPath)) {
+      if (!VERBOSE && IS_TTY) renderProgress(counter.n, total, relPath, "skipped");
+      results.push({ path: relPath, title: getDoc(relPath)?.title ?? relPath, status: "skipped", page_id: discovery.id });
+      recentStatuses.push("skipped");
+      if (recentStatuses.length > ABORT_WINDOW) recentStatuses.shift();
+      continue;
+    }
+
     if (!VERBOSE && IS_TTY) renderProgress(counter.n, total, relPath);
     const protectedDivs = protectedByPath.get(relPath) ?? null;
     const r = await writeFileContent(relPath, discovery, pageIdMap, counter, ourPageIds, protectedDivs, syncState, discovery.parentId);
     results.push(r);
     recentStatuses.push(r.status);
     if (recentStatuses.length > ABORT_WINDOW) recentStatuses.shift();
+
+    // Durably record progress the moment a doc lands, so a later interruption
+    // can resume past it — and flush the guardrail baseline in the same beat
+    // (otherwise a crash before the end-of-run save loses every baseline, and
+    // the resumed run skips these docs so they'd never be re-recorded).
+    if (r.status !== "error") {
+      if (ledger) markDone(ledger, relPath);
+      if (!DRY_RUN && EFFECTIVE_GUARDRAILS !== "off") {
+        try { saveState(syncState); } catch { /* non-fatal; end-of-run save retries */ }
+      }
+    }
 
     if (ABORT_ENABLED) {
       const recentErrors = recentStatuses.filter((s) => s === "error").length;
@@ -2667,6 +2737,7 @@ async function main(): Promise<void> {
   const updated = results.filter((r) => r.status === "updated");
   const dryRun = results.filter((r) => r.status === "dry_run");
   const protectedResults = results.filter((r) => r.status === "protected");
+  const skipped = results.filter((r) => r.status === "skipped");
 
   console.log(`\n${HR}`);
   if (DRY_RUN) {
@@ -2683,6 +2754,8 @@ async function main(): Promise<void> {
       parts.push(clr.warn(`${sym.upd} ${updated.length} updated`));
     if (protectedResults.length)
       parts.push(clr.warn(`🛡  ${protectedResults.length} protected`));
+    if (skipped.length)
+      parts.push(clr.dim(`↻ ${skipped.length} skipped (resumed)`));
     if (errors.length)
       parts.push(clr.err(`${sym.err} ${errors.length} errors`));
     console.log(`Sync complete — ${parts.join("   ")}`);
@@ -2763,6 +2836,7 @@ async function main(): Promise<void> {
       updated: updated.length,
       dry_run: dryRun.length,
       errors: errors.length,
+      skipped: skipped.length,
       sections_written: sectionResults.filter((s) => s.content_written).length,
       aborted,
     },
@@ -2796,6 +2870,19 @@ async function main(): Promise<void> {
   if (!DRY_RUN && EFFECTIVE_GUARDRAILS !== "off") {
     try { saveState(syncState); }
     catch (err: any) { console.error(clr.warn(`  ${sym.warn} could not save .notion-sync-state.json: ${err.message}`)); }
+  }
+
+  // Resume bookkeeping: a fully clean run (every doc reached, none failed)
+  // retires the progress ledger so the next run starts fresh. If anything is
+  // still outstanding — errors or an abort — keep it so `--resume` can finish
+  // the remaining docs without re-pushing the ones that succeeded.
+  if (!DRY_RUN) {
+    if (!aborted && errors.length === 0) {
+      clearLedger();
+    } else {
+      const remaining = allToSync.length - (created.length + updated.length + skipped.length);
+      console.log(clr.warn(`\n↻ ${remaining} doc(s) outstanding — resume with: ${clr.bold("bash sync.sh --resume")} ${clr.dim(`(ledger: ${path.basename(ledgerPath())})`)}`));
+    }
   }
 
   appendRunLog(logEntry);

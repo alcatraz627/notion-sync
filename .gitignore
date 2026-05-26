@@ -59,6 +59,8 @@ metrics.jsonl
 .notion-snapshots.*/
 .notion-diff-cache.json
 .notion-diff-cache.*.json
+.notion-sync-progress.json
+.notion-sync-progress.*.json
 # .env.test handled by .env.* rule above; .env.test.example is the committed template
 # Scratch artifacts from dev sessions (playwright screenshots, review reports)
 *.png
