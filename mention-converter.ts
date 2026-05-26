@@ -58,6 +58,15 @@ function extractNotionPageId(url: string | null | undefined): string | null {
 
 const cleanId = (id: string) => id.replace(/-/g, "").toLowerCase();
 
+// Notion's `blocks.update` only accepts absolute link URLs. The markdown *import*
+// endpoint is laxer — it stores in-page anchors like `[§3.4](#some-heading)` and
+// scheme-less relatives verbatim — but resending one of those in an update payload
+// fails the whole block with "Invalid URL for link". Such anchors are dead in
+// Notion anyway (Notion navigates by block-id, not heading slug), so when we have
+// to rewrite a block we drop the broken link and keep its text. Only http(s)/mailto/
+// tel survive a round-trip.
+const linkUrlSendable = (url: string) => /^(https?:\/\/|mailto:|tel:)/i.test(url);
+
 interface ConvertOptions {
   notion: Client;
   pageId: string;
@@ -174,36 +183,45 @@ interface ConvertedArray {
   count: number;
 }
 
-function convertRichTextArray(rt: any[], ourPageIds: Set<string>): ConvertedArray {
+export function convertRichTextArray(rt: any[], ourPageIds: Set<string>): ConvertedArray {
   let changed = false;
   let count = 0;
   const out = rt.map((item) => {
     if (item.type !== "text") return item;
     const linkUrl = item.text?.link?.url;
     const pageId = extractNotionPageId(linkUrl);
-    if (!pageId) return item;
-    if (!ourPageIds.has(cleanId(pageId))) return item; // not one of our pages — leave external
-
-    changed = true;
-    count++;
-    // Build a mention object. Preserve annotations (bold/italic/code) so the
-    // pill keeps any styling the original anchor had. Do NOT include `plain_text`
-    // — Notion fills it from the linked page's current title server-side.
-    return {
-      type: "mention",
-      mention: {
-        type: "page",
-        page: { id: pageId },
-      },
-      annotations: item.annotations ?? {
-        bold: false,
-        italic: false,
-        strikethrough: false,
-        underline: false,
-        code: false,
-        color: "default",
-      },
-    };
+    if (pageId && ourPageIds.has(cleanId(pageId))) {
+      changed = true;
+      count++;
+      // Build a mention object. Preserve annotations (bold/italic/code) so the
+      // pill keeps any styling the original anchor had. Do NOT include `plain_text`
+      // — Notion fills it from the linked page's current title server-side.
+      return {
+        type: "mention",
+        mention: {
+          type: "page",
+          page: { id: pageId },
+        },
+        annotations: item.annotations ?? {
+          bold: false,
+          italic: false,
+          strikethrough: false,
+          underline: false,
+          code: false,
+          color: "default",
+        },
+      };
+    }
+    // Passthrough item. If it carries a link URL that `blocks.update` would
+    // reject (a `#heading` anchor, a scheme-less relative), strip the link so the
+    // resent array stays valid — otherwise one dead anchor fails the whole block.
+    // `changed` is intentionally NOT flipped here: a block with only dead anchors
+    // and no real conversion is never sent (so we add no API calls), but if it's
+    // being updated anyway for a real mention, the strip rides along for free.
+    if (linkUrl && !linkUrlSendable(linkUrl)) {
+      return { ...item, text: { ...item.text, link: null } };
+    }
+    return item;
   });
   return { rich_text: out, changed, count };
 }
