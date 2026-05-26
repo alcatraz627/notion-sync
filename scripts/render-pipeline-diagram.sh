@@ -111,7 +111,7 @@ echo "                                  ▼"
 
 # === Prune ===
 PRUNE_PAGES=$(gum style --border rounded --padding '0 1' --foreground 1 'prune (orphan pages)')
-PRUNE_IMG=$(gum style --border rounded --padding '0 1' --foreground 1 'prune-images (scheduled)')
+PRUNE_IMG=$(gum style --border rounded --padding '0 1' --foreground 1 'prune-images (planned)')
 PRUNE_ROW=$(gum join --horizontal "$PRUNE_PAGES" "  " "$PRUNE_IMG")
 PRUNE=$(gum style --border double --padding '0 2' --width 76 --foreground 1 \
   "$(gum style --bold --foreground 1 'PRUNE — dry-run by default; --apply requires explicit confirm')" \

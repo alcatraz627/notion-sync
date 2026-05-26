@@ -1,6 +1,8 @@
 # notion-sync — Pipeline Diagram
 
-End-to-end view of how `notion-sync` moves markdown into Notion: discovery → section content → leaf content (with image upload, native mentions, rename/move detection), then the post-sync dashboard generators and prune subcommands.
+End-to-end view of how `notion-sync` moves markdown into Notion: discovery → section content → leaf content (with image upload, native mentions, rename/move detection), then the post-sync dashboard generators and prune. Verification (`bash list.sh diff-content`, three-way BASE/LOCAL/REMOTE) and resumable runs (`--resume`, backed by `.notion-sync-progress.<key>.json`) sit alongside this flow.
+
+> **Note:** all state/cache files are root-keyed — `.notion-cache.<key>.json`, `.notion-sync-state.<key>.json`, `.notion-snapshots.<key>/`, `.notion-sync-progress.<key>.json` — where `<key>` is derived from `NOTION_ROOT_PAGE_ID` (`getCacheKey()`). The boxes below show the unkeyed names for readability. `prune-images` is **planned, not yet shipped**.
 
 Re-render the live (gum-styled) version any time with:
 
@@ -83,7 +85,7 @@ bash scripts/render-pipeline-diagram.sh
 ╔════════════════════════════════════════════════════════════════════════════╗
 ║  PRUNE — dry-run by default; --apply requires explicit confirm             ║
 ║  ╭──────────────────────╮  ╭──────────────────────────╮                    ║
-║  │ prune (orphan pages) │  │ prune-images (scheduled) │                    ║
+║  │ prune (orphan pages) │  │ prune-images (planned)   │                    ║
 ║  ╰──────────────────────╯  ╰──────────────────────────╯                    ║
 ╚════════════════════════════════════════════════════════════════════════════╝
 

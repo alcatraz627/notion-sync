@@ -1,12 +1,35 @@
 # notion-sync — Roadmap
 
-> Current version: **1.2.0** (released 2026-05-02). Items are ordered by priority within each tier.
+> Current version: **1.3.0**. Items are ordered by priority within each tier.
 
 Background design docs:
 - [`DASHBOARDS-AND-ORCHESTRATION-EXPLORATION.md`](DASHBOARDS-AND-ORCHESTRATION-EXPLORATION.md) — full options analysis behind D1–D7, O1–O4
+- [`OVERWRITE-GUARDRAILS-EXPLORATION.md`](OVERWRITE-GUARDRAILS-EXPLORATION.md) — design + research behind the guardrails feature
+- [`RECONCILIATION-EXPLORATION.md`](RECONCILIATION-EXPLORATION.md) — design behind the reconcile flow
+- [`SHARED-LIB-EXPLORATION.md`](SHARED-LIB-EXPLORATION.md) — the `lib/` extraction plan
 - [`NAV-STRUCTURE-EXPLORATION.md`](NAV-STRUCTURE-EXPLORATION.md) — alternatives to the deep-nested page tree
 - [`RCA-ARCHIVED-PAGES.md`](RCA-ARCHIVED-PAGES.md) — post-mortem to consult before touching `getOrCreateChildPage` / `listChildPages`
 - [`SUSPICION-RULES.md`](SUSPICION-RULES.md) — full reference for WAF / size suspicion rules
+
+---
+
+## v1.3 — shipped
+
+### Overwrite guardrails + reconcile
+
+Pages a human edited in Notion are no longer silently overwritten. `sync-state.ts` records a per-page baseline (`last_pushed_edited_time` / block count) and a cached bot id; Phase 1.7 compares `last_edited_by`/time and **protects** pages diverged by a non-bot editor (`NOTION_GUARDRAILS=strict|warn|off`). `reconcile.ts` (`bash sync.sh reconcile`) is the interactive resolver — accept-local, keep-remote, or a 3-way browser diff. See `OVERWRITE-GUARDRAILS-EXPLORATION.md` / `RECONCILIATION-EXPLORATION.md`.
+
+### `diff-content` — three-way content diff
+
+`bash list.sh diff-content` renders a BASE/LOCAL/REMOTE diff to an HTML report served in a browser (list/tree toggle, search, char-level toggle, raw/rendered). BASE = the snapshot taken at last push (`.notion-snapshots.<key>/`). `--force` refetches; report caches to `.notion-diff-cache.<key>.json`.
+
+### Resumable runs
+
+`progress-ledger.ts` records each completed doc to `.notion-sync-progress.<key>.json`; an interrupted run continues with `bash sync.sh --resume`, skipping docs already written (Phase 1 discovery still re-runs fully). Guardrail baselines now flush per-doc so a crash can't lose them.
+
+### Root-keyed state + `lib/` extraction
+
+All state files are keyed by `NOTION_ROOT_PAGE_ID` (`getCacheKey()`), so switching roots isolates cache/state/snapshots/ledger; legacy unkeyed files auto-migrate. Shared helpers extracted to `lib/colors.ts`, `lib/notion.ts`, `lib/retry.ts`, `lib/env.ts`; title-variant matching to `title-match.ts`. fix-mentions now skips link-free docs and no longer double-walks subpages. Comprehensive unit-test suite added (`bun test`).
 
 ---
 
@@ -73,7 +96,7 @@ If the sidecar DB pattern fails to satisfy "I want native page-properties on the
 |---|---|
 | Images in private repos | mitigated by `NOTION_UPLOAD_IMAGES=1` (Notion CDN upload pipeline shipped in v1.0) |
 | `is_full_width` has no effect | Confirmed unfixable: Notion's v1 API rejects every shape. Toggle per-page in the Notion UI; D4 sidecar DB renders wide. |
-| Anchor links (`foo.md#section`) | URL preserved correctly in mentions, but Notion doesn't navigate to fragment anchors — known platform limitation. |
+| Anchor links (`foo.md#section`) | Notion doesn't navigate to fragment anchors (platform limitation). In-page `#heading` anchors are also dropped when a block is rewritten — Notion rejects scheme-less URLs on `blocks.update`, so `mention-converter.ts` strips them (keeps the text). |
 | Notion rate limit | adaptive linear backoff (350-1050ms); large trees take proportional time |
 
 ---

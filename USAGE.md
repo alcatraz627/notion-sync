@@ -19,12 +19,12 @@ bash sync.sh --no-wizard
 bash list.sh fetch
 
 # 4. Verify everything matched
-bun compare-apr-30-1/compare.ts
-cat compare-apr-30-1/05-summary.txt
-# Expected: 0 missing, 0 extras, 0 thin
+bash list.sh diff               # title-based: should be ~all matched
+bash list.sh diff-content       # content-level BASE/LOCAL/REMOTE, in a browser
+# Expected: 0 remote-only, 0 empty pages; diff-content near-clean
 ```
 
-The wizard is great for one-offs but `--no-wizard` keeps a fresh project's first run scriptable. After this, your saved `.sync-defaults.json` lets you re-run with no prompts.
+Or run the whole sequence in one shot: **`bash run.sh bring-up`** (the pipeline launcher's first-time mode). The wizard is great for one-offs but `--no-wizard` keeps a fresh project's first run scriptable. After this, your saved `.sync-defaults.json` lets you re-run with no prompts.
 
 ### Routine update — small change to a few docs (~30 sec)
 
@@ -48,10 +48,11 @@ Idempotent — only doc-content writes happen, no duplicate pages. Pages whose c
 
 ```bash
 bash list.sh fetch              # refresh cache
-bun compare-apr-30-1/compare.ts # path-based comparator
+bash list.sh diff               # title-based drift (renames, orphans, empties)
+bash list.sh diff-content       # content-level three-way diff (browser)
 ```
 
-Run this monthly or after a big batch of doc edits. Catches any drift caused by manual Notion edits, accidentally deleted pages, or files renamed/moved without re-syncing.
+Run this monthly or after a big batch of doc edits. Catches any drift caused by manual Notion edits, accidentally deleted pages, or files renamed/moved without re-syncing. (`bash run.sh check` bundles the read-only verification steps.)
 
 ### One-shot retroactive fixes
 
@@ -79,7 +80,15 @@ After this, every previously-broken `http://*.md/` link is replaced with a prope
 
 ### After a Notion API outage / failed run
 
-The script auto-retries transient failures up to 3 times each at the end of the run. If items are still failing:
+**If the run was interrupted (Ctrl-C, crash, laptop sleep) rather than finishing with errors, just resume it:**
+
+```bash
+bash sync.sh --resume      # continues from the progress ledger, skipping docs already written
+```
+
+A leftover `.notion-sync-progress.<key>.json` triggers a resume prompt even without the flag. Phase 1 discovery re-runs fully (so links resolve), but only the un-written docs get pushed again. A clean finish clears the ledger.
+
+For a run that *finished* but left some failures, the script auto-retries transient failures up to 3 times each at the end of the run. If items are still failing:
 
 ```bash
 # Find the last run's failures
@@ -99,8 +108,11 @@ Wait 5–10 minutes after a Notion-wide outage so backoff has air to breathe.
 ---
 
 > **Tools at a glance**
-> - `bash sync.sh` — push local markdown → Notion (the main thing)
-> - `bash list.sh` — read remote Notion tree, diff against local, batch-fix
+> - `bash run.sh` — pipeline launcher with named modes (push, push:full, fix, check, dashboard, bring-up, prune); bare = interactive picker
+> - `bash sync.sh` — push local markdown → Notion (the main thing); `--resume` continues an interrupted run
+> - `bash list.sh` — read remote Notion tree, diff against local, batch-fix, build dashboards
+> - `bash list.sh diff-content` — three-way BASE/LOCAL/REMOTE content diff in a browser
+> - `bash list.sh dashboards` — refresh all 6 Notion dashboards in one process
 > - `bash sync.sh --fix-mentions` — convert internal links → native page mentions on already-synced pages
 > - All commands accept `-h` for inline help.
 
@@ -142,8 +154,9 @@ Launches the **interactive wizard**. Prompts in order:
 | 7 | Show metadata banner? | Yes | Frontmatter banner on each page |
 | 8 | Link mode | notion | How to rewrite `.md` links between docs |
 | 9 | Abort policy | disabled | Stop early after N consecutive errors |
+| 10 | Guardrails mode | strict | Overwrite protection for human-edited pages (strict/warn/off) — see §11.5 |
 
-Selections save to `.sync-defaults.json` (gitignored) — re-runs remember.
+Selections save to `.sync-defaults.json` (gitignored) — re-runs remember. (`--resume` is a flag, not a wizard prompt — pass it on the command line to continue an interrupted run.)
 
 When the run finishes you'll see a macOS notification banner with stats (or a styled terminal line if not on macOS).
 
@@ -238,16 +251,17 @@ Reports three categories:
 - **Empty remote pages** — pages where `block_count === 0` (sync was started but content write failed)
 - **Local-only** — local docs with no remote counterpart yet
 
-### Path-based comparison (more accurate)
+The title-based diff is variant-aware (it pairs renamed docs via dash/paren/normalize overlap) but still brittle for section pages whose remote title is the folder name. For an exact, content-level answer, use the three-way diff below.
 
-The title-based diff above is brittle for section pages. For a stricter comparison, use the one-off comparator:
+### Content-level three-way diff (`diff-content`)
 
 ```bash
-bun compare-apr-30-1/compare.ts
-cat compare-apr-30-1/05-summary.txt
+bash list.sh diff-content              # scans every baselined page; opens a browser report
+bash list.sh diff-content --paths a,b  # scope to specific docs
+bash list.sh diff-content --force      # ignore the cached report, refetch from Notion
 ```
 
-This walks Notion via `parent_id` chains and matches against local relative paths. Output goes to `compare-apr-30-1/` (see that folder's README for details).
+Renders a **BASE / LOCAL / REMOTE** three-way diff as an HTML report served on `http://127.0.0.1:<port>/` (list/tree toggle, search, char-level toggle, raw/rendered view). BASE is the snapshot taken at the last push (`.notion-snapshots.<key>/`), LOCAL is your working markdown, REMOTE is the live Notion content normalized back to markdown. This is the truest "did the push round-trip cleanly?" check — right after a clean sync it should be near-empty. Visit `/quit` (or Ctrl-C) to stop the server. The report caches to `.notion-diff-cache.<key>.json`.
 
 ### Mass-retry empty pages
 
@@ -300,9 +314,9 @@ Free benefits:
 
 Cost on first full sync: ~2 API calls × N new images. For ~50 images that's ~70 seconds extra. Subsequent runs: 0 extra calls (all cache hits).
 
-### Orphan cleanup (TODO)
+### Orphan cleanup (planned)
 
-Edited images leave their old `file_upload_id` orphaned on Notion's CDN. A scheduled remote agent at `2026-05-14T09:00:00Z` (routine `trig_01APt3L4CvbXfbrKCSboqVKW`) will add a `bash list.sh prune-images` command to clean them up. Until then, orphans accumulate harmlessly (Notion Pro has unlimited storage).
+Edited images leave their old `file_upload_id` orphaned on Notion's CDN. A `bash list.sh prune-images` command to clean them up is **planned but not yet shipped**. Until then, orphans accumulate harmlessly (Notion storage is generous and unreferenced uploads don't render anywhere).
 
 ---
 
@@ -357,7 +371,7 @@ grep '"errors":[1-9]' runs.jsonl | wc -l
 |---|---|
 | `run_id` | `YYYYMMDD-HHmmss` — for cross-reference |
 | `config` | Full snapshot of every setting active during the run |
-| `stats` | `{total, created, updated, errors, sections_written, aborted}` |
+| `stats` | `{total, created, updated, errors, skipped, sections_written, aborted}` — `skipped` counts docs a `--resume` run already wrote |
 | `timing` | `{phase1_ms, phase2_ms, total_ms}` |
 | `error_summary` | `[{path, error, suspicions}]` — quickest failure overview |
 | `pages` | Per-file results: status, elapsed, content_chars |
@@ -631,12 +645,15 @@ This time Phase 1.7 sees the page as in-sync (you just refreshed the baseline du
 ```bash
 # === First sync after a long time ===
 bash list.sh fetch                        # snapshot remote
-bun compare-apr-30-1/compare.ts           # see what's missing/extra
+bash list.sh diff                         # see what's missing/extra
 bash sync.sh                              # full sync (wizard)
 bash list.sh fix-mentions                 # convert links → mentions on legacy pages
 
 # === Daily small change ===
 bash sync.sh --no-wizard --only product/jobs/create-scraper
+
+# === Resume an interrupted run ===
+bash sync.sh --resume                     # skips docs already written
 
 # === Mop up failures from a previous run ===
 tail -1 runs.jsonl | python3 -c "import sys,json; d=json.loads(sys.stdin.readline()); [print(e['path']) for e in d.get('error_summary',[]) or []]"
@@ -659,6 +676,7 @@ for p in d.get('pages',[])[:5]:
 | `--no-wizard` | Skip wizard, use saved defaults |
 | `--dry-run` | Preview without writing |
 | `--only <X> [Y...]` | Filter to specific section/file stems |
+| `--resume` | Continue an interrupted run — skips docs already in the progress ledger (Phase 1 still re-runs fully) |
 | `--verbose` | Per-file output |
 | `--fix-mentions` | Skip sync, run mention-converter on cached pages |
 | `reconcile [path...]` | Subcommand: interactive guardrail resolution (see §11.5) |
@@ -681,9 +699,10 @@ for p in d.get('pages',[])[:5]:
 | `show --empty-only` | Only pages with 0 blocks |
 | `fetch` | Force re-fetch from Notion |
 | `fetch --no-icons` | Faster fetch, skip per-page icon retrieval |
-| `diff` | Title-based comparison vs local docs |
+| `diff` | Title-based comparison vs local docs (variant-aware rename pairing) |
+| `diff-content` | Three-way BASE/LOCAL/REMOTE content diff, served as an HTML report in a browser. `--paths a,b` to scope, `--protected-only` for last-run subset, `--show-clean` to include unchanged, `--force` to refetch. |
 | `empty-paths` | Print local paths for empty remote pages (for shell substitution) |
-| `fix-mentions` | Walk every cached page, convert internal links → mentions |
+| `fix-mentions` | Walk every cached page, convert internal links → mentions (skips link-free docs) |
 | `recent-errors` | Surface failed paths from recent `runs.jsonl` entries (default last 5; `--limit N` to widen) |
 | `sitemap` | Push a `🗺️ Sitemap` page summarizing every cached page; mention pills as leaves. Honours `NOTION_SITEMAP_PAGE_ID` if set, else auto-creates under root. |
 | `tag-index` | Push a `🏷️ Tags` page aggregating tags across all docs (frontmatter `tags:` + body `**Tags:**`). Mention pills per page. Requires `DOCS_DIR`; honours `NOTION_TAG_INDEX_PAGE_ID`. |
@@ -692,6 +711,23 @@ for p in d.get('pages',[])[:5]:
 | `recent-feed` | Push a `📣 Recently Synced` page rendered from `runs.jsonl`. Last 50 unique pages (newest first, deduplicated by page_id). `--limit N` widens the window. Honours `NOTION_RECENT_FEED_PAGE_ID`. |
 | `health` | Push a `🩺 Sync Status` page summarizing the latest run (callout color-coded by health), key stats, last 10 errors with retry hint, and a strip of the last 6 runs. Honours `NOTION_HEALTH_PAGE_ID`. |
 | `prune` | Dry-run: list orphan Notion pages (no matching local doc title). Add `--apply` to archive them via `pages.update({archived: true})` — pages move to Notion's Trash, restorable for ~30 days. |
+| `dashboards` | Run all 6 dashboards (sitemap·tag-index·index-db·backlinks·recent-feed·health) in **one process** — faster than 6 separate calls (reuses the loaded cache + client). `--limit N` widens the recent-feed window. |
+
+### `run.sh` modes
+
+`run.sh` is the pipeline-first launcher — each mode chains the right low-level commands. Run it bare for an interactive picker.
+
+| Mode | Chains |
+|------|--------|
+| `push` | `bash sync.sh` |
+| `push:full` | push → fetch → diff → recent-errors → sitemap |
+| `fix` | fix-mentions → recent-errors |
+| `check` | read-only verification (fetch + diff + recent-errors) |
+| `dashboard` | all 6 dashboards (via `list.sh dashboards`) |
+| `bring-up` | full first-time bring-up sequence |
+| `prune` | list orphan pages (dry-run; `--apply` to archive) |
+
+(Users with [`just`](https://github.com/casey/just) installed can use the `Justfile`, which mirrors these modes.)
 
 ### `.env` essentials
 

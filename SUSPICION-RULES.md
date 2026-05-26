@@ -2,7 +2,7 @@
 
 When a Notion API call fails with a server-side rejection (5xx, validation error), notion-sync runs the file's content through a list of pattern checks and surfaces likely causes in the run log. This file documents each rule with concrete code samples — what triggers it, what doesn't, and how to fix.
 
-The rules live in `index.ts` (`SUSPICION_RULES` array, lines 332–377). Findings appear in:
+The rules live in `index.ts` (`SUSPICION_RULES` array, declared at line 379; the `check` predicates run via `runSuspicions` near line 498). Findings appear in:
 
 - terminal output (one line per fired rule, prefixed `?`)
 - `runs.jsonl` → `error_summary[i].suspicions[]`
@@ -260,7 +260,7 @@ check: (c) => Buffer.byteLength(c, "utf8") > 500_000
 
 ## Disabling rules
 
-The rules are hardcoded in `SUSPICION_RULES` (`index.ts:332`). To disable:
+The rules are hardcoded in `SUSPICION_RULES` (`index.ts:379`). To disable:
 
 ```typescript
 // Comment out the rule object, OR replace `check` with `() => false`

@@ -41,33 +41,38 @@ In your GitHub repo → **Settings** → **Secrets and variables** → **Actions
 
 ## Running locally
 
-Copy `.env.example` to `.env` and fill in your credentials, then use the helper script:
+The tool runs on **[Bun](https://bun.sh)**. From the project root, install deps once, copy `.env.example` to `.env` and fill in your credentials, then use the helper scripts:
 
 ```bash
-cd frontend/scripts/notion-sync
+bun install                   # one-time: install dependencies
 
 # Dry run (preview, no writes)
 bash sync.sh --dry-run
 
-# Sync everything
+# Sync everything (interactive wizard)
 bash sync.sh
 
 # Sync only specific folders or files
 bash sync.sh --only jobs
 bash sync.sh --only jobs/overview.md admin
+
+# Resume an interrupted run (skips docs already written)
+bash sync.sh --resume
 ```
 
-Or run directly with env vars:
+`bash run.sh` is the pipeline-first launcher (named modes: `push`, `push:full`, `dashboard`, `check`, `bring-up`); run it bare for an interactive picker. See [USAGE.md](USAGE.md) for every scenario.
+
+Or run the script directly with env vars (Bun reads `.ts` natively — no build step):
 
 ```bash
 # Dry run
-NOTION_TOKEN=secret_xxx NOTION_ROOT_PAGE_ID=xxx DRY_RUN=1 node_modules/.bin/tsx index.ts
+NOTION_TOKEN=secret_xxx NOTION_ROOT_PAGE_ID=xxx DRY_RUN=1 bun index.ts
 
 # Real sync
 NOTION_TOKEN=secret_xxx NOTION_ROOT_PAGE_ID=xxx \
   GITHUB_REPO=versable-git/enhancement-product \
   GITHUB_BRANCH=development \
-  node_modules/.bin/tsx index.ts
+  bun index.ts
 ```
 
 ---
@@ -127,7 +132,7 @@ docs/product/
 
 **Idempotency:** On each run, the script finds existing pages by title under their parent. If a page with that title exists, its content is replaced. If not, a new page is created. Run it as many times as you like — no duplicates.
 
-**Link rewriting:** Relative `.md` links (e.g. `./jobs/overview.md`) are rewritten to GitHub URLs pointing to the file on the `development` branch. External links and anchors are left unchanged.
+**Link rewriting:** Relative `.md` links (e.g. `./jobs/overview.md`) are rewritten based on `NOTION_LINK_MODE` — default `notion` rewrites to the linked doc's **Notion page URL** (falling back to a GitHub URL if the target isn't synced), then Phase 2 converts those into native page mentions. `github` mode always links to GitHub; `strip` drops the link. External links and anchors are left unchanged.
 
 **Files excluded:** Anything matching `_*.md` or `*.claude.md` (Claude scratchpad files) is not synced.
 
@@ -139,9 +144,9 @@ docs/product/
 
 When you add images to the docs:
 
-- Images hosted on GitHub (committed to the repo) will render in Notion if you use absolute GitHub raw URLs
-- Format: `https://raw.githubusercontent.com/versable-git/enhancement-product/development/frontend/docs/product/images/your-image.png`
-- Local relative image paths (`./images/foo.png`) will not render in Notion via the API — use the absolute raw URL instead
+- **Recommended (works for private repos): set `NOTION_UPLOAD_IMAGES=1`.** Each local/relative image is uploaded to Notion's own CDN and the image block is swapped to a `file_upload` reference. Uploads are sha256-cached in `.notion-image-cache.json`, so re-runs and renames don't re-upload.
+- Without upload, relative image paths are rewritten to `raw.githubusercontent.com` URLs (`GITHUB_REPO` + `GITHUB_BRANCH` + `GITHUB_DOCS_ROOT`). These only render if the repo is **public** — private-repo raw URLs return 404 to Notion.
+- Already-absolute `https://` image URLs pass through unchanged.
 
 ---
 

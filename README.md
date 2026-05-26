@@ -74,13 +74,39 @@ bash sync.sh --only jobs
 bash sync.sh --only auth-flow e2e-get-started
 ```
 
+**Or use `run.sh`, the pipeline-first launcher** — named modes that chain the right steps (and an interactive picker if you run it bare):
+
+```bash
+bash run.sh                   # interactive mode picker (gum-styled if available)
+bash run.sh push              # = bash sync.sh
+bash run.sh push:full         # push + fetch + diff + recent-errors + sitemap
+bash run.sh dashboard         # refresh all 6 Notion dashboards
+bash run.sh check             # read-only verification
+bash run.sh bring-up          # full first-time bring-up sequence
+```
+
+`sync.sh` / `list.sh` remain the low-level building blocks (and the right choice for the GitHub Action). A `Justfile` mirrors the `run.sh` modes for `just` users.
+
 See [SETUP.md](SETUP.md) for one-time Notion integration setup, and [USAGE.md](USAGE.md) for a task-oriented guide covering every scenario (selective sync, image upload, mentions, diff, retry, performance tuning, etc.).
 
 > **Pipeline at a glance:** [PIPELINE.md](PIPELINE.md) — full end-to-end diagram (discovery → sections → leaf content → dashboards → prune) with the rename-safety move detection and the cache/runs flow. Re-render any time with `bash scripts/render-pipeline-diagram.sh`.
 
 ## Commands
 
-Two scripts cover everything. Each row links to the relevant USAGE section.
+`run.sh` (pipeline modes) sits on top of two low-level scripts — `sync.sh` (push) and `list.sh` (read/diff/dashboards). Each row links to the relevant USAGE section.
+
+### `run.sh` — pipeline launcher
+
+| Command | What it does |
+|---|---|
+| `bash run.sh` | Interactive mode picker |
+| `bash run.sh push` | `bash sync.sh` |
+| `bash run.sh push:full` | push + fetch + diff + recent-errors + sitemap |
+| `bash run.sh fix` | fix-mentions + recent-errors |
+| `bash run.sh check` | read-only verification |
+| `bash run.sh dashboard` | refresh all 6 dashboards (sitemap·tags·index-db·backlinks·recent-feed·health) |
+| `bash run.sh bring-up` | full first-time bring-up sequence |
+| `bash run.sh prune` | list orphan Notion pages (dry-run; `--apply` to archive) |
 
 ### `sync.sh` — push local docs → Notion
 
@@ -92,6 +118,7 @@ Two scripts cover everything. Each row links to the relevant USAGE section.
 | `bash sync.sh --only X Y …` | Sync only matching sections / files | [§2 Selective sync](USAGE.md#2-selective-sync) |
 | `bash sync.sh --verbose` | Per-file output instead of progress bar | [§11 Performance tuning](USAGE.md#11-performance-tuning) |
 | `bash sync.sh --fix-mentions` | Skip sync; convert internal links → page mentions | [§8 Mentions](USAGE.md#8-internal-links--page-mentions) |
+| `bash sync.sh --resume` | Continue an interrupted run — skips docs already written | [§6 Recovering from failures](USAGE.md#6-recovering-from-a-failed-run) |
 | `bash sync.sh reconcile` | 🛡 Resolve guardrail-protected pages from last sync (interactive) | [§11.5 Guardrails](USAGE.md#115-overwrite-guardrails--reconciliation) |
 | `bash sync.sh reconcile <path>` | Reconcile a single page (matches like `--only`) | [§11.5](USAGE.md#115-overwrite-guardrails--reconciliation) |
 | `bash sync.sh -h` | Inline help | — |
@@ -106,20 +133,29 @@ Two scripts cover everything. Each row links to the relevant USAGE section.
 | `bash list.sh show --max-depth N` | Collapse tree beyond depth N | [§4](USAGE.md#4-verifying-remote-state) |
 | `bash list.sh show --empty-only` | Only pages with 0 content blocks | [§4](USAGE.md#4-verifying-remote-state) |
 | `bash list.sh diff` | Title-based comparison vs local docs | [§5 Comparing](USAGE.md#5-comparing-local-vs-remote) |
+| `bash list.sh diff-content` | Three-way BASE/LOCAL/REMOTE content diff, served in a browser (`--force` refetches) | [§5](USAGE.md#5-comparing-local-vs-remote) |
 | `bash list.sh empty-paths` | Print local paths whose remote page is empty | [§5](USAGE.md#5-comparing-local-vs-remote) |
 | `bash list.sh fix-mentions` | Standalone: rewrite links → mentions on every cached page | [§8 Mentions](USAGE.md#8-internal-links--page-mentions) |
+| `bash list.sh dashboards` | Run all 6 dashboards in one process (sitemap·tags·index-db·backlinks·recent-feed·health) | [§9 Dashboards](USAGE.md#9-notion-dashboards) |
+| `bash list.sh prune` | List orphan Notion pages (dry-run; `--apply` to archive) | [§10](USAGE.md) |
 
 ### Common workflows
 
 ```bash
 # First sync after a long time
 bash list.sh fetch                                # snapshot remote
-bun compare-apr-30-1/compare.ts                   # path-based diff vs local
+bash list.sh diff                                 # title-based diff vs local
 bash sync.sh                                      # full sync (wizard)
 bash list.sh fix-mentions                         # convert legacy links
 
 # Daily one-file change
 bash sync.sh --no-wizard --only create-scraper
+
+# Resume a long sync that was interrupted (Ctrl-C, crash, sleep)
+bash sync.sh --resume                             # skips docs already written
+
+# Inspect exactly what differs, content-level, in a browser
+bash list.sh diff-content                         # BASE/LOCAL/REMOTE three-way
 
 # Mop up empty remote pages
 bash sync.sh --no-wizard --only $(bash list.sh empty-paths)
@@ -188,10 +224,16 @@ Full UX walkthrough in [USAGE.md §11.5](USAGE.md#115-overwrite-guardrails--reco
 | `index.ts`              | Phase 1 discovery, Phase 1.5 sections, **Phase 1.7 guardrail check**, Phase 2 leaf writes, retry passes, run logging |
 | `sync-state.ts`         | `.notion-sync-state.json` baseline tracking, bot-id cache, `checkDivergence` (returns all applicable kinds), `recordPageBaseline` |
 | `reconcile.ts`          | Interactive guided resolution of protected pages — kind-specific menus, ← Back nav, live re-check, pull-from-Notion path |
+| `progress-ledger.ts`    | resume ledger (`.notion-sync-progress.<key>.json`) — per-doc completed-set for `--resume` |
 | `image-uploader.ts`     | sha256 dedup cache, fileUploads create+send, post-write image-block external→file_upload swap |
-| `mention-converter.ts`  | walk page blocks, rewrite text-link annotations → page mentions                       |
-| `notion-list.ts`        | walk Notion tree, save cache, render show/diff/empty-paths/fix-mentions               |
+| `mention-converter.ts`  | walk page blocks, rewrite text-link annotations → page mentions; strip dead `#anchor` links on update |
+| `notion-list.ts`        | walk Notion tree, save cache, dispatch show/diff/diff-content/fix-mentions/dashboards/sitemap/tag-index/index-db/backlinks/recent-feed/health/prune |
+| `diff-content.ts`       | three-way BASE/LOCAL/REMOTE content diff, served as an HTML report in a browser       |
+| `title-match.ts`        | title-variant matching (dash/paren/normalize) for diff + prune rename pairing          |
+| `lib/{colors,notion,retry,env}.ts` | shared helpers — ANSI colors, Notion client + `extractPageId`, retry policy, `.env` parser |
 | `list.sh`               | wraps notion-list.ts; notification on long subcommands                                |
+
+> **Root-keyed state.** Cache, sync-state, snapshots, diff cache, and the resume ledger are all suffixed with a 12-hex `<key>` derived from `NOTION_ROOT_PAGE_ID` (`getCacheKey()` in `sync-state.ts`), so pointing the tool at a different root automatically isolates its state. Legacy unkeyed files auto-migrate on first run.
 
 ## Folder indexes (`_index.md`)
 
@@ -277,6 +319,8 @@ Mapped folders bypass the default root and root their subtree directly under the
 | `NOTION_USE_MENTIONS`        | no       | on                 | `0` to disable internal-link → page-mention conversion            |
 | `NOTION_GUARDRAILS`          | no       | `strict`           | `strict` \| `warn` \| `off` — overwrite protection for human-edited pages (v1.3) |
 | `NOTION_SYNC_MAP`            | no       | —                  | Path to JSON file mapping top-level folders to Notion roots       |
+| `NOTION_*_PAGE_ID`           | no       | auto-create        | Pin a dashboard to an existing page: `NOTION_SITEMAP_PAGE_ID`, `NOTION_TAG_INDEX_PAGE_ID`, `NOTION_INDEX_DB_ID`, `NOTION_RECENT_FEED_PAGE_ID`, `NOTION_HEALTH_PAGE_ID` |
+| `RECONCILE_DIFF_TOOL`        | no       | —                  | Pre-select the reconcile diff renderer (bypasses the menu)        |
 | `ABORT_POLICY`               | no       | `disabled`         | `disabled` \| `1` \| `2` \| `3` \| `5` \| `10` (consecutive errors) |
 | `DRY_RUN`                    | no       | —                  | Set `1` to preview without writing                                |
 | `VERBOSE`                    | no       | —                  | Set `1` for per-file output instead of progress bar               |
@@ -306,6 +350,7 @@ After Phase 2 writes a page's content, internal `.md` links pointing at our sync
 - **Suspicion rules** — on any push failure, file content is checked against WAF + size rules. Findings appear in the per-file error log and `runs.jsonl` `error_summary[].suspicions`.
 - **Crash-safe partial cache** — `list.sh fetch` saves a partial cache on SIGINT or unhandled error so 88 pages of progress aren't lost to a single 502.
 - **Crash-safe partial run logs** — Ctrl-C / SIGTERM / uncaught exception during `sync.sh` flushes a `partial: true` entry to `runs.jsonl` with `partial_reason` recording the cause. Use `bash list.sh recent-errors` to see what got done before the kill.
+- **Resumable runs** — every doc that lands is recorded in `.notion-sync-progress.<key>.json`. After an interruption, `bash sync.sh --resume` continues where it stopped, skipping docs already written (Phase 1 discovery re-runs fully so links still resolve). Guardrail baselines flush per-doc, so a crash never loses them. A clean finish clears the ledger.
 - **Archived-page handling** — pages deleted in Notion between runs are detected in Phase 1 (`pages.retrieve` checks `in_trash || archived`) and treated as non-existent, so a fresh page is created. Background: [RCA-ARCHIVED-PAGES.md](RCA-ARCHIVED-PAGES.md).
 
 ## Run logs

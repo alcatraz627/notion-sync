@@ -30,12 +30,14 @@ bash sync.sh --no-wizard      # saved defaults
 bash sync.sh --dry-run        # preview only
 bash sync.sh --only jobs      # filter
 bash sync.sh --fix-mentions   # mention conversion mode
+bash sync.sh --resume         # continue an interrupted run (skips docs already written)
 
 bash list.sh                  # render cached remote tree
 bash list.sh fetch            # refresh cache from Notion
 bash list.sh diff             # title-based diff vs local docs
-bash list.sh diff-content     # three-way diff report (BASE/LOCAL/REMOTE); scans every baselined page by default, --paths a,b to scope, --protected-only for last-run subset, --show-clean to include unchanged pages
+bash list.sh diff-content     # three-way diff report (BASE/LOCAL/REMOTE), served in a browser; scans every baselined page by default, --paths a,b to scope, --protected-only for last-run subset, --show-clean to include unchanged pages, --force to refetch
 bash list.sh fix-mentions     # standalone mention conversion
+bash list.sh dashboards       # run ALL 6 dashboards in one process (sitemap+tag-index+index-db+backlinks+recent-feed+health)
 bash list.sh sitemap          # push 🗺️ Sitemap dashboard page
 bash list.sh tag-index        # push 🏷️ Tags dashboard page
 bash list.sh index-db         # push 📇 Doc Index sidecar database
@@ -55,10 +57,17 @@ For end-user docs see [USAGE.md](USAGE.md). This file is for Claude (architectur
 | ----------------------- | ------------------------------------------------------------------------------- |
 | `index.ts`              | Sync logic — Phase 1 discovery, Phase 1.5 sections, Phase 2 content + retries   |
 | `image-uploader.ts`     | Notion CDN image upload (sha256-cached) + image-block external→file_upload swap |
-| `mention-converter.ts`  | Walk page blocks, rewrite internal hyperlinks → native page mentions            |
-| `sync-state.ts`         | Overwrite guardrails — bot-id cache, baseline tracking, divergence detection (`Divergence[]`), state file (`.notion-sync-state.json`) |
-| `reconcile.ts`          | Interactive guided resolution of guardrail-protected pages (`bash sync.sh reconcile`) |
-| `notion-list.ts`        | Read remote tree, cache to `.notion-cache.json`, dispatcher for show/diff/fix-mentions/sitemap/tag-index/index-db/recent-errors |
+| `mention-converter.ts`  | Walk page blocks, rewrite internal hyperlinks → native page mentions. Strips dead `#anchor`/relative link URLs when rewriting a block (Notion rejects them on `blocks.update`). `descendChildPages` off by default (callers iterate pages independently) |
+| `sync-state.ts`         | Overwrite guardrails — bot-id cache, baseline tracking, divergence detection (`Divergence[]`), root-keyed state file. `getCacheKey()` derives the `<key>` suffix from `NOTION_ROOT_PAGE_ID` |
+| `progress-ledger.ts`    | Resumable runs — per-doc ledger (`.notion-sync-progress.<key>.json`) recording completed docs; read on start for `--resume`. Atomic temp+rename writes |
+| `reconcile.ts`          | Interactive guided resolution of guardrail-protected pages (`bash sync.sh reconcile`). `--inline-diff` / `RECONCILE_DIFF_TOOL` pick the diff renderer |
+| `notion-list.ts`        | Read remote tree, cache to `.notion-cache.<key>.json`, dispatcher for show/diff/diff-content/fix-mentions/dashboards/sitemap/tag-index/index-db/backlinks/recent-feed/health/prune/recent-errors/empty-paths |
+| `diff-content.ts`       | Three-way (BASE/LOCAL/REMOTE) content diff, rendered to an HTML report served in a browser. Caches to `.notion-diff-cache.<key>.json` (`--force` refetches) |
+| `title-match.ts`        | Title-variant matching (dash/paren/lenient-normalize) used by `diff` + `prune` to pair renamed local docs ↔ Notion pages |
+| `lib/colors.ts`         | ANSI color/style helpers (single source; `makeClr(isTty)` factory) |
+| `lib/notion.ts`         | `getNotion()` client factory + `extractPageId()` (URL/ID → undashed 32-hex) |
+| `lib/retry.ts`          | Unified `withRetry`/`isRetriable`/`computeWaitMs` — one retry policy for every API caller |
+| `lib/env.ts`            | `loadEnv()` — the single `.env` parser (CRLF-safe, never overwrites existing env) |
 | `sitemap.ts`            | Render the 🗺️ Sitemap dashboard page from cache (chunked-with-retry push)       |
 | `tag-index.ts`          | Render the 🏷️ Tags dashboard from frontmatter + body tags across all docs       |
 | `index-db.ts`           | Upsert rows in the 📇 Doc Index sidecar database (Notion DB CRUD via SDK)       |
@@ -71,9 +80,12 @@ For end-user docs see [USAGE.md](USAGE.md). This file is for Claude (architectur
 | `list.sh`               | Wraps notion-list.ts with notification on long-running subcommands              |
 | `.env` / `.env.example` | Credentials + behaviour toggles                                                 |
 | `.sync-defaults.json`   | Wizard's saved selections (gitignored)                                          |
-| `.notion-cache.json`    | Cached remote page tree from `list.sh fetch` (gitignored)                       |
-| `.notion-image-cache.json` | sha256 → file_upload_id map for uploaded images (gitignored)                |
-| `.notion-sync-state.json` | Per-page baseline (page_id, expected_parent_id, last_pushed_edited_time, last_pushed_block_count) + cached bot_id. Read by Phase 1.7 + reconcile. Gitignored. |
+| `.notion-cache.<key>.json` | Cached remote page tree from `list.sh fetch`. `<key>` = 12-hex of `NOTION_ROOT_PAGE_ID` (via `getCacheKey()`), so switching roots isolates state. Legacy unkeyed files auto-migrate. Gitignored. |
+| `.notion-image-cache.json` | sha256 → file_upload_id map for uploaded images. Workspace-scoped (shared across roots — NOT keyed). Gitignored. |
+| `.notion-sync-state.<key>.json` | Per-page baseline (page_id, expected_parent_id, last_pushed_edited_time, last_pushed_block_count) + cached bot_id. Flushed per-doc during Phase 2. Read by Phase 1.7 + reconcile. Root-keyed, gitignored. |
+| `.notion-snapshots.<key>/` | Per-doc raw-body snapshots (BASE for 3-way diffs). Root-keyed, gitignored. |
+| `.notion-diff-cache.<key>.json` | Cached `diff-content` report (`--force` busts it). Root-keyed, gitignored. |
+| `.notion-sync-progress.<key>.json` | Resume ledger — `{run_id, started_at, doc_set[], completed[]}`. Present only while a run is incomplete; cleared on clean finish. Root-keyed, gitignored. |
 | `runs.jsonl`            | Append-only log of every sync run                                               |
 | `metrics.jsonl`         | Rolling-window (last 5) per-API-call timing                                     |
 | `SETUP.md`              | One-time Notion integration setup guide                                         |
@@ -84,6 +96,10 @@ For end-user docs see [USAGE.md](USAGE.md). This file is for Claude (architectur
 | `RECONCILIATION-EXPLORATION.md` | Design (post-review) for the reconcile flow (reconcile.ts). 4-PR rollout; PR 1+2 done; PR 3 (pull-from-Notion) pending. |
 | `scripts/probe-bot-id.ts` | Read-only probe — validates `users.me()` + `last_edited_by` + minute-rounding assumptions. Run before changing guardrail logic. |
 | `scripts/simulate-human-edit.ts` | Tampers `.notion-sync-state.json` to force a divergence. Test-only utility. |
+| `scripts/probe-bad-link.ts` | Read-only probe — walks a page's blocks and flags link URLs Notion would reject on `blocks.update` (the `#anchor`/relative case behind "Invalid URL for link"). |
+| `PIPELINE.md`           | The post-sync pipeline / orchestration map (push → enrich → verify)             |
+| `ROADMAP.md`            | Version history + shelved ideas                                                 |
+| `SHARED-LIB-EXPLORATION.md` | Design doc for the `lib/` extraction (Workstream A)                         |
 | `NAV-STRUCTURE-EXPLORATION.md` | Design exploration: alternatives to the deep nested-page tree (databases, flatten + ToC, synced-block nav, column layouts, toggles) |
 | `DASHBOARDS-AND-ORCHESTRATION-EXPLORATION.md` | Design exploration: sitemap / tag index / recent-feed dashboards on Notion + pipeline-first project orchestration (`bash run.sh` modes) |
 
@@ -114,9 +130,14 @@ The two-phase design is necessary: phase 2 needs all page IDs upfront so cross-f
 | `NOTION_USE_MENTIONS`        | no       | `0` to disable internal-link → mention conversion (default: on) |
 | `NOTION_GUARDRAILS`          | no       | `strict` (default) \| `warn` \| `off` — overwrite protection for human-edited pages |
 | `NOTION_SYNC_MAP`            | no       | Path to JSON mapping top-level dirs → separate Notion roots |
+| `NOTION_FULL_WIDTH`          | no       | Declared but inert (full-width is not settable via the public API) |
+| `NOTION_SITEMAP_PAGE_ID` etc. | no     | Pin a dashboard to an existing page instead of creating one. Also `NOTION_TAG_INDEX_PAGE_ID`, `NOTION_INDEX_DB_ID`, `NOTION_RECENT_FEED_PAGE_ID`, `NOTION_HEALTH_PAGE_ID` |
+| `RECONCILE_DIFF_TOOL`        | no       | Pre-pick the reconcile diff renderer (bypasses the sub-menu) |
 | `ABORT_POLICY`               | no       | `disabled` \| `1` \| `2` \| `3` \| `5` \| `10` (consecutive errors) |
 | `DRY_RUN`                    | no       | `1` = preview only                                  |
 | `VERBOSE`                    | no       | `1` = per-file output instead of progress bar       |
+
+Command-line flags (passed to `sync.sh` → `index.ts`): `--no-wizard`, `--dry-run`, `--only <paths>`, `--fix-mentions`, `--resume`, `--verbose`, `--seed-state`, `--refresh-bot-id`, `--guardrails <strict|warn|off>`, `--force-overwrite`/`--accept-move`/`--accept-archive <paths>`, `--env <path>`.
 
 ## Frontmatter
 
@@ -156,12 +177,19 @@ cover: https://images.unsplash.com/photo-xxx?w=1200
 - **`replace_content` deletes child_page subpages too**, so Phase 1.5 uses a list-blocks → delete-non-child_page-blocks → `insert_content` flow to keep subpages alive (commit `83c9f41`).
 - **`blocks.update` for images rejects an explicit `type` field** — the discriminator is inferred from which sub-field is present. Send `{image: {file_upload: {id}}}`, NOT `{image: {type: "file_upload", file_upload: {id}}}`.
 - **Mention objects display the linked page's CURRENT title**, not the original markdown anchor text. By design (auto-updating), but worth noting if anchor text matters.
+- **`blocks.update` re-validates EVERY link in the resent rich_text array** and rejects scheme-less URLs — notably in-page `#heading` anchors that the markdown *import* stored verbatim. So rewriting one block (e.g. mention conversion) fails the whole block if it also holds a TOC anchor. `mention-converter.ts` strips those dead links (keeps the text) when it rewrites a block. See `scripts/probe-bad-link.ts`.
 
 ## Phases
 
 - **Phase 1 (discovery)**: walk all `.md`, `getOrCreateChildPage` for each, build `pageIdMap` and `discoveryMap`. Section pages also discovered + queued for Phase 1.5.
 - **Phase 1.5 (section content)**: write `_index.md` content (or auto-index for folders without one) to each section page. Uses non-destructive list-blocks + delete-prose + `insert_content` to preserve child_page subpages. Failed sections get a retry pass at the end (up to 3 attempts each).
-- **Phase 2 (leaf content)**: for each leaf doc — upload images (if `NOTION_UPLOAD_IMAGES=1`) → `updateMarkdown` → swap image blocks external→file_upload → convert internal links → mentions (if `NOTION_USE_MENTIONS=1`). Failed docs get a retry pass at the end (up to 3 attempts each).
+- **Phase 2 (leaf content)**: for each leaf doc — upload images (if `NOTION_UPLOAD_IMAGES=1`) → `updateMarkdown` → swap image blocks external→file_upload → convert internal links → mentions (if `NOTION_USE_MENTIONS=1`). Failed docs get a retry pass at the end (up to 3 attempts each). Each successful doc is recorded in the resume ledger and its guardrail baseline is flushed immediately.
+
+## Resume (interrupted runs)
+
+A full push takes >2h, almost all in Phase 2. Every doc that lands is appended to `.notion-sync-progress.<key>.json`. On the next run, a leftover ledger triggers `--resume` (or an interactive prompt): **Phase 1 discovery still runs fully** (idempotent; `pageIdMap` must be complete so links in the docs we *do* write resolve), but Phase 2 skips docs already in the ledger (status `skipped`). A clean finish (all docs reached, no errors) deletes the ledger; an incomplete run keeps it and prints the `--resume` hint. Dry-runs never touch the ledger.
+
+`fix-mentions` has two cost optimizations: it skips docs whose local source has **no internal links** (nothing to convert), and `convertPageLinksToMentions` no longer descends into `child_page` blocks (every page is already walked in its own pass — avoids a quadratic re-walk).
 
 ## GitHub Actions
 
