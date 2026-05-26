@@ -464,6 +464,12 @@ export function normalizeForDiff(body: string): string {
     // unions, JSX, anchors). `\\` itself is left alone (genuine code escapes).
     // Symmetric on both sides, so this can only remove noise, never add it.
     .replace(/\\([!=().,;:?~$<>{}|_*#\[\]\-])/g, "$1")
+    // Notion escapes a pipe INSIDE a table cell as `\ |` (backslash-SPACE-pipe)
+    // to keep it from reading as a column separator; local files write `\|`
+    // (no space). The line above unescapes `\|`→`|` but the spaced variant slips
+    // through, so a union-type cell like `ReactNode \| string` diffs forever.
+    // Collapse the spaced form to a bare pipe too.
+    .replace(/\\ +\|/g, "|")
     // F4 — Collapse runs of 4+ `*`. Notion re-emits bold-around-inline-code with
     // a doubled marker (`**`code`**` → `****`code`****`). Four-plus asterisks are
     // never legitimate (the richest valid form is `***bold-italic***`), so fold

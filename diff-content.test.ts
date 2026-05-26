@@ -179,6 +179,12 @@ test("normalizeForDiff — a *emphasis* line start is not mistaken for a bullet 
   expect(normalizeForDiff("*emphasis* text\n")).toContain("*emphasis*");
 });
 
+test("normalizeForDiff — table-cell escaped pipe `\\|` and Notion's `\\ |` both collapse to | (table round-trip)", () => {
+  const local = normalizeForDiff("| `getHeaderLabel` | `(h) => ReactNode \\| string` | label |\n");
+  const remote = normalizeForDiff("| `getHeaderLabel` | `(h) => ReactNode \\ | string` | label |\n");
+  expect(local).toBe(remote); // the spaced variant no longer diffs against the local form
+});
+
 // ── reverseRemoteRewrites: undo the push-side rewrites for clean diffs ────────
 
 const opts = {
