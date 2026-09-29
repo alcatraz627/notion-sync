@@ -1,10 +1,8 @@
-<div align="center">
+<p align="center">
+  <img src=".github/readme/banner.svg" alt="Notion-Sync banner: markdown docs mirrored to Notion" width="100%">
+</p>
 
-<img src="assets/banner.svg" alt="notion-sync — markdown → Notion mirror" width="640"/>
-
-</div>
-
-<h1 align="center">notion-sync</h1>
+<h1 align="center"><img src=".github/readme/favicon.svg" alt="" width="32" height="32"> notion-sync</h1>
 
 <p align="center">
   Push markdown docs to Notion — folder structure, icons, covers, mentions, dashboards, audit logs.
@@ -21,41 +19,18 @@
 <details>
 <summary align="center"><b>The terminal banner — what each run looks like</b> (click to expand)</summary>
 
-```
-╔==================================================================╗
-║  +--⊕ NOTION-SYNC ⊕--+                                           ║
-║  |  markdown → Notion mirror|                                    ║
-║  +-------------------+                                           ║
-╠==============◆◆====================================◆◆============╣
-║                                                                  ║
-║  ◆ SYNC -------------------------------------------------------  ║
-║  ├- two-phase: discover → write content                          ║
-║  ├- adaptive linear backoff (350-1050ms)                         ║
-║  ├- auto-unarchive Phase 1 (in_trash + archived)                 ║
-║  └- Phase 2 retry pass (up to 3 attempts each)                   ║
-║                                                                  ║
-║  ◇ DASHBOARDS -------------------------------------------------  ║
-║  ├- Sitemap     — terse tree-view of every page                  ║
-║  ├- Tag index   — frontmatter tags, searchable                   ║
-║  ├- Doc Index   — sidecar DB with multi-select views             ║
-║  └- Recently    — feed of last-synced changes                    ║
-║                                                                  ║
-║  ▶ AUDIT ------------------------------------------------------  ║
-║  ├- runs.jsonl  — per-run config + stats + errors                ║
-║  ├- metrics     — rolling per-API-call timing                    ║
-║  ├- partial logs on Ctrl-C / SIGTERM / crash                     ║
-║  └- list.sh recent-errors — copy-paste retry hint                ║
-║                                                                  ║
-╠==============◆◆====================================◆◆============╣
-║  ⊙ v1.3.0  ·  bash sync.sh  ·  bash sync.sh reconcile           ║
-╚==================================================================╝
-```
-
 </details>
 
 ---
 
 > **Standalone tool.** Has its own `package.json`, `node_modules`, and `tsconfig.json`. Not imported by or built with the Next.js frontend app. Run locally with `bash sync.sh` or trigger manually via GitHub Actions.
+
+<details>
+<summary>Riddle answer</summary>
+
+The overwrite guardrail: pages it protects wait for bash sync.sh reconcile, which resolves them interactively.
+
+</details>
 
 ## Quick start
 
